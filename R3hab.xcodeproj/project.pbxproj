@@ -4,65 +4,69 @@
 	classes = {};
 	objectVersion = 56;
 	objects = {
-		659D947C3DCC4EBA850F5EDC /* R3habApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R3habApp.swift; sourceTree = "<group>"; };
-		324ADC170DAD4DCDA5892946 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		210C10EA1B2449FB9A8E6D38 /* PainScoreControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PainScoreControl.swift; sourceTree = "<group>"; };
-		DC4134CE42B744728D6D03B5 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
-		CBC8B4907295420F91B3BAE3 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
-		E0CA2BDE76F14670A61C00EB /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
-		B46393AC1DCE44BD9C939CB3 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
-		D83E93DA61F74EB1AF83E8EC /* ChartAggregates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartAggregates.swift; sourceTree = "<group>"; };
-		7277730452544F8B8FEACD51 /* DecisionSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionSuggester.swift; sourceTree = "<group>"; };
-		5658ABE93F4C49779AA8DA23 /* DomainSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainSnapshots.swift; sourceTree = "<group>"; };
-		1EC40D4A76564DD4BC867FDF /* PendingQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingQueue.swift; sourceTree = "<group>"; };
-		DD63500D22544D5FB650CB34 /* PhaseAExitEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseAExitEvaluator.swift; sourceTree = "<group>"; };
-		2C582A6DA01341419B3F651C /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
-		74D83231D9C747F9AB0BF667 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
-		754DBC4B70534F3D8410FDD7 /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
-		0C9ED15100394BFCB4E5418A /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-		3D70DFEA405F4E898346EC9A /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		917D1313F0FB41BB8A76A586 /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
-		377F7240A38E45F09D2E4748 /* Resolve24hSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Resolve24hSheet.swift; sourceTree = "<group>"; };
-		A1C530E78EFF4FF880253FFF /* SessionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionEditor.swift; sourceTree = "<group>"; };
-		9B81D63A7AB24484AE71E6B7 /* SessionPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPresets.swift; sourceTree = "<group>"; };
-		B2497B7782094FDB91993AB9 /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
-		2000EFE3D67C4DE5A853090A /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		5B1EC4B137E4435088049697 /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
-		5E0D8AFA157E451FA692DAB6 /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
-		1750947BC6034324A4273E58 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
-		88391E5F5FFE41488AB68808 /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		99047FC1CE8149F7B886C5FA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		4F96D7BA685546EC939D10B2 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 659D947C3DCC4EBA850F5EDC /* R3habApp.swift */; };
-		EDC5FE805EBC48BC8B7FC182 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 324ADC170DAD4DCDA5892946 /* RootView.swift */; };
-		35D7DF8983D94719A67861AB /* PainScoreControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 210C10EA1B2449FB9A8E6D38 /* PainScoreControl.swift */; };
-		361629F59FE74798A5039B70 /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC4134CE42B744728D6D03B5 /* PhaseChip.swift */; };
-		ECA52A2215C048B0A7493F2D /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CBC8B4907295420F91B3BAE3 /* SparklineView.swift */; };
-		B6775ED7C67F4C6A833E02FD /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0CA2BDE76F14670A61C00EB /* AppBootstrap.swift */; };
-		5336C41A07024F2DBD86E536 /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = B46393AC1DCE44BD9C939CB3 /* ModelMapping.swift */; };
-		3F5A09DF2844463798FEC704 /* ChartAggregates.swift in Sources */ = {isa = PBXBuildFile; fileRef = D83E93DA61F74EB1AF83E8EC /* ChartAggregates.swift */; };
-		9A02D6829FE34B629DA7E6BB /* DecisionSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7277730452544F8B8FEACD51 /* DecisionSuggester.swift */; };
-		06CE31C60CA246F08F86DA22 /* DomainSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5658ABE93F4C49779AA8DA23 /* DomainSnapshots.swift */; };
-		621F04793F3040ACA4E6E201 /* PendingQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1EC40D4A76564DD4BC867FDF /* PendingQueue.swift */; };
-		53DA8B3D37A145909E8734E4 /* PhaseAExitEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD63500D22544D5FB650CB34 /* PhaseAExitEvaluator.swift */; };
-		73827D6B3C514300A0DAF930 /* PhaseGuideCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C582A6DA01341419B3F651C /* PhaseGuideCopy.swift */; };
-		4EE56169D15348F1A2BFF10D /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74D83231D9C747F9AB0BF667 /* SessionSpacing.swift */; };
-		BC537A038152474481BCF0F1 /* DailyCheckInEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 754DBC4B70534F3D8410FDD7 /* DailyCheckInEditor.swift */; };
-		904D3FF561E142FF9829D92E /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9ED15100394BFCB4E5418A /* HistoryView.swift */; };
-		2A48655BD96547B3B9FA015D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3D70DFEA405F4E898346EC9A /* HomeView.swift */; };
-		77E38FDDECBC4B25A4560EE3 /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 917D1313F0FB41BB8A76A586 /* RehabProgressView.swift */; };
-		ACC741E3FEFE453AA3C9A2E2 /* Resolve24hSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377F7240A38E45F09D2E4748 /* Resolve24hSheet.swift */; };
-		70DF9717DE7E4C608497837F /* SessionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C530E78EFF4FF880253FFF /* SessionEditor.swift */; };
-		706EDD07509844B98B5AFBC0 /* SessionPresets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B81D63A7AB24484AE71E6B7 /* SessionPresets.swift */; };
-		8EC4BFA4853F41F88C78995A /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2497B7782094FDB91993AB9 /* SettingsStubView.swift */; };
-		8C59672C14444EBE9A642A5A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2000EFE3D67C4DE5A853090A /* AppSettings.swift */; };
-		E7F7D12C164241749B841168 /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B1EC4B137E4435088049697 /* DailyCheckIn.swift */; };
-		9C227B8B45EF4F4F9EDFCB5E /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0D8AFA157E451FA692DAB6 /* RehabEnums.swift */; };
-		0EAB47C383CB4A5B83F38B63 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1750947BC6034324A4273E58 /* TrainingSession.swift */; };
-		C9EF82C7792045AFB18D68B0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 99047FC1CE8149F7B886C5FA /* Assets.xcassets */; };
+		6062AAD605A342F5B99AF2E1 /* R3habApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R3habApp.swift; sourceTree = "<group>"; };
+		500B430A78114CD384634358 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PainScoreControl.swift; sourceTree = "<group>"; };
+		99066D8CD9C34E9081E6E951 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
+		B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
+		47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
+		ED9AA8F2B526430384E46937 /* ExportImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImport.swift; sourceTree = "<group>"; };
+		4670AE5C99794407900C0055 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
+		EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartAggregates.swift; sourceTree = "<group>"; };
+		F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionSuggester.swift; sourceTree = "<group>"; };
+		228510573C3D4E428D1084C6 /* DomainSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainSnapshots.swift; sourceTree = "<group>"; };
+		C906FBBA88814D529A9B926F /* PendingQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingQueue.swift; sourceTree = "<group>"; };
+		6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseAExitEvaluator.swift; sourceTree = "<group>"; };
+		F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
+		33852A11DB0D407691655972 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
+		180612735F20428098D5B5BE /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
+		6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		49060090CED747AB85AC2725 /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
+		7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Resolve24hSheet.swift; sourceTree = "<group>"; };
+		47E696520C304998860FBB89 /* SessionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionEditor.swift; sourceTree = "<group>"; };
+		221B4266A75B41A3BCBE40BB /* SessionPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPresets.swift; sourceTree = "<group>"; };
+		602D044C686A40A3BB2B4414 /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
+		A1B2C3D4E5F64001A2B3C4D5 /* PhaseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideView.swift; sourceTree = "<group>"; };
+		57B0E2DC474E40E8A9BABDA7 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
+		3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
+		E8011A626D364764ADC7D7E8 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		9B7E832294A34A3A8B15509A /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		2AC4262E9330424E930140D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		3E260B2BD73545B6A69A4A58 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6062AAD605A342F5B99AF2E1 /* R3habApp.swift */; };
+		552F78FBAED045749D43C322 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500B430A78114CD384634358 /* RootView.swift */; };
+		95ADBE611FF1403CA45A5AE4 /* PainScoreControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */; };
+		79E27029191247DC802802AF /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99066D8CD9C34E9081E6E951 /* PhaseChip.swift */; };
+		1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */; };
+		FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */; };
+		C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9AA8F2B526430384E46937 /* ExportImport.swift */; };
+		1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670AE5C99794407900C0055 /* ModelMapping.swift */; };
+		1142799D3AFE47C89C33443D /* ChartAggregates.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */; };
+		3B4FA48B9C844652984EA468 /* DecisionSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */; };
+		AC4F72BADF3C44978DE3DEEB /* DomainSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 228510573C3D4E428D1084C6 /* DomainSnapshots.swift */; };
+		BA6A2BF7177F4D53B5982277 /* PendingQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C906FBBA88814D529A9B926F /* PendingQueue.swift */; };
+		5432E0016D0A4C24B47DCAD1 /* PhaseAExitEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */; };
+		15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */; };
+		D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33852A11DB0D407691655972 /* SessionSpacing.swift */; };
+		61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180612735F20428098D5B5BE /* DailyCheckInEditor.swift */; };
+		EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */; };
+		0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */; };
+		659AAA46B98B42759D73F90C /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49060090CED747AB85AC2725 /* RehabProgressView.swift */; };
+		C8EADC1601E04DCDBF7D169E /* Resolve24hSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */; };
+		9B961E5758404C578F03981B /* SessionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E696520C304998860FBB89 /* SessionEditor.swift */; };
+		28D2ECE299044FEFBDC1D67F /* SessionPresets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221B4266A75B41A3BCBE40BB /* SessionPresets.swift */; };
+		72C3BEF25F6C4DBF8310C07E /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602D044C686A40A3BB2B4414 /* SettingsStubView.swift */; };
+		A1B2C3D4E5F64002A2B3C4D6 /* PhaseGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64001A2B3C4D5 /* PhaseGuideView.swift */; };
+		BFC58645941B4D5F9A501BEB /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57B0E2DC474E40E8A9BABDA7 /* AppSettings.swift */; };
+		0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */; };
+		73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */; };
+		47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8011A626D364764ADC7D7E8 /* TrainingSession.swift */; };
+		EB97832E888046FEA263E4EC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2AC4262E9330424E930140D9 /* Assets.xcassets */; };
 		094E92DFCFC3E0EEF4479B4C /* Daily */ = {
 			isa = PBXGroup;
 			children = (
-				754DBC4B70534F3D8410FDD7 /* DailyCheckInEditor.swift */,
+				180612735F20428098D5B5BE /* DailyCheckInEditor.swift */,
 			);
 			path = Daily;
 			sourceTree = "<group>";
@@ -70,7 +74,7 @@
 		0F3A7EFFE597D9D1A4ACB693 /* History */ = {
 			isa = PBXGroup;
 			children = (
-				0C9ED15100394BFCB4E5418A /* HistoryView.swift */,
+				6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */,
 			);
 			path = History;
 			sourceTree = "<group>";
@@ -78,7 +82,7 @@
 		7A0EC6BF3C16039A1651301A /* Home */ = {
 			isa = PBXGroup;
 			children = (
-				3D70DFEA405F4E898346EC9A /* HomeView.swift */,
+				A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
@@ -86,7 +90,7 @@
 		4715A95C23183C26852EDD89 /* Progress */ = {
 			isa = PBXGroup;
 			children = (
-				917D1313F0FB41BB8A76A586 /* RehabProgressView.swift */,
+				49060090CED747AB85AC2725 /* RehabProgressView.swift */,
 			);
 			path = Progress;
 			sourceTree = "<group>";
@@ -94,9 +98,9 @@
 		D36FA1E196C7C96464C72121 /* Session */ = {
 			isa = PBXGroup;
 			children = (
-				377F7240A38E45F09D2E4748 /* Resolve24hSheet.swift */,
-				A1C530E78EFF4FF880253FFF /* SessionEditor.swift */,
-				9B81D63A7AB24484AE71E6B7 /* SessionPresets.swift */,
+				7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */,
+				47E696520C304998860FBB89 /* SessionEditor.swift */,
+				221B4266A75B41A3BCBE40BB /* SessionPresets.swift */,
 			);
 			path = Session;
 			sourceTree = "<group>";
@@ -104,7 +108,8 @@
 		22AF59FCD0984BA25BAA43D8 /* Settings */ = {
 			isa = PBXGroup;
 			children = (
-				B2497B7782094FDB91993AB9 /* SettingsStubView.swift */,
+				602D044C686A40A3BB2B4414 /* SettingsStubView.swift */,
+				A1B2C3D4E5F64001A2B3C4D5 /* PhaseGuideView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -112,8 +117,8 @@
 		00AD15C52BC6A868EE4C7EE0 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				659D947C3DCC4EBA850F5EDC /* R3habApp.swift */,
-				324ADC170DAD4DCDA5892946 /* RootView.swift */,
+				6062AAD605A342F5B99AF2E1 /* R3habApp.swift */,
+				500B430A78114CD384634358 /* RootView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -121,9 +126,9 @@
 		2529C5329183C87EA6788149 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				210C10EA1B2449FB9A8E6D38 /* PainScoreControl.swift */,
-				DC4134CE42B744728D6D03B5 /* PhaseChip.swift */,
-				CBC8B4907295420F91B3BAE3 /* SparklineView.swift */,
+				E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */,
+				99066D8CD9C34E9081E6E951 /* PhaseChip.swift */,
+				B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -131,8 +136,9 @@
 		B5F629CB278D36EF1A1F15AD /* Data */ = {
 			isa = PBXGroup;
 			children = (
-				E0CA2BDE76F14670A61C00EB /* AppBootstrap.swift */,
-				B46393AC1DCE44BD9C939CB3 /* ModelMapping.swift */,
+				47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */,
+				ED9AA8F2B526430384E46937 /* ExportImport.swift */,
+				4670AE5C99794407900C0055 /* ModelMapping.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -140,13 +146,13 @@
 		FCE1684152C5D21EBD2ABF5C /* Domain */ = {
 			isa = PBXGroup;
 			children = (
-				D83E93DA61F74EB1AF83E8EC /* ChartAggregates.swift */,
-				7277730452544F8B8FEACD51 /* DecisionSuggester.swift */,
-				5658ABE93F4C49779AA8DA23 /* DomainSnapshots.swift */,
-				1EC40D4A76564DD4BC867FDF /* PendingQueue.swift */,
-				DD63500D22544D5FB650CB34 /* PhaseAExitEvaluator.swift */,
-				2C582A6DA01341419B3F651C /* PhaseGuideCopy.swift */,
-				74D83231D9C747F9AB0BF667 /* SessionSpacing.swift */,
+				EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */,
+				F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */,
+				228510573C3D4E428D1084C6 /* DomainSnapshots.swift */,
+				C906FBBA88814D529A9B926F /* PendingQueue.swift */,
+				6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */,
+				F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */,
+				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -167,10 +173,10 @@
 		56C9E5065C800C81A8A76533 /* Models */ = {
 			isa = PBXGroup;
 			children = (
-				2000EFE3D67C4DE5A853090A /* AppSettings.swift */,
-				5B1EC4B137E4435088049697 /* DailyCheckIn.swift */,
-				5E0D8AFA157E451FA692DAB6 /* RehabEnums.swift */,
-				1750947BC6034324A4273E58 /* TrainingSession.swift */,
+				57B0E2DC474E40E8A9BABDA7 /* AppSettings.swift */,
+				79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */,
+				3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */,
+				E8011A626D364764ADC7D7E8 /* TrainingSession.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -178,7 +184,7 @@
 		A01C39F23A775937C9424161 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
-				99047FC1CE8149F7B886C5FA /* Assets.xcassets */,
+				2AC4262E9330424E930140D9 /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -197,77 +203,79 @@
 			path = R3hab;
 			sourceTree = "<group>";
 		};
-		116404C1CDA3438B9A9ED98B /* Products */ = {
+		CB8B3FA6A1824CF7AB57AC4E /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				88391E5F5FFE41488AB68808 /* R3hab.app */,
+				9B7E832294A34A3A8B15509A /* R3hab.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		50FD6E0DF87C461EB8CEB2D2 = {
+		E427EE5BCF824CD8ABF28636 = {
 			isa = PBXGroup;
 			children = (
 				B2CD6618D7EBA18C73A09710 /* R3hab */,
-				116404C1CDA3438B9A9ED98B /* Products */,
+				CB8B3FA6A1824CF7AB57AC4E /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		62881A1EA37E4173921F7738 /* Sources */ = {
+		E93A9B3F33514C3BABD29D1A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				4F96D7BA685546EC939D10B2 /* R3habApp.swift in Sources */,
-				EDC5FE805EBC48BC8B7FC182 /* RootView.swift in Sources */,
-				35D7DF8983D94719A67861AB /* PainScoreControl.swift in Sources */,
-				361629F59FE74798A5039B70 /* PhaseChip.swift in Sources */,
-				ECA52A2215C048B0A7493F2D /* SparklineView.swift in Sources */,
-				B6775ED7C67F4C6A833E02FD /* AppBootstrap.swift in Sources */,
-				5336C41A07024F2DBD86E536 /* ModelMapping.swift in Sources */,
-				3F5A09DF2844463798FEC704 /* ChartAggregates.swift in Sources */,
-				9A02D6829FE34B629DA7E6BB /* DecisionSuggester.swift in Sources */,
-				06CE31C60CA246F08F86DA22 /* DomainSnapshots.swift in Sources */,
-				621F04793F3040ACA4E6E201 /* PendingQueue.swift in Sources */,
-				53DA8B3D37A145909E8734E4 /* PhaseAExitEvaluator.swift in Sources */,
-				73827D6B3C514300A0DAF930 /* PhaseGuideCopy.swift in Sources */,
-				4EE56169D15348F1A2BFF10D /* SessionSpacing.swift in Sources */,
-				BC537A038152474481BCF0F1 /* DailyCheckInEditor.swift in Sources */,
-				904D3FF561E142FF9829D92E /* HistoryView.swift in Sources */,
-				2A48655BD96547B3B9FA015D /* HomeView.swift in Sources */,
-				77E38FDDECBC4B25A4560EE3 /* RehabProgressView.swift in Sources */,
-				ACC741E3FEFE453AA3C9A2E2 /* Resolve24hSheet.swift in Sources */,
-				70DF9717DE7E4C608497837F /* SessionEditor.swift in Sources */,
-				706EDD07509844B98B5AFBC0 /* SessionPresets.swift in Sources */,
-				8EC4BFA4853F41F88C78995A /* SettingsStubView.swift in Sources */,
-				8C59672C14444EBE9A642A5A /* AppSettings.swift in Sources */,
-				E7F7D12C164241749B841168 /* DailyCheckIn.swift in Sources */,
-				9C227B8B45EF4F4F9EDFCB5E /* RehabEnums.swift in Sources */,
-				0EAB47C383CB4A5B83F38B63 /* TrainingSession.swift in Sources */,
+				3E260B2BD73545B6A69A4A58 /* R3habApp.swift in Sources */,
+				552F78FBAED045749D43C322 /* RootView.swift in Sources */,
+				95ADBE611FF1403CA45A5AE4 /* PainScoreControl.swift in Sources */,
+				79E27029191247DC802802AF /* PhaseChip.swift in Sources */,
+				1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */,
+				FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */,
+				C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */,
+				1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */,
+				1142799D3AFE47C89C33443D /* ChartAggregates.swift in Sources */,
+				3B4FA48B9C844652984EA468 /* DecisionSuggester.swift in Sources */,
+				AC4F72BADF3C44978DE3DEEB /* DomainSnapshots.swift in Sources */,
+				BA6A2BF7177F4D53B5982277 /* PendingQueue.swift in Sources */,
+				5432E0016D0A4C24B47DCAD1 /* PhaseAExitEvaluator.swift in Sources */,
+				15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */,
+				D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */,
+				61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */,
+				EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */,
+				0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */,
+				659AAA46B98B42759D73F90C /* RehabProgressView.swift in Sources */,
+				C8EADC1601E04DCDBF7D169E /* Resolve24hSheet.swift in Sources */,
+				9B961E5758404C578F03981B /* SessionEditor.swift in Sources */,
+				28D2ECE299044FEFBDC1D67F /* SessionPresets.swift in Sources */,
+				72C3BEF25F6C4DBF8310C07E /* SettingsStubView.swift in Sources */,
+				A1B2C3D4E5F64002A2B3C4D6 /* PhaseGuideView.swift in Sources */,
+				BFC58645941B4D5F9A501BEB /* AppSettings.swift in Sources */,
+				0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */,
+				73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */,
+				47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A528CD049E7E489EB940D3DE /* Resources */ = {
+		10818FA35FF945E2803811F3 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C9EF82C7792045AFB18D68B0 /* Assets.xcassets in Resources */,
+				EB97832E888046FEA263E4EC /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		60B4C2FF65554021ACBB8C1D /* Frameworks */ = {
+		A5F34A3E3DC7436DB9703713 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F07862EEAB5349CDB0ADC430 /* R3hab */ = {
+		42982D2E8CFD4A62B6550B2E /* R3hab */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 5DC9DE844C2C4C6DBB7FE85D;
+			buildConfigurationList = 380C1963C73243499C446DEF;
 			buildPhases = (
-				62881A1EA37E4173921F7738 /* Sources */,
-				60B4C2FF65554021ACBB8C1D /* Frameworks */,
-				A528CD049E7E489EB940D3DE /* Resources */,
+				E93A9B3F33514C3BABD29D1A /* Sources */,
+				A5F34A3E3DC7436DB9703713 /* Frameworks */,
+				10818FA35FF945E2803811F3 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -275,32 +283,33 @@
 			);
 			name = R3hab;
 			productName = R3hab;
-			productReference = 88391E5F5FFE41488AB68808 /* R3hab.app */;
+			productReference = 9B7E832294A34A3A8B15509A /* R3hab.app */;
 			productType = "com.apple.product-type.application";
 		};
-		7EFBF450E00C4F458E06F73E /* Project object */ = {
+		526BE05AC3944BD799DC713B /* Project object */ = {
 			isa = PBXProject;
 			attributes = { BuildIndependentTargetsInParallel = 1; LastSwiftUpdateCheck = 1600; LastUpgradeCheck = 1600; };
-			buildConfigurationList = F0FE822DCE0A447CB8CCFCA7;
+			buildConfigurationList = 18851373383F4E22A877DA7F;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (en, Base,);
-			mainGroup = 50FD6E0DF87C461EB8CEB2D2;
-			productRefGroup = 116404C1CDA3438B9A9ED98B /* Products */;
+			mainGroup = E427EE5BCF824CD8ABF28636;
+			productRefGroup = CB8B3FA6A1824CF7AB57AC4E /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				F07862EEAB5349CDB0ADC430 /* R3hab */,
+				42982D2E8CFD4A62B6550B2E /* R3hab */,
 			);
 		};
-		1C68AB53AEC24023B9BA42E6 /* Debug */ = {
+		C9943B99BC37421D9323432C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -321,13 +330,14 @@
 			};
 			name = Debug;
 		};
-		5357D82FD5394570806FB8CD /* Release */ = {
+		F9DD42813214455AA55B68A2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -347,7 +357,7 @@
 			};
 			name = Release;
 		};
-		444F724E99A04C5CBC3A6535 /* Debug */ = {
+		BB358D1F34694E47A4F79923 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -362,7 +372,7 @@
 			};
 			name = Debug;
 		};
-		844013394D61455FA6E0A2FC /* Release */ = {
+		05481A2F131041CDB8910877 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -376,8 +386,8 @@
 			};
 			name = Release;
 		};
-		F0FE822DCE0A447CB8CCFCA7 = {isa = XCConfigurationList; buildConfigurations = (444F724E99A04C5CBC3A6535 /* Debug */, 844013394D61455FA6E0A2FC /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
-		5DC9DE844C2C4C6DBB7FE85D = {isa = XCConfigurationList; buildConfigurations = (1C68AB53AEC24023B9BA42E6 /* Debug */, 5357D82FD5394570806FB8CD /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		18851373383F4E22A877DA7F = {isa = XCConfigurationList; buildConfigurations = (BB358D1F34694E47A4F79923 /* Debug */, 05481A2F131041CDB8910877 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		380C1963C73243499C446DEF = {isa = XCConfigurationList; buildConfigurations = (C9943B99BC37421D9323432C /* Debug */, F9DD42813214455AA55B68A2 /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 	};
-	rootObject = 7EFBF450E00C4F458E06F73E /* Project object */;
+	rootObject = 526BE05AC3944BD799DC713B /* Project object */;
 }
