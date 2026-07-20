@@ -20,6 +20,7 @@ struct R3habApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                .preferredColorScheme(.dark)
                 .task {
                     let context = ModelContext(container)
                     _ = try? AppBootstrap.ensureSettings(context: context)

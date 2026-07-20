@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Main tab shell: Today / Log / Progress.
+/// Main tab shell: Today / Log / Progress. Dark mode only.
 struct RootView: View {
     var body: some View {
         TabView {
@@ -20,9 +20,11 @@ struct RootView: View {
                 }
         }
         .tint(Color.accentColor)
+        .preferredColorScheme(.dark)
     }
 }
 
 #Preview {
     RootView()
+        .preferredColorScheme(.dark)
 }

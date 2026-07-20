@@ -1,19 +1,21 @@
 import SwiftUI
 import SwiftData
 
-/// Today dashboard — checklist, CTAs, Phase A banner.
+/// Today dashboard — checklist, pending 24h, session CTA.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
-    @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
+    @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
     @Query private var settingsList: [AppSettings]
 
     @State private var showAM = false
     @State private var showPM = false
+    @State private var showSession = false
+    @State private var resolveTargetId: UUID?
+    @State private var restConfirmId: UUID?
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
-
     private var settings: AppSettings? { settingsList.first }
 
     private var todayCheckIn: DailyCheckIn? {
@@ -21,16 +23,36 @@ struct HomeView: View {
         return checkIns.first { $0.dayKey == key }
     }
 
+    private var sessionSnaps: [TrainingSessionSnapshot] {
+        sessions.map(\.snapshot)
+    }
+
+    private var overduePending: [TrainingSession] {
+        let ids = Set(PendingQueue.overdue(sessions: sessionSnaps, now: Date(), calendar: calendar).map(\.id))
+        return sessions.filter { ids.contains($0.id) }
+            .sorted { a, b in
+                if a.date != b.date { return a.date < b.date }
+                return a.createdAt < b.createdAt
+            }
+    }
+
+    private var todayPending: [TrainingSession] {
+        let ids = Set(PendingQueue.todayPending(sessions: sessionSnaps, now: Date(), calendar: calendar).map(\.id))
+        return sessions.filter { ids.contains($0.id) }
+            .sorted { $0.createdAt < $1.createdAt }
+    }
+
     private var phaseAStatus: PhaseAExitStatus? {
         guard let settings, settings.currentPhase == .aFlareDeLoad else { return nil }
-        let snaps = checkIns.map(\.snapshot)
         return PhaseAExitEvaluator.evaluate(
-            checkIns: snaps,
+            checkIns: checkIns.map(\.snapshot),
             settings: settings.phaseSnapshot,
             today: Date(),
             calendar: calendar
         )
     }
+
+    private var pendingBadge: Int { overduePending.count }
 
     var body: some View {
         NavigationStack {
@@ -38,11 +60,20 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     header
 
+                    if !overduePending.isEmpty {
+                        pendingSection
+                    }
+
                     if let phaseAStatus {
                         phaseABanner(phaseAStatus)
                     }
 
                     checklist
+
+                    if !todayPending.isEmpty {
+                        todaySessionPending
+                    }
+
                     actions
                     guide
                 }
@@ -59,14 +90,40 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showAM) {
-                NavigationStack {
-                    DailyCheckInEditor(targetDate: today, focusPM: false)
-                }
+                NavigationStack { DailyCheckInEditor(targetDate: today, focusPM: false) }
+                    .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showPM) {
-                NavigationStack {
-                    DailyCheckInEditor(targetDate: today, focusPM: true)
+                NavigationStack { DailyCheckInEditor(targetDate: today, focusPM: true) }
+                    .preferredColorScheme(.dark)
+            }
+            .sheet(isPresented: $showSession) {
+                NavigationStack { SessionEditor(targetDate: today) }
+                    .preferredColorScheme(.dark)
+            }
+            .sheet(isPresented: Binding(
+                get: { resolveTargetId != nil },
+                set: { if !$0 { resolveTargetId = nil } }
+            )) {
+                if let id = resolveTargetId, let session = sessions.first(where: { $0.id == id }) {
+                    Resolve24hSheet(session: session)
                 }
+            }
+            .confirmationDialog(
+                "Close without 24h judgment?",
+                isPresented: Binding(
+                    get: { restConfirmId != nil },
+                    set: { if !$0 { restConfirmId = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Mark Rest", role: .destructive) {
+                    if let id = restConfirmId, let s = sessions.first(where: { $0.id == id }) {
+                        markRest(s)
+                    }
+                    restConfirmId = nil
+                }
+                Button("Cancel", role: .cancel) { restConfirmId = nil }
             }
             .task {
                 _ = try? AppBootstrap.ensureSettings(context: modelContext)
@@ -78,10 +135,74 @@ struct HomeView: View {
         HStack {
             PhaseChip(phase: settings?.currentPhase ?? .aFlareDeLoad)
             Spacer()
+            if pendingBadge > 0 {
+                Text("\(pendingBadge) pending")
+                    .font(.caption.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.orange.opacity(0.25), in: Capsule())
+            }
             Text(today.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var pendingSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Needs 24h response", systemImage: "exclamationmark.bubble.fill")
+                .font(.headline)
+                .foregroundStyle(.orange)
+
+            ForEach(overduePending, id: \.id) { session in
+                pendingCard(session, early: false)
+            }
+        }
+    }
+
+    private var todaySessionPending: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Today’s sessions")
+                .font(.headline)
+            ForEach(todayPending, id: \.id) { session in
+                pendingCard(session, early: true)
+            }
+        }
+    }
+
+    private func pendingCard(_ session: TrainingSession, early: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(session.whatIDid)
+                .font(.subheadline.weight(.semibold))
+            Text("\(session.date.formatted(date: .abbreviated, time: .omitted)) · during \(session.painDuring) / after \(session.painAfter)")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+
+            HStack {
+                Button(early ? "Resolve early" : "Resolve") {
+                    resolveTargetId = session.id
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                if session.snoozedUntil == nil {
+                    Button("Snooze") { snooze(session) }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+
+                Button("Rest") { restConfirmId = session.id }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .tint(.orange)
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.orange.opacity(0.12))
+        )
     }
 
     private func phaseABanner(_ status: PhaseAExitStatus) -> some View {
@@ -108,22 +229,9 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("Today")
                 .font(.title3.weight(.semibold))
-
-            checkRow(
-                title: "Morning pain",
-                done: c?.restingPainAM != nil,
-                detail: c?.restingPainAM.map { "\($0)/10" }
-            )
-            checkRow(
-                title: "Evening pain",
-                done: c?.dailyPainPM != nil,
-                detail: c?.dailyPainPM.map { "\($0)/10" }
-            )
-            checkRow(
-                title: "Steps",
-                done: c?.steps != nil,
-                detail: c?.steps.map { "\($0)" }
-            )
+            checkRow(title: "Morning pain", done: c?.restingPainAM != nil, detail: c?.restingPainAM.map { "\($0)/10" })
+            checkRow(title: "Evening pain", done: c?.dailyPainPM != nil, detail: c?.dailyPainPM.map { "\($0)/10" })
+            checkRow(title: "Steps", done: c?.steps != nil, detail: c?.steps.map { "\($0)" })
         }
     }
 
@@ -142,26 +250,23 @@ struct HomeView: View {
 
     private var actions: some View {
         VStack(spacing: 12) {
-            Button {
-                showAM = true
-            } label: {
-                Label(
-                    todayCheckIn?.restingPainAM == nil ? "Log morning" : "Edit morning",
-                    systemImage: "sun.max.fill"
-                )
-                .frame(maxWidth: .infinity)
+            Button { showAM = true } label: {
+                Label(todayCheckIn?.restingPainAM == nil ? "Log morning" : "Edit morning", systemImage: "sun.max.fill")
+                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
-            Button {
-                showPM = true
-            } label: {
-                Label(
-                    todayCheckIn?.dailyPainPM == nil ? "Log evening" : "Edit evening",
-                    systemImage: "moon.stars.fill"
-                )
-                .frame(maxWidth: .infinity)
+            Button { showPM = true } label: {
+                Label(todayCheckIn?.dailyPainPM == nil ? "Log evening" : "Edit evening", systemImage: "moon.stars.fill")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+
+            Button { showSession = true } label: {
+                Label("Log training session", systemImage: "figure.strengthtraining.traditional")
+                    .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)
             .controlSize(.large)
@@ -181,9 +286,35 @@ struct HomeView: View {
         }
         .padding(.top, 8)
     }
+
+    private func snooze(_ session: TrainingSession) {
+        guard session.snoozedUntil == nil else { return }
+        let amH = settings?.amReminderHour ?? 8
+        let amM = settings?.amReminderMinute ?? 0
+        session.snoozedUntil = PendingQueue.nextMorningReminder(
+            after: Date(),
+            amHour: amH,
+            amMinute: amM
+        )
+        session.snoozeUsed = true
+        session.updatedAt = Date()
+        try? modelContext.save()
+    }
+
+    private func markRest(_ session: TrainingSession) {
+        session.response24h = .notApplicable
+        session.decision = .rest
+        session.resolvedAt = Date()
+        session.snoozedUntil = nil
+        session.updatedAt = Date()
+        try? modelContext.save()
+    }
 }
+
+// TrainingSession already has `id: UUID` for Identifiable via SwiftData usage in ForEach
 
 #Preview {
     HomeView()
         .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
+        .preferredColorScheme(.dark)
 }
