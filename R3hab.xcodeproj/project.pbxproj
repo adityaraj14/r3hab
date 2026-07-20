@@ -1,0 +1,320 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {};
+	objectVersion = 56;
+	objects = {
+		71682957278A4D6499E2B3C3 /* R3habApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R3habApp.swift; sourceTree = "<group>"; };
+		DBB08F5F848F477BB38C672A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		29BFEA5B27234E01BBE4C57C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		E96D3F5ADEF94A87964ADCCE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		15E9AE50D5E444778252153F /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
+		6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
+		FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
+		B8314E5A9D944552B737CB7F /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
+		8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		4E341FC535C54104905EA7C2 /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C029B938E84E4BE7874D46FD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		C8D4F79848FA4633BCFCB634 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71682957278A4D6499E2B3C3 /* R3habApp.swift */; };
+		9C70A05873A944F98952EDD7 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB08F5F848F477BB38C672A /* RootView.swift */; };
+		3BC4C57E792443CDB7DB404B /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BFEA5B27234E01BBE4C57C /* HistoryView.swift */; };
+		EFD7C6472D2E4E1E8F0EF7DF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96D3F5ADEF94A87964ADCCE /* HomeView.swift */; };
+		9F57498F46FC4B2BB8A3B3CB /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15E9AE50D5E444778252153F /* RehabProgressView.swift */; };
+		E9A7C5DF1DB34061B75A0E3B /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */; };
+		E00BCCF7893D4786A5662B2A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */; };
+		28CA3CB4533A49BD9D594ACE /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */; };
+		26BD0E5600E248C3BDB6B45C /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8314E5A9D944552B737CB7F /* RehabEnums.swift */; };
+		7643513ADE6A427AA9E15343 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */; };
+		D7F39D59FAAC4355A31552CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C029B938E84E4BE7874D46FD /* Assets.xcassets */; };
+		14D3EE9E12935835C7D4F8E2 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				29BFEA5B27234E01BBE4C57C /* HistoryView.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
+		4A85F7F1537C77D31BA85047 /* Progress */ = {
+			isa = PBXGroup;
+			children = (
+				15E9AE50D5E444778252153F /* RehabProgressView.swift */,
+			);
+			path = Progress;
+			sourceTree = "<group>";
+		};
+		CD247AB3D818A4F987EF7D0E /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				E96D3F5ADEF94A87964ADCCE /* HomeView.swift */,
+			);
+			path = Home;
+			sourceTree = "<group>";
+		};
+		20EDA88465EAB1C1AB84BBFF /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		A21EF5F2DFCAC07993804B35 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				14D3EE9E12935835C7D4F8E2 /* History */,
+				CD247AB3D818A4F987EF7D0E /* Home */,
+				4A85F7F1537C77D31BA85047 /* Progress */,
+				20EDA88465EAB1C1AB84BBFF /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		94EBF098E054A0D06136F55F /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */,
+				F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */,
+				B8314E5A9D944552B737CB7F /* RehabEnums.swift */,
+				8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		C284261844B289DF803AA61B /* App */ = {
+			isa = PBXGroup;
+			children = (
+				71682957278A4D6499E2B3C3 /* R3habApp.swift */,
+				DBB08F5F848F477BB38C672A /* RootView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		0AA1998E066799CC844F2C72 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C029B938E84E4BE7874D46FD /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		95DE03E52897164D14DFEFC8 /* R3hab */ = {
+			isa = PBXGroup;
+			children = (
+				C284261844B289DF803AA61B /* App */,
+				A21EF5F2DFCAC07993804B35 /* Features */,
+				94EBF098E054A0D06136F55F /* Models */,
+				0AA1998E066799CC844F2C72 /* Resources */,
+			);
+			path = R3hab;
+			sourceTree = "<group>";
+		};
+		BFCA50E6C09F4026804F62BE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4E341FC535C54104905EA7C2 /* R3hab.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		380754E75F4E477F82080188 = {
+			isa = PBXGroup;
+			children = (
+				95DE03E52897164D14DFEFC8 /* R3hab */,
+				BFCA50E6C09F4026804F62BE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		D41F6D02CC61425495751077 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C8D4F79848FA4633BCFCB634 /* R3habApp.swift in Sources */,
+				9C70A05873A944F98952EDD7 /* RootView.swift in Sources */,
+				3BC4C57E792443CDB7DB404B /* HistoryView.swift in Sources */,
+				EFD7C6472D2E4E1E8F0EF7DF /* HomeView.swift in Sources */,
+				9F57498F46FC4B2BB8A3B3CB /* RehabProgressView.swift in Sources */,
+				E9A7C5DF1DB34061B75A0E3B /* SettingsStubView.swift in Sources */,
+				E00BCCF7893D4786A5662B2A /* AppSettings.swift in Sources */,
+				28CA3CB4533A49BD9D594ACE /* DailyCheckIn.swift in Sources */,
+				26BD0E5600E248C3BDB6B45C /* RehabEnums.swift in Sources */,
+				7643513ADE6A427AA9E15343 /* TrainingSession.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F417DFB059CB4A5987E7D8E1 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D7F39D59FAAC4355A31552CB /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		05C00840D4BB41F7AE85B869 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A15C0A4EAAB244D4993DC902 /* R3hab */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56EAA81FA6894CB2802AE31A /* Build configuration list for PBXNativeTarget "R3hab" */;
+			buildPhases = (
+				D41F6D02CC61425495751077 /* Sources */,
+				05C00840D4BB41F7AE85B869 /* Frameworks */,
+				F417DFB059CB4A5987E7D8E1 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = R3hab;
+			productName = R3hab;
+			productReference = 4E341FC535C54104905EA7C2 /* R3hab.app */;
+			productType = "com.apple.product-type.application";
+		};
+		84876421A03C4536842DADB1 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+			};
+			buildConfigurationList = DE82363A8D6A4220A4283C7D /* Build configuration list for PBXProject "R3hab" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 380754E75F4E477F82080188;
+			productRefGroup = BFCA50E6C09F4026804F62BE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A15C0A4EAAB244D4993DC902 /* R3hab */,
+			);
+		};
+		F9DCE5BBD2F047479C752D90 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adi.r3hab;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		1B8E089E0B764783873D8E20 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.adi.r3hab;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+
+				SWIFT_COMPILATION_MODE = wholemodule;
+			};
+			name = Release;
+		};
+		98C7139BAFC04206886A0FD8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				ONLY_ACTIVE_ARCH = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A30294D7FEA448969FAB0B0F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		DE82363A8D6A4220A4283C7D /* Build configuration list for PBXProject "R3hab" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				98C7139BAFC04206886A0FD8 /* Debug */,
+				A30294D7FEA448969FAB0B0F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56EAA81FA6894CB2802AE31A /* Build configuration list for PBXNativeTarget "R3hab" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F9DCE5BBD2F047479C752D90 /* Debug */,
+				1B8E089E0B764783873D8E20 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+	};
+	rootObject = 84876421A03C4536842DADB1 /* Project object */;
+}
