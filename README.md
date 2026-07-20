@@ -10,7 +10,9 @@ Full requirements and implementation plan:
 
 - [`DESIGN.md`](./DESIGN.md) — tagged REQs, data model, domain rules, PR plan
 
-**Stack:** SwiftUI · SwiftData · iOS 17.0+ · local-only v1
+**Stack:** SwiftUI · **SwiftData** (on-device SQLite) · iOS 17.0+ · local-only v1  
+
+No remote backend. Export/import JSON is the backup path (PR-12).
 
 **Notion** remains the protocol brain (phases, soft cut / hard drop copy). **R3hab** is the daily diary.
 

@@ -4,166 +4,242 @@
 	classes = {};
 	objectVersion = 56;
 	objects = {
-		71682957278A4D6499E2B3C3 /* R3habApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R3habApp.swift; sourceTree = "<group>"; };
-		DBB08F5F848F477BB38C672A /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		29BFEA5B27234E01BBE4C57C /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
-		E96D3F5ADEF94A87964ADCCE /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
-		15E9AE50D5E444778252153F /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
-		6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
-		FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
-		F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
-		B8314E5A9D944552B737CB7F /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
-		8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
-		4E341FC535C54104905EA7C2 /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		C029B938E84E4BE7874D46FD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		C8D4F79848FA4633BCFCB634 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 71682957278A4D6499E2B3C3 /* R3habApp.swift */; };
-		9C70A05873A944F98952EDD7 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBB08F5F848F477BB38C672A /* RootView.swift */; };
-		3BC4C57E792443CDB7DB404B /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BFEA5B27234E01BBE4C57C /* HistoryView.swift */; };
-		EFD7C6472D2E4E1E8F0EF7DF /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E96D3F5ADEF94A87964ADCCE /* HomeView.swift */; };
-		9F57498F46FC4B2BB8A3B3CB /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15E9AE50D5E444778252153F /* RehabProgressView.swift */; };
-		E9A7C5DF1DB34061B75A0E3B /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */; };
-		E00BCCF7893D4786A5662B2A /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */; };
-		28CA3CB4533A49BD9D594ACE /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */; };
-		26BD0E5600E248C3BDB6B45C /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8314E5A9D944552B737CB7F /* RehabEnums.swift */; };
-		7643513ADE6A427AA9E15343 /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */; };
-		D7F39D59FAAC4355A31552CB /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C029B938E84E4BE7874D46FD /* Assets.xcassets */; };
-		14D3EE9E12935835C7D4F8E2 /* History */ = {
+		643025022E644C8FB011FDE1 /* R3habApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = R3habApp.swift; sourceTree = "<group>"; };
+		1A8ACA8A30B74C7989733107 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		81A0A068B9014685AAC208D9 /* PainScoreControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PainScoreControl.swift; sourceTree = "<group>"; };
+		934D2655A2024DEFBE845300 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
+		5C329D0D409A4C90A71F1B6B /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
+		36B41B636FA5415982AF19F4 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
+		D55832D29B33491185CADBC7 /* DecisionSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionSuggester.swift; sourceTree = "<group>"; };
+		7B03211269E7451889BC743A /* DomainSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainSnapshots.swift; sourceTree = "<group>"; };
+		BBD8897FDDDD4AF8857E61BD /* PendingQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingQueue.swift; sourceTree = "<group>"; };
+		14F04DD0638E4DC18B83AD86 /* PhaseAExitEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseAExitEvaluator.swift; sourceTree = "<group>"; };
+		EEFD8445043F4182B0F6E397 /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
+		ABF3B105EF094CA2BEA3FAC8 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
+		E032891287A34DDB8FDA0BA2 /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
+		01D7A60ACAAD4CADA3A0FFED /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
+		764EB950081344219D016181 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		9BC03C82BF11416C8E303872 /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
+		5054BA2020B040DEB646D1AF /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
+		180D6132D2714A5CBB04546E /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		EF2D0692D27449BAAB136B86 /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
+		49A5B5A568124EAFBDD61317 /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
+		F50966510BD74B018B6361EA /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		390E601653AC4D719DC21CE9 /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CBDC43D0907444F3A1770A47 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		90379369C35646348DE1208F /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 643025022E644C8FB011FDE1 /* R3habApp.swift */; };
+		4A1D5377DB784E3CAF22ECE9 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A8ACA8A30B74C7989733107 /* RootView.swift */; };
+		0119090A1D6546E18C45A8A4 /* PainScoreControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81A0A068B9014685AAC208D9 /* PainScoreControl.swift */; };
+		66907DF91E944793B49935DF /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 934D2655A2024DEFBE845300 /* PhaseChip.swift */; };
+		68D3EF0707D84CFD8775B48A /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C329D0D409A4C90A71F1B6B /* AppBootstrap.swift */; };
+		F436A061EEE84BF2B304E0EC /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 36B41B636FA5415982AF19F4 /* ModelMapping.swift */; };
+		0D86A98EDEE743DAAF12BAD1 /* DecisionSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = D55832D29B33491185CADBC7 /* DecisionSuggester.swift */; };
+		78E1D3B1DAD044BA8A70659D /* DomainSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B03211269E7451889BC743A /* DomainSnapshots.swift */; };
+		22B84C3ACD2E4EA789E424DA /* PendingQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBD8897FDDDD4AF8857E61BD /* PendingQueue.swift */; };
+		5A4252008C884319A099FAE6 /* PhaseAExitEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14F04DD0638E4DC18B83AD86 /* PhaseAExitEvaluator.swift */; };
+		1DD9AAB8FCF24BD4A7723116 /* PhaseGuideCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEFD8445043F4182B0F6E397 /* PhaseGuideCopy.swift */; };
+		AA3C2BBE0452427F8D483EC4 /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABF3B105EF094CA2BEA3FAC8 /* SessionSpacing.swift */; };
+		688693E336CC4CEFA02C5F79 /* DailyCheckInEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = E032891287A34DDB8FDA0BA2 /* DailyCheckInEditor.swift */; };
+		E516A404156B407C8F3333F9 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D7A60ACAAD4CADA3A0FFED /* HistoryView.swift */; };
+		188712E7E835496BB5CA498D /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 764EB950081344219D016181 /* HomeView.swift */; };
+		5AD17900A866474EAE78B577 /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BC03C82BF11416C8E303872 /* RehabProgressView.swift */; };
+		AE2D1E9B493D4257A277EC2F /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5054BA2020B040DEB646D1AF /* SettingsStubView.swift */; };
+		5ECF096E106044E4850EE5BE /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180D6132D2714A5CBB04546E /* AppSettings.swift */; };
+		6B71A4DE50C84AB1B172BC54 /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF2D0692D27449BAAB136B86 /* DailyCheckIn.swift */; };
+		0E9EFB9ACDCB4627ADD286C9 /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49A5B5A568124EAFBDD61317 /* RehabEnums.swift */; };
+		91D3A03D4B1745978A2EA1FA /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F50966510BD74B018B6361EA /* TrainingSession.swift */; };
+		F3B9625548CB4CB49B837C23 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CBDC43D0907444F3A1770A47 /* Assets.xcassets */; };
+		094E92DFCFC3E0EEF4479B4C /* Daily */ = {
 			isa = PBXGroup;
 			children = (
-				29BFEA5B27234E01BBE4C57C /* HistoryView.swift */,
+				E032891287A34DDB8FDA0BA2 /* DailyCheckInEditor.swift */,
+			);
+			path = Daily;
+			sourceTree = "<group>";
+		};
+		0F3A7EFFE597D9D1A4ACB693 /* History */ = {
+			isa = PBXGroup;
+			children = (
+				01D7A60ACAAD4CADA3A0FFED /* HistoryView.swift */,
 			);
 			path = History;
 			sourceTree = "<group>";
 		};
-		4A85F7F1537C77D31BA85047 /* Progress */ = {
+		7A0EC6BF3C16039A1651301A /* Home */ = {
 			isa = PBXGroup;
 			children = (
-				15E9AE50D5E444778252153F /* RehabProgressView.swift */,
-			);
-			path = Progress;
-			sourceTree = "<group>";
-		};
-		CD247AB3D818A4F987EF7D0E /* Home */ = {
-			isa = PBXGroup;
-			children = (
-				E96D3F5ADEF94A87964ADCCE /* HomeView.swift */,
+				764EB950081344219D016181 /* HomeView.swift */,
 			);
 			path = Home;
 			sourceTree = "<group>";
 		};
-		20EDA88465EAB1C1AB84BBFF /* Settings */ = {
+		4715A95C23183C26852EDD89 /* Progress */ = {
 			isa = PBXGroup;
 			children = (
-				6CE0D0CF54A24DABB769B34D /* SettingsStubView.swift */,
+				9BC03C82BF11416C8E303872 /* RehabProgressView.swift */,
+			);
+			path = Progress;
+			sourceTree = "<group>";
+		};
+		22AF59FCD0984BA25BAA43D8 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				5054BA2020B040DEB646D1AF /* SettingsStubView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
 		};
-		A21EF5F2DFCAC07993804B35 /* Features */ = {
+		00AD15C52BC6A868EE4C7EE0 /* App */ = {
 			isa = PBXGroup;
 			children = (
-				14D3EE9E12935835C7D4F8E2 /* History */,
-				CD247AB3D818A4F987EF7D0E /* Home */,
-				4A85F7F1537C77D31BA85047 /* Progress */,
-				20EDA88465EAB1C1AB84BBFF /* Settings */,
-			);
-			path = Features;
-			sourceTree = "<group>";
-		};
-		94EBF098E054A0D06136F55F /* Models */ = {
-			isa = PBXGroup;
-			children = (
-				FA0E8EC14CDC497D9CA35BD2 /* AppSettings.swift */,
-				F4CFE12146FC423BB090E2FE /* DailyCheckIn.swift */,
-				B8314E5A9D944552B737CB7F /* RehabEnums.swift */,
-				8BFDD73097524DB8A9B5A369 /* TrainingSession.swift */,
-			);
-			path = Models;
-			sourceTree = "<group>";
-		};
-		C284261844B289DF803AA61B /* App */ = {
-			isa = PBXGroup;
-			children = (
-				71682957278A4D6499E2B3C3 /* R3habApp.swift */,
-				DBB08F5F848F477BB38C672A /* RootView.swift */,
+				643025022E644C8FB011FDE1 /* R3habApp.swift */,
+				1A8ACA8A30B74C7989733107 /* RootView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
 		};
-		0AA1998E066799CC844F2C72 /* Resources */ = {
+		2529C5329183C87EA6788149 /* Components */ = {
 			isa = PBXGroup;
 			children = (
-				C029B938E84E4BE7874D46FD /* Assets.xcassets */,
+				81A0A068B9014685AAC208D9 /* PainScoreControl.swift */,
+				934D2655A2024DEFBE845300 /* PhaseChip.swift */,
+			);
+			path = Components;
+			sourceTree = "<group>";
+		};
+		B5F629CB278D36EF1A1F15AD /* Data */ = {
+			isa = PBXGroup;
+			children = (
+				5C329D0D409A4C90A71F1B6B /* AppBootstrap.swift */,
+				36B41B636FA5415982AF19F4 /* ModelMapping.swift */,
+			);
+			path = Data;
+			sourceTree = "<group>";
+		};
+		FCE1684152C5D21EBD2ABF5C /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				D55832D29B33491185CADBC7 /* DecisionSuggester.swift */,
+				7B03211269E7451889BC743A /* DomainSnapshots.swift */,
+				BBD8897FDDDD4AF8857E61BD /* PendingQueue.swift */,
+				14F04DD0638E4DC18B83AD86 /* PhaseAExitEvaluator.swift */,
+				EEFD8445043F4182B0F6E397 /* PhaseGuideCopy.swift */,
+				ABF3B105EF094CA2BEA3FAC8 /* SessionSpacing.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		97F598AF08B1604FAB88BAC7 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				094E92DFCFC3E0EEF4479B4C /* Daily */,
+				0F3A7EFFE597D9D1A4ACB693 /* History */,
+				7A0EC6BF3C16039A1651301A /* Home */,
+				4715A95C23183C26852EDD89 /* Progress */,
+				22AF59FCD0984BA25BAA43D8 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		56C9E5065C800C81A8A76533 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				180D6132D2714A5CBB04546E /* AppSettings.swift */,
+				EF2D0692D27449BAAB136B86 /* DailyCheckIn.swift */,
+				49A5B5A568124EAFBDD61317 /* RehabEnums.swift */,
+				F50966510BD74B018B6361EA /* TrainingSession.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		A01C39F23A775937C9424161 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				CBDC43D0907444F3A1770A47 /* Assets.xcassets */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
 		};
-		95DE03E52897164D14DFEFC8 /* R3hab */ = {
+		B2CD6618D7EBA18C73A09710 /* R3hab */ = {
 			isa = PBXGroup;
 			children = (
-				C284261844B289DF803AA61B /* App */,
-				A21EF5F2DFCAC07993804B35 /* Features */,
-				94EBF098E054A0D06136F55F /* Models */,
-				0AA1998E066799CC844F2C72 /* Resources */,
+				00AD15C52BC6A868EE4C7EE0 /* App */,
+				2529C5329183C87EA6788149 /* Components */,
+				B5F629CB278D36EF1A1F15AD /* Data */,
+				FCE1684152C5D21EBD2ABF5C /* Domain */,
+				97F598AF08B1604FAB88BAC7 /* Features */,
+				56C9E5065C800C81A8A76533 /* Models */,
+				A01C39F23A775937C9424161 /* Resources */,
 			);
 			path = R3hab;
 			sourceTree = "<group>";
 		};
-		BFCA50E6C09F4026804F62BE /* Products */ = {
+		444E5665592547F58F89190A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				4E341FC535C54104905EA7C2 /* R3hab.app */,
+				390E601653AC4D719DC21CE9 /* R3hab.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		380754E75F4E477F82080188 = {
+		E42DC76C518A4D919F708441 = {
 			isa = PBXGroup;
 			children = (
-				95DE03E52897164D14DFEFC8 /* R3hab */,
-				BFCA50E6C09F4026804F62BE /* Products */,
+				B2CD6618D7EBA18C73A09710 /* R3hab */,
+				444E5665592547F58F89190A /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		D41F6D02CC61425495751077 /* Sources */ = {
+		766314BFFFBA45048CD4CC31 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				C8D4F79848FA4633BCFCB634 /* R3habApp.swift in Sources */,
-				9C70A05873A944F98952EDD7 /* RootView.swift in Sources */,
-				3BC4C57E792443CDB7DB404B /* HistoryView.swift in Sources */,
-				EFD7C6472D2E4E1E8F0EF7DF /* HomeView.swift in Sources */,
-				9F57498F46FC4B2BB8A3B3CB /* RehabProgressView.swift in Sources */,
-				E9A7C5DF1DB34061B75A0E3B /* SettingsStubView.swift in Sources */,
-				E00BCCF7893D4786A5662B2A /* AppSettings.swift in Sources */,
-				28CA3CB4533A49BD9D594ACE /* DailyCheckIn.swift in Sources */,
-				26BD0E5600E248C3BDB6B45C /* RehabEnums.swift in Sources */,
-				7643513ADE6A427AA9E15343 /* TrainingSession.swift in Sources */,
+				90379369C35646348DE1208F /* R3habApp.swift in Sources */,
+				4A1D5377DB784E3CAF22ECE9 /* RootView.swift in Sources */,
+				0119090A1D6546E18C45A8A4 /* PainScoreControl.swift in Sources */,
+				66907DF91E944793B49935DF /* PhaseChip.swift in Sources */,
+				68D3EF0707D84CFD8775B48A /* AppBootstrap.swift in Sources */,
+				F436A061EEE84BF2B304E0EC /* ModelMapping.swift in Sources */,
+				0D86A98EDEE743DAAF12BAD1 /* DecisionSuggester.swift in Sources */,
+				78E1D3B1DAD044BA8A70659D /* DomainSnapshots.swift in Sources */,
+				22B84C3ACD2E4EA789E424DA /* PendingQueue.swift in Sources */,
+				5A4252008C884319A099FAE6 /* PhaseAExitEvaluator.swift in Sources */,
+				1DD9AAB8FCF24BD4A7723116 /* PhaseGuideCopy.swift in Sources */,
+				AA3C2BBE0452427F8D483EC4 /* SessionSpacing.swift in Sources */,
+				688693E336CC4CEFA02C5F79 /* DailyCheckInEditor.swift in Sources */,
+				E516A404156B407C8F3333F9 /* HistoryView.swift in Sources */,
+				188712E7E835496BB5CA498D /* HomeView.swift in Sources */,
+				5AD17900A866474EAE78B577 /* RehabProgressView.swift in Sources */,
+				AE2D1E9B493D4257A277EC2F /* SettingsStubView.swift in Sources */,
+				5ECF096E106044E4850EE5BE /* AppSettings.swift in Sources */,
+				6B71A4DE50C84AB1B172BC54 /* DailyCheckIn.swift in Sources */,
+				0E9EFB9ACDCB4627ADD286C9 /* RehabEnums.swift in Sources */,
+				91D3A03D4B1745978A2EA1FA /* TrainingSession.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		F417DFB059CB4A5987E7D8E1 /* Resources */ = {
+		9E17B51AA126410CB521A203 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				D7F39D59FAAC4355A31552CB /* Assets.xcassets in Resources */,
+				F3B9625548CB4CB49B837C23 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		05C00840D4BB41F7AE85B869 /* Frameworks */ = {
+		DF2320BED36C462BB02E418C /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		A15C0A4EAAB244D4993DC902 /* R3hab */ = {
+		EAC360DF721B432AAE54077A /* R3hab */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 56EAA81FA6894CB2802AE31A /* Build configuration list for PBXNativeTarget "R3hab" */;
+			buildConfigurationList = C1B66C29F7C04857ACA50073;
 			buildPhases = (
-				D41F6D02CC61425495751077 /* Sources */,
-				05C00840D4BB41F7AE85B869 /* Frameworks */,
-				F417DFB059CB4A5987E7D8E1 /* Resources */,
+				766314BFFFBA45048CD4CC31 /* Sources */,
+				DF2320BED36C462BB02E418C /* Frameworks */,
+				9E17B51AA126410CB521A203 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -171,17 +247,17 @@
 			);
 			name = R3hab;
 			productName = R3hab;
-			productReference = 4E341FC535C54104905EA7C2 /* R3hab.app */;
+			productReference = 390E601653AC4D719DC21CE9 /* R3hab.app */;
 			productType = "com.apple.product-type.application";
 		};
-		84876421A03C4536842DADB1 /* Project object */ = {
+		EB5CE76127AD45CF9FEEE6B0 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
 				LastUpgradeCheck = 1600;
 			};
-			buildConfigurationList = DE82363A8D6A4220A4283C7D /* Build configuration list for PBXProject "R3hab" */;
+			buildConfigurationList = A47637A4AC1445B98295A309;
 			compatibilityVersion = "Xcode 14.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -189,82 +265,68 @@
 				en,
 				Base,
 			);
-			mainGroup = 380754E75F4E477F82080188;
-			productRefGroup = BFCA50E6C09F4026804F62BE /* Products */;
+			mainGroup = E42DC76C518A4D919F708441;
+			productRefGroup = 444E5665592547F58F89190A /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A15C0A4EAAB244D4993DC902 /* R3hab */,
+				EAC360DF721B432AAE54077A /* R3hab */,
 			);
 		};
-		F9DCE5BBD2F047479C752D90 /* Debug */ = {
+		D8972B94FB2F41418BCA6F55 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adi.r3hab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 			};
 			name = Debug;
 		};
-		1B8E089E0B764783873D8E20 /* Release */ = {
+		6E705B12C7E143D486C7F72E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
+				LD_RUNPATH_SEARCH_PATHS = ("$(inherited)", "@executable_path/Frameworks");
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.adi.r3hab;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1";
+				TARGETED_DEVICE_FAMILY = 1;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 
 				SWIFT_COMPILATION_MODE = wholemodule;
 			};
 			name = Release;
 		};
-		98C7139BAFC04206886A0FD8 /* Debug */ = {
+		334198C4029F4E3089618289 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -272,19 +334,14 @@
 				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
 				ONLY_ACTIVE_ARCH = YES;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
 		};
-		A30294D7FEA448969FAB0B0F /* Release */ = {
+		E65D4CB6FE544CCBB648304B /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
@@ -293,28 +350,11 @@
 				SWIFT_VERSION = 5.0;
 
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
 		};
-		DE82363A8D6A4220A4283C7D /* Build configuration list for PBXProject "R3hab" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				98C7139BAFC04206886A0FD8 /* Debug */,
-				A30294D7FEA448969FAB0B0F /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		56EAA81FA6894CB2802AE31A /* Build configuration list for PBXNativeTarget "R3hab" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F9DCE5BBD2F047479C752D90 /* Debug */,
-				1B8E089E0B764783873D8E20 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
+		A47637A4AC1445B98295A309 = {isa = XCConfigurationList; buildConfigurations = (334198C4029F4E3089618289 /* Debug */, E65D4CB6FE544CCBB648304B /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
+		C1B66C29F7C04857ACA50073 = {isa = XCConfigurationList; buildConfigurations = (D8972B94FB2F41418BCA6F55 /* Debug */, 6E705B12C7E143D486C7F72E /* Release */,); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 	};
-	rootObject = 84876421A03C4536842DADB1 /* Project object */;
+	rootObject = EB5CE76127AD45CF9FEEE6B0 /* Project object */;
 }
