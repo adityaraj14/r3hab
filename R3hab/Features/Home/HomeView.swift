@@ -52,6 +52,18 @@ struct HomeView: View {
         )
     }
 
+    private var amSparkline: [DayValue] {
+        let metrics = checkIns.map {
+            DailyMetricSnapshot(
+                date: $0.date,
+                restingPainAM: $0.restingPainAM,
+                dailyPainPM: $0.dailyPainPM,
+                steps: $0.steps
+            )
+        }
+        return ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7)
+    }
+
     private var pendingBadge: Int { overduePending.count }
 
     var body: some View {
@@ -69,6 +81,19 @@ struct HomeView: View {
                     }
 
                     checklist
+
+                    if !amSparkline.isEmpty, amSparkline.contains(where: { $0.value != nil }) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AM pain · 7 days")
+                                .font(.subheadline.weight(.semibold))
+                            SparklineView(points: amSparkline, height: 44)
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .fill(Color(.secondarySystemBackground))
+                        )
+                    }
 
                     if !todayPending.isEmpty {
                         todaySessionPending
