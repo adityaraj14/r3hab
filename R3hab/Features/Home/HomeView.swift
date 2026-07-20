@@ -4,6 +4,7 @@ import SwiftData
 /// Today dashboard — checklist, pending 24h, session CTA.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppRouter.self) private var router
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
     @Query private var settingsList: [AppSettings]
@@ -316,14 +317,27 @@ struct HomeView: View {
         guard session.snoozedUntil == nil else { return }
         let amH = settings?.amReminderHour ?? 8
         let amM = settings?.amReminderMinute ?? 0
-        session.snoozedUntil = PendingQueue.nextMorningReminder(
+        let until = PendingQueue.nextMorningReminder(
             after: Date(),
             amHour: amH,
             amMinute: amM
         )
+        session.snoozedUntil = until
         session.snoozeUsed = true
         session.updatedAt = Date()
         try? modelContext.save()
+        NotificationScheduler.cancelPending(sessionId: session.id)
+        if settings?.notificationsEnabled == true {
+            NotificationScheduler.schedulePending(
+                sessionId: session.id,
+                sessionDate: session.date,
+                snoozedUntil: until,
+                amHour: amH,
+                amMinute: amM
+            )
+        }
+        Haptics.light()
+        router.requestNotificationSync()
     }
 
     private func markRest(_ session: TrainingSession) {
@@ -333,6 +347,9 @@ struct HomeView: View {
         session.snoozedUntil = nil
         session.updatedAt = Date()
         try? modelContext.save()
+        NotificationScheduler.cancelPending(sessionId: session.id)
+        Haptics.light()
+        router.requestNotificationSync()
     }
 }
 
@@ -340,6 +357,7 @@ struct HomeView: View {
 
 #Preview {
     HomeView()
+        .environment(AppRouter())
         .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

@@ -24,20 +24,42 @@ open R3hab.xcodeproj
 
 Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
 
-## Deep link (PR-08+)
+## Features (v1)
+
+- Daily AM/PM check-in + steps
+- Training sessions + **24h resolve** (Better/Same/Worse → Stay/Soft cut/Progress/Hard drop)
+- Phase A exit banner, Progress charts (7/28 day)
+- Settings: phase, thresholds, reminders, **JSON export/import**, **clear all logs**
+- Onboarding + local notifications (AM/PM + pending 24h)
+- Deep link / notification open → resolve sheet
+
+## Deep link
 
 ```
 r3hab://resolve?sessionId=<UUID>
 ```
 
-(Design originally used `tendontrack://`; product name is **R3hab**, scheme will be `r3hab` when wired in PR-08.)
+## Backup
+
+Settings → **Export JSON backup**. Import supports **Replace** or **Merge**.  
+**Clear all log entries** wipes check-ins and sessions but keeps phase/settings.
+
+## Dogfood checklist (14 days)
+
+1. Log morning pain most days  
+2. Log at least a few training sessions and resolve 24h next day  
+3. Export a backup weekly  
+4. Confirm notifications (if enabled) fire after a session  
 
 ## Development
 
-Incremental PR plan is in `DESIGN.md` § PR Plan.
+Plan: `DESIGN.md` § PR Plan. Stack: SwiftUI + SwiftData, iOS 17+, dark mode only.
 
-- **Dogfood gate:** after pending 24h resolve (PR-08)
-- **Export + import JSON:** PR-12
+```bash
+# Install on booted sim without launching
+xcodebuild -scheme R3hab -destination 'platform=iOS Simulator,id=<UDID>' build
+xcrun simctl install booted path/to/R3hab.app
+```
 
 ## License
 

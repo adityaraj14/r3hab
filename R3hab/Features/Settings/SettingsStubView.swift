@@ -2,9 +2,10 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 
-/// Settings: phase, thresholds, reminders, export/import (PR-12).
+/// Settings: phase, thresholds, reminders, export/import, clear-all (PR-12/13/14).
 struct SettingsStubView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppRouter.self) private var router
     @Query private var settingsList: [AppSettings]
     @Query private var checkIns: [DailyCheckIn]
     @Query private var sessions: [TrainingSession]
@@ -14,13 +15,15 @@ struct SettingsStubView: View {
     @State private var showImporter = false
     @State private var importMode: ImportMode = .replace
     @State private var showImportMode = false
-    @State private var pendingImportData: Data?
     @State private var alertTitle = ""
     @State private var alertMessage = ""
     @State private var showAlert = false
     @State private var isBusy = false
+    @State private var showClearConfirm = false
+    @State private var showClearSecondConfirm = false
 
     private var settings: AppSettings? { settingsList.first }
+    private var totalLogs: Int { checkIns.count + sessions.count }
 
     var body: some View {
         List {
@@ -56,18 +59,18 @@ struct SettingsStubView: View {
                 }
 
                 Section("Reminders") {
-                    Toggle("Enable local reminders", isOn: boolBinding(settings, keyPath: \.notificationsEnabled))
+                    Toggle("Enable local reminders", isOn: notificationsBinding(settings))
                     Stepper(
                         "Morning \(String(format: "%02d:%02d", settings.amReminderHour, settings.amReminderMinute))",
-                        value: intBinding(settings, keyPath: \.amReminderHour),
+                        value: reminderHourBinding(settings, isAM: true),
                         in: 5...11
                     )
                     Stepper(
                         "Evening \(String(format: "%02d:%02d", settings.pmReminderHour, settings.pmReminderMinute))",
-                        value: intBinding(settings, keyPath: \.pmReminderHour),
+                        value: reminderHourBinding(settings, isAM: false),
                         in: 17...23
                     )
-                    Text("Full notification scheduling lands next. Toggle is stored for now.")
+                    Text("AM/PM check-in and overdue 24h pending. Works offline. Deny permission anytime — the app stays fully usable.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -90,6 +93,17 @@ struct SettingsStubView: View {
                     Label("Import JSON backup…", systemImage: "square.and.arrow.down")
                 }
                 .disabled(isBusy)
+            }
+
+            Section {
+                Button("Clear all log entries", role: .destructive) {
+                    showClearConfirm = true
+                }
+                .disabled(isBusy || totalLogs == 0)
+            } header: {
+                Text("Data")
+            } footer: {
+                Text("Deletes every daily check-in and training session. Settings (phase, thresholds, reminders) are kept. Export a backup first if you might need the data.")
             }
 
             Section("Protocol") {
@@ -121,8 +135,10 @@ struct SettingsStubView: View {
                 Button("Seed sample week") {
                     seedSampleWeek()
                 }
-                Button("Wipe all check-ins & sessions", role: .destructive) {
-                    wipeLogs()
+                Button("Reset onboarding flag") {
+                    settings?.hasCompletedOnboarding = false
+                    try? modelContext.save()
+                    presentAlert("Onboarding", "Flag cleared — relaunch or kill app to see onboarding again if gated only on launch. Or toggle from Root next open.")
                 }
             }
             #endif
@@ -144,6 +160,30 @@ struct SettingsStubView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Replace wipes current check-ins and sessions first. Merge updates matching days/IDs and keeps the rest.")
+        }
+        .confirmationDialog(
+            "Clear all log entries?",
+            isPresented: $showClearConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Clear \(totalLogs) entries", role: .destructive) {
+                showClearSecondConfirm = true
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This removes \(checkIns.count) check-ins and \(sessions.count) sessions. Settings stay. Consider exporting a backup first.")
+        }
+        .confirmationDialog(
+            "Really delete everything?",
+            isPresented: $showClearSecondConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete all logs", role: .destructive) {
+                clearAllLogs()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This cannot be undone without a backup file.")
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -191,12 +231,46 @@ struct SettingsStubView: View {
         )
     }
 
-    private func boolBinding(_ settings: AppSettings, keyPath: ReferenceWritableKeyPath<AppSettings, Bool>) -> Binding<Bool> {
+    private func notificationsBinding(_ settings: AppSettings) -> Binding<Bool> {
         Binding(
-            get: { settings[keyPath: keyPath] },
-            set: {
-                settings[keyPath: keyPath] = $0
+            get: { settings.notificationsEnabled },
+            set: { newValue in
+                settings.notificationsEnabled = newValue
                 try? modelContext.save()
+                Task {
+                    if newValue {
+                        let granted = await NotificationScheduler.requestAuthorization()
+                        await MainActor.run {
+                            settings.notificationsEnabled = granted
+                            try? modelContext.save()
+                            if !granted {
+                                presentAlert(
+                                    "Notifications off",
+                                    "Permission denied. You can enable them later in iOS Settings → R3hab."
+                                )
+                            }
+                        }
+                    }
+                    await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
+                    await MainActor.run { router.requestNotificationSync() }
+                }
+            }
+        )
+    }
+
+    private func reminderHourBinding(_ settings: AppSettings, isAM: Bool) -> Binding<Int> {
+        Binding(
+            get: { isAM ? settings.amReminderHour : settings.pmReminderHour },
+            set: { newValue in
+                if isAM {
+                    settings.amReminderHour = newValue
+                } else {
+                    settings.pmReminderHour = newValue
+                }
+                try? modelContext.save()
+                Task {
+                    await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
+                }
             }
         )
     }
@@ -226,12 +300,35 @@ struct SettingsStubView: View {
             try ExportImportService.importBackup(data: data, mode: importMode, context: modelContext)
             let dailyN = (try? modelContext.fetchCount(FetchDescriptor<DailyCheckIn>())) ?? checkIns.count
             let sessN = (try? modelContext.fetchCount(FetchDescriptor<TrainingSession>())) ?? sessions.count
+            if let settings {
+                Task {
+                    let latest = (try? modelContext.fetch(FetchDescriptor<TrainingSession>())) ?? sessions
+                    await LogStore.reconcileNotifications(settings: settings, sessions: latest)
+                }
+            }
             presentAlert(
                 "Import complete",
                 "Mode: \(importMode.title). Check-ins: \(dailyN), sessions: \(sessN)."
             )
+            router.requestNotificationSync()
         } catch {
             presentAlert("Import failed", error.localizedDescription)
+        }
+    }
+
+    private func clearAllLogs() {
+        isBusy = true
+        defer { isBusy = false }
+        do {
+            let result = try LogStore.clearAllLogs(context: modelContext)
+            Haptics.warning()
+            presentAlert(
+                "Logs cleared",
+                "Removed \(result.daily) check-ins and \(result.sessions) sessions. Settings kept."
+            )
+            router.requestNotificationSync()
+        } catch {
+            presentAlert("Clear failed", error.localizedDescription)
         }
     }
 
@@ -273,21 +370,7 @@ struct SettingsStubView: View {
         }
         try? modelContext.save()
         presentAlert("Seeded", "Sample daily rows for the past week (skipped existing day keys).")
-    }
-
-    private func wipeLogs() {
-        do {
-            for d in try modelContext.fetch(FetchDescriptor<DailyCheckIn>()) {
-                modelContext.delete(d)
-            }
-            for s in try modelContext.fetch(FetchDescriptor<TrainingSession>()) {
-                modelContext.delete(s)
-            }
-            try modelContext.save()
-            presentAlert("Wiped", "All check-ins and sessions removed. Settings kept.")
-        } catch {
-            presentAlert("Wipe failed", error.localizedDescription)
-        }
+        router.requestNotificationSync()
     }
     #endif
 }
@@ -307,6 +390,7 @@ struct ShareSheet: UIViewControllerRepresentable {
     NavigationStack {
         SettingsStubView()
     }
+    .environment(AppRouter())
     .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
     .preferredColorScheme(.dark)
 }

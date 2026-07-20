@@ -203,6 +203,7 @@ struct HistoryView: View {
                        let row = checkIns.first(where: { $0.dayKey == key }) {
                         modelContext.delete(row)
                         try? modelContext.save()
+                        Haptics.warning()
                     }
                     deleteDailyKey = nil
                 }
@@ -219,8 +220,10 @@ struct HistoryView: View {
                 Button("Delete", role: .destructive) {
                     if let id = deleteSessionId,
                        let row = sessions.first(where: { $0.id == id }) {
+                        NotificationScheduler.cancelPending(sessionId: row.id)
                         modelContext.delete(row)
                         try? modelContext.save()
+                        Haptics.warning()
                     }
                     deleteSessionId = nil
                 }

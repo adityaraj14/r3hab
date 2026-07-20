@@ -154,6 +154,7 @@ struct DailyCheckInEditor: View {
 
         do {
             try modelContext.save()
+            Haptics.success()
             dismiss()
         } catch {
             errorMessage = "Could not save: \(error.localizedDescription)"

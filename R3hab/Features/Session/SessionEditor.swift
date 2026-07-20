@@ -168,6 +168,16 @@ struct SessionEditor: View {
         modelContext.insert(session)
         do {
             try modelContext.save()
+            if let settings, settings.notificationsEnabled {
+                NotificationScheduler.schedulePending(
+                    sessionId: session.id,
+                    sessionDate: session.date,
+                    snoozedUntil: nil,
+                    amHour: settings.amReminderHour,
+                    amMinute: settings.amReminderMinute
+                )
+            }
+            Haptics.success()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription

@@ -138,6 +138,8 @@ struct Resolve24hSheet: View {
         session.updatedAt = Date()
         do {
             try modelContext.save()
+            NotificationScheduler.cancelPending(sessionId: session.id)
+            Haptics.success()
             dismiss()
         } catch {
             errorMessage = error.localizedDescription
@@ -151,6 +153,8 @@ struct Resolve24hSheet: View {
         session.snoozedUntil = nil
         session.updatedAt = Date()
         try? modelContext.save()
+        NotificationScheduler.cancelPending(sessionId: session.id)
+        Haptics.light()
         dismiss()
     }
 }

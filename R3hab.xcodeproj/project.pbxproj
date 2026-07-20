@@ -32,8 +32,14 @@
 		79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
 		3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
 		E8011A626D364764ADC7D7E8 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
+		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
+		9062AC785E8D4376A9F2A1F7 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		9B7E832294A34A3A8B15509A /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2AC4262E9330424E930140D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D3B9715593F64EE9B98DFA58 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3E260B2BD73545B6A69A4A58 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6062AAD605A342F5B99AF2E1 /* R3habApp.swift */; };
 		552F78FBAED045749D43C322 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500B430A78114CD384634358 /* RootView.swift */; };
 		95ADBE611FF1403CA45A5AE4 /* PainScoreControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */; };
@@ -62,8 +68,21 @@
 		0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */; };
 		73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */; };
 		47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8011A626D364764ADC7D7E8 /* TrainingSession.swift */; };
+		D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B121FF0B2974BD1A2491DB9 /* LogStore.swift */; };
+		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
+		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
+		C5E3FAEB23C2474E87A129DF /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9062AC785E8D4376A9F2A1F7 /* Haptics.swift */; };
+		DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */; };
 		EB97832E888046FEA263E4EC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2AC4262E9330424E930140D9 /* Assets.xcassets */; };
-		094E92DFCFC3E0EEF4479B4C /* Daily */ = {
+				EDAB6BD7A10E4B21BBFC42E0 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				C2769BEBD6404120850663B2 /* OnboardingView.swift */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+094E92DFCFC3E0EEF4479B4C /* Daily */ = {
 			isa = PBXGroup;
 			children = (
 				180612735F20428098D5B5BE /* DailyCheckInEditor.swift */,
@@ -114,10 +133,20 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
-		00AD15C52BC6A868EE4C7EE0 /* App */ = {
+				BD96241CEA264243A73883CC /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */,
+				9062AC785E8D4376A9F2A1F7 /* Haptics.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+00AD15C52BC6A868EE4C7EE0 /* App */ = {
 			isa = PBXGroup;
 			children = (
 				6062AAD605A342F5B99AF2E1 /* R3habApp.swift */,
+				BCFFB573D1074550BF3320CB /* AppRouter.swift */,
 				500B430A78114CD384634358 /* RootView.swift */,
 			);
 			path = App;
@@ -137,6 +166,7 @@
 			isa = PBXGroup;
 			children = (
 				47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */,
+				0B121FF0B2974BD1A2491DB9 /* LogStore.swift */,
 				ED9AA8F2B526430384E46937 /* ExportImport.swift */,
 				4670AE5C99794407900C0055 /* ModelMapping.swift */,
 			);
@@ -160,6 +190,7 @@
 		97F598AF08B1604FAB88BAC7 /* Features */ = {
 			isa = PBXGroup;
 			children = (
+				EDAB6BD7A10E4B21BBFC42E0 /* Onboarding */,
 				094E92DFCFC3E0EEF4479B4C /* Daily */,
 				0F3A7EFFE597D9D1A4ACB693 /* History */,
 				7A0EC6BF3C16039A1651301A /* Home */,
@@ -185,6 +216,7 @@
 			isa = PBXGroup;
 			children = (
 				2AC4262E9330424E930140D9 /* Assets.xcassets */,
+				D3B9715593F64EE9B98DFA58 /* Info.plist */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -192,6 +224,7 @@
 		B2CD6618D7EBA18C73A09710 /* R3hab */ = {
 			isa = PBXGroup;
 			children = (
+				BD96241CEA264243A73883CC /* Services */,
 				00AD15C52BC6A868EE4C7EE0 /* App */,
 				2529C5329183C87EA6788149 /* Components */,
 				B5F629CB278D36EF1A1F15AD /* Data */,
@@ -251,6 +284,11 @@
 				0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */,
 				73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */,
 				47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */,
+				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
+				57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */,
+				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,
+				C5E3FAEB23C2474E87A129DF /* Haptics.swift in Sources */,
+				DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -313,6 +351,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = R3hab/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -341,6 +380,7 @@
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = R3hab/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = R3hab;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

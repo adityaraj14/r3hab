@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Trends tab — 7/28 day charts (PR-10).
+/// Trends tab — 7/28 day charts (PR-10/14).
 struct RehabProgressView: View {
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
@@ -15,6 +15,8 @@ struct RehabProgressView: View {
         var id: Int { rawValue }
         var title: String { rawValue == 7 ? "7 days" : "28 days" }
     }
+
+    private var settings: AppSettings? { settingsList.first }
 
     private var metrics: [DailyMetricSnapshot] {
         checkIns.map {
@@ -45,47 +47,89 @@ struct RehabProgressView: View {
         }.count
     }
 
+    /// Phase B stretch: clean sessions since phase change while in B (REQ-FUNC-017).
+    private var phaseBCleanCount: Int? {
+        guard let settings, settings.currentPhase == .bIsometrics else { return nil }
+        return sessions.filter {
+            $0.date >= settings.phaseChangedAt
+                && $0.phase == .bIsometrics
+                && ($0.response24h == .better || $0.response24h == .same)
+        }.count
+    }
+
     private var pendingCount: Int {
         sessions.filter { $0.response24h == .pending }.count
+    }
+
+    private var hasAnyData: Bool {
+        !checkIns.isEmpty || !sessions.isEmpty
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
-                    Picker("Range", selection: $range) {
-                        ForEach(DayRange.allCases) { r in
-                            Text(r.title).tag(r)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-
-                    statsRow
-
-                    if let settings = settingsList.first, settings.currentPhase == .aFlareDeLoad {
-                        let status = PhaseAExitEvaluator.evaluate(
-                            checkIns: checkIns.map(\.snapshot),
-                            settings: settings.phaseSnapshot,
-                            today: Date()
+                    if !hasAnyData {
+                        ContentUnavailableView(
+                            "No trends yet",
+                            systemImage: "chart.line.uptrend.xyaxis",
+                            description: Text("Log this morning’s pain or a training session — charts fill in as you go.")
                         )
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text("Phase A exit")
-                                .font(.subheadline.weight(.semibold))
-                            Text(status.message)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 40)
+                    } else {
+                        Picker("Range", selection: $range) {
+                            ForEach(DayRange.allCases) { r in
+                                Text(r.title).tag(r)
+                            }
                         }
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-                        )
-                    }
+                        .pickerStyle(.segmented)
+                        .accessibilityLabel("Chart range")
 
-                    MetricChartCard(title: "Resting pain AM", points: amSeries, yDomain: 0...10)
-                    MetricChartCard(title: "Daily pain PM", points: pmSeries, yDomain: 0...10)
-                    MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
+                        statsRow
+
+                        if let settings, settings.currentPhase == .aFlareDeLoad {
+                            let status = PhaseAExitEvaluator.evaluate(
+                                checkIns: checkIns.map(\.snapshot),
+                                settings: settings.phaseSnapshot,
+                                today: Date()
+                            )
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Phase A exit")
+                                    .font(.subheadline.weight(.semibold))
+                                Text(status.message)
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
+                            )
+                            .accessibilityElement(children: .combine)
+                        }
+
+                        if let phaseBCleanCount {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text("Phase B clean sessions")
+                                    .font(.subheadline.weight(.semibold))
+                                Text("\(phaseBCleanCount) Better/Same since you entered Phase B")
+                                    .font(.footnote)
+                                    .foregroundStyle(.secondary)
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .background(
+                                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .fill(Color(.secondarySystemBackground))
+                            )
+                        }
+
+                        MetricChartCard(title: "Resting pain AM", points: amSeries, yDomain: 0...10)
+                        MetricChartCard(title: "Daily pain PM", points: pmSeries, yDomain: 0...10)
+                        MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
+                    }
                 }
                 .padding()
             }
@@ -123,6 +167,8 @@ struct RehabProgressView: View {
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
     }
 }
 
