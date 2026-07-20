@@ -21,6 +21,8 @@ struct DailyCheckInEditor: View {
     @State private var existing: DailyCheckIn?
     @State private var errorMessage: String?
     @State private var didLoad = false
+    @State private var isLoadingSteps = false
+    @State private var stepsSourceNote: String?
 
     private var calendar: Calendar { .current }
 
@@ -42,15 +44,44 @@ struct DailyCheckInEditor: View {
                 PainScoreControl(title: "Morning stiffness", value: $morningStiffness)
             }
 
-            Section("Evening") {
+            Section {
                 PainScoreControl(title: "Daily activities pain PM", value: $dailyPainPM)
-                TextField("Steps (optional)", text: $stepsText)
-                    .keyboardType(.numberPad)
+
+                HStack {
+                    TextField("Steps", text: $stepsText)
+                        .keyboardType(.numberPad)
+                        .textFieldStyle(.plain)
+                        .accessibilityLabel("Steps")
+                    if isLoadingSteps {
+                        ProgressView()
+                    } else if HealthKitSteps.isAvailable {
+                        Button("Health") {
+                            Task { await importStepsFromHealth() }
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .accessibilityHint("Import step count from Apple Health")
+                    }
+                }
+
+                if let stepsSourceNote {
+                    Text(stepsSourceNote)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            } header: {
+                Text("Evening")
+            } footer: {
+                Text("Steps power Phase A “near-normal walking” progress. Prefer Import from Health (Watch) — you can still edit the number.")
             }
 
-            Section("Optional · decline squat") {
+            Section {
                 PainScoreControl(title: "Left", value: $declineL)
                 PainScoreControl(title: "Right", value: $declineR)
+            } header: {
+                Text("Optional · single-leg decline squat")
+            } footer: {
+                Text(declineSquatFooter)
             }
 
             Section("Notes") {
@@ -78,11 +109,23 @@ struct DailyCheckInEditor: View {
             }
         }
         .onAppear(perform: loadIfNeeded)
+        .task {
+            // Auto-fill steps from Health when empty (today or backdated day).
+            guard stepsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+            guard HealthKitSteps.isAvailable else { return }
+            await importStepsFromHealth(silentIfNoData: true)
+        }
     }
 
     private var dayLabel: String {
         let d = calendar.startOfDay(for: targetDate)
         return d.formatted(date: .complete, time: .omitted)
+    }
+
+    private var declineSquatFooter: String {
+        """
+        Not required every day. This is a standard tendon monitoring test (single-leg squat on a decline board or similar): rate knee/tendon pain 0–10 after a few controlled reps each side. Useful 1–3×/week or when deciding load — skip on flare days if it feels unwise. Resting AM and evening pain matter more for daily tracking.
+        """
     }
 
     private func loadIfNeeded() {
@@ -91,7 +134,6 @@ struct DailyCheckInEditor: View {
         let day = calendar.startOfDay(for: targetDate)
         let key = DailyCheckIn.dayKey(for: day, calendar: calendar)
 
-        // Seed phase from settings
         if let settings = try? AppBootstrap.ensureSettings(context: modelContext) {
             phase = settings.currentPhase
         }
@@ -109,6 +151,35 @@ struct DailyCheckInEditor: View {
             notes = row.notes
             declineL = row.declineSquatL
             declineR = row.declineSquatR
+            if row.steps != nil {
+                stepsSourceNote = "Saved value — tap Health to refresh from Apple Watch."
+            }
+        }
+    }
+
+    @MainActor
+    private func importStepsFromHealth(silentIfNoData: Bool = false) async {
+        isLoadingSteps = true
+        defer { isLoadingSteps = false }
+        do {
+            try await HealthKitSteps.requestAuthorization()
+            let count = try await HealthKitSteps.steps(on: targetDate, calendar: calendar)
+            stepsText = String(count)
+            let day = calendar.startOfDay(for: targetDate)
+            let label = calendar.isDateInToday(day) ? "today" : day.formatted(date: .abbreviated, time: .omitted)
+            stepsSourceNote = "From Apple Health · \(label) · \(count.formatted()) steps"
+            if !silentIfNoData {
+                Haptics.light()
+            }
+            errorMessage = nil
+        } catch let error as HealthKitStepsError {
+            if silentIfNoData, case .noData = error { return }
+            if silentIfNoData, case .unauthorized = error { return }
+            errorMessage = error.localizedDescription
+            stepsSourceNote = nil
+        } catch {
+            if silentIfNoData { return }
+            errorMessage = error.localizedDescription
         }
     }
 

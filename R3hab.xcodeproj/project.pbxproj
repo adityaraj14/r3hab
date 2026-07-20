@@ -36,9 +36,11 @@
 		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
 		9062AC785E8D4376A9F2A1F7 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
+		4AE53D2E0BA547E7832394BC /* HealthKitSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitSteps.swift; sourceTree = "<group>"; };
 		9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
 		9B7E832294A34A3A8B15509A /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2AC4262E9330424E930140D9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		EBA5D256FE8741B7A8DCEB9A /* R3hab.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = R3hab.entitlements; sourceTree = "<group>"; };
 		D3B9715593F64EE9B98DFA58 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		3E260B2BD73545B6A69A4A58 /* R3habApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6062AAD605A342F5B99AF2E1 /* R3habApp.swift */; };
 		552F78FBAED045749D43C322 /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 500B430A78114CD384634358 /* RootView.swift */; };
@@ -72,6 +74,7 @@
 		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
 		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
 		C5E3FAEB23C2474E87A129DF /* Haptics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9062AC785E8D4376A9F2A1F7 /* Haptics.swift */; };
+		503039561F7B48739998E048 /* HealthKitSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AE53D2E0BA547E7832394BC /* HealthKitSteps.swift */; };
 		DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */; };
 		EB97832E888046FEA263E4EC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2AC4262E9330424E930140D9 /* Assets.xcassets */; };
 				EDAB6BD7A10E4B21BBFC42E0 /* Onboarding */ = {
@@ -133,11 +136,12 @@
 			path = Settings;
 			sourceTree = "<group>";
 		};
-				BD96241CEA264243A73883CC /* Services */ = {
+		BD96241CEA264243A73883CC /* Services */ = {
 			isa = PBXGroup;
 			children = (
 				9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */,
 				9062AC785E8D4376A9F2A1F7 /* Haptics.swift */,
+				4AE53D2E0BA547E7832394BC /* HealthKitSteps.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -216,6 +220,7 @@
 			isa = PBXGroup;
 			children = (
 				2AC4262E9330424E930140D9 /* Assets.xcassets */,
+				EBA5D256FE8741B7A8DCEB9A /* R3hab.entitlements */,
 				D3B9715593F64EE9B98DFA58 /* Info.plist */,
 			);
 			path = Resources;
@@ -289,6 +294,7 @@
 				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,
 				C5E3FAEB23C2474E87A129DF /* Haptics.swift in Sources */,
 				DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */,
+				503039561F7B48739998E048 /* HealthKitSteps.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -345,6 +351,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C5PR8599W4;
@@ -374,6 +381,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = C5PR8599W4;

@@ -15,5 +15,10 @@
 	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>R3hab reads your step count from Apple Health so you don’t have to type it each day. Pain scores and rehab notes stay only in the app.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>R3hab does not write data to Apple Health.</string>
 </dict>
 </plist>
+
