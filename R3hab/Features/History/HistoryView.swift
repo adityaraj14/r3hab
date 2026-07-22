@@ -38,47 +38,75 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
+            Group {
+                if rows.isEmpty {
+                    ContentUnavailableView(
+                        "No entries yet",
+                        systemImage: "calendar",
+                        description: Text("Check-ins and sessions will show here. Use + to backdate.")
+                    )
+                } else {
+                    List {
+                        ForEach(rows, id: \.id) { row in
+                            switch row {
+                            case .daily(let c):
+                                Button {
+                                    editDailyKey = c.dayKey
+                                } label: {
+                                    dailyRow(c)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .listRowInsets(cardInsets)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(entryCardBackground)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        deleteDailyKey = c.dayKey
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            case .session(let s):
+                                Button {
+                                    if s.response24h == .pending {
+                                        resolveSessionId = s.id
+                                    }
+                                } label: {
+                                    sessionRow(s)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .listRowInsets(cardInsets)
+                                .listRowSeparator(.hidden)
+                                .listRowBackground(entryCardBackground)
+                                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                                    Button(role: .destructive) {
+                                        deleteSessionId = s.id
+                                    } label: {
+                                        Label("Delete", systemImage: "trash")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .background(Color(.systemBackground))
+            .safeAreaInset(edge: .top, spacing: 0) {
                 Picker("Filter", selection: $filter) {
                     ForEach(Filter.allCases) { f in
                         Text(f.title).tag(f)
                     }
                 }
                 .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-
-                ForEach(rows, id: \.id) { row in
-                    switch row {
-                    case .daily(let c):
-                        Button {
-                            editDailyKey = c.dayKey
-                        } label: {
-                            dailyRow(c)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                deleteDailyKey = c.dayKey
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    case .session(let s):
-                        Button {
-                            if s.response24h == .pending {
-                                resolveSessionId = s.id
-                            }
-                        } label: {
-                            sessionRow(s)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                deleteSessionId = s.id
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
-                }
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .background(Color(.systemBackground))
             }
             .navigationTitle("Log")
             .toolbar {
@@ -97,15 +125,6 @@ struct HistoryView: View {
                     } label: {
                         Image(systemName: "plus.circle")
                     }
-                }
-            }
-            .overlay {
-                if rows.isEmpty {
-                    ContentUnavailableView(
-                        "No entries yet",
-                        systemImage: "calendar",
-                        description: Text("Check-ins and sessions will show here. Use + to backdate.")
-                    )
                 }
             }
             .sheet(isPresented: Binding(
@@ -155,7 +174,6 @@ struct HistoryView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                                     if backdateKind == .daily {
                                         editDailyKey = DailyCheckIn.dayKey(for: backdateDate)
-                                        // open editor even if no row yet — use date via temp state
                                         pendingBackdateDaily = Calendar.current.startOfDay(for: backdateDate)
                                     } else {
                                         pendingBackdateSession = Calendar.current.startOfDay(for: backdateDate)
@@ -232,6 +250,17 @@ struct HistoryView: View {
         }
     }
 
+    private var cardInsets: EdgeInsets {
+        EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16)
+    }
+
+    private var entryCardBackground: some View {
+        RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .fill(Color(.secondarySystemBackground))
+            .padding(.vertical, 4)
+            .padding(.horizontal, 16)
+    }
+
     private enum Row {
         case daily(DailyCheckIn)
         case session(TrainingSession)
@@ -268,6 +297,8 @@ struct HistoryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
@@ -285,6 +316,8 @@ struct HistoryView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 4)
     }
 }
 
