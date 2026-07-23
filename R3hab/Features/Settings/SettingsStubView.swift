@@ -60,17 +60,17 @@ struct SettingsStubView: View {
 
                 Section("Reminders") {
                     Toggle("Enable local reminders", isOn: notificationsBinding(settings))
-                    Stepper(
-                        "Morning \(String(format: "%02d:%02d", settings.amReminderHour, settings.amReminderMinute))",
-                        value: reminderHourBinding(settings, isAM: true),
-                        in: 5...11
+                    DatePicker(
+                        "Morning",
+                        selection: reminderTimeBinding(settings, isAM: true),
+                        displayedComponents: .hourAndMinute
                     )
-                    Stepper(
-                        "Evening \(String(format: "%02d:%02d", settings.pmReminderHour, settings.pmReminderMinute))",
-                        value: reminderHourBinding(settings, isAM: false),
-                        in: 17...23
+                    DatePicker(
+                        "Evening",
+                        selection: reminderTimeBinding(settings, isAM: false),
+                        displayedComponents: .hourAndMinute
                     )
-                    Text("AM/PM check-in and overdue 24h pending. Works offline. Deny permission anytime — the app stays fully usable.")
+                    Text("Default evening is 6:30 PM. AM/PM check-in and overdue 24h pending. Works offline.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -258,14 +258,24 @@ struct SettingsStubView: View {
         )
     }
 
-    private func reminderHourBinding(_ settings: AppSettings, isAM: Bool) -> Binding<Int> {
+    private func reminderTimeBinding(_ settings: AppSettings, isAM: Bool) -> Binding<Date> {
         Binding(
-            get: { isAM ? settings.amReminderHour : settings.pmReminderHour },
-            set: { newValue in
+            get: {
+                var comps = DateComponents()
+                comps.hour = isAM ? settings.amReminderHour : settings.pmReminderHour
+                comps.minute = isAM ? settings.amReminderMinute : settings.pmReminderMinute
+                return Calendar.current.date(from: comps) ?? Date()
+            },
+            set: { newDate in
+                let comps = Calendar.current.dateComponents([.hour, .minute], from: newDate)
+                let hour = comps.hour ?? (isAM ? 8 : 18)
+                let minute = comps.minute ?? (isAM ? 0 : 30)
                 if isAM {
-                    settings.amReminderHour = newValue
+                    settings.amReminderHour = hour
+                    settings.amReminderMinute = minute
                 } else {
-                    settings.pmReminderHour = newValue
+                    settings.pmReminderHour = hour
+                    settings.pmReminderMinute = minute
                 }
                 try? modelContext.save()
                 Task {

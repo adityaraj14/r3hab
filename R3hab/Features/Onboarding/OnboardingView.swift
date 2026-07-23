@@ -118,7 +118,7 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
             Toggle("Enable local reminders", isOn: $wantNotifications)
                 .padding(.vertical, 8)
-            Text("Default times: 08:00 and 21:00 — adjustable in Settings.")
+            Text("Default times: 08:00 and 18:30 — adjustable in Settings.")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
             Spacer()

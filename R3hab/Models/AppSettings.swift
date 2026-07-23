@@ -35,8 +35,8 @@ final class AppSettings {
         self.stepBaselineTypical = 7500
         self.amReminderHour = 8
         self.amReminderMinute = 0
-        self.pmReminderHour = 21
-        self.pmReminderMinute = 0
+        self.pmReminderHour = 18
+        self.pmReminderMinute = 30
         self.notificationsEnabled = false
         self.hasCompletedOnboarding = false
         self.protocolRevision = "v1"
