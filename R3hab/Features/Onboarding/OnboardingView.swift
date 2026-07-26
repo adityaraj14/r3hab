@@ -75,7 +75,7 @@ struct OnboardingView: View {
         onboardingCard(
             icon: "figure.strengthtraining.traditional",
             title: "R3hab is your tendon diary",
-            body: "Log morning pain, evening pain, steps, and training sessions. Everything stays on this iPhone — offline by design. Notion (or your protocol notes) stays the brain; this app is the daily log."
+            body: "Log morning and evening knee and lower-back pain, steps, and training sessions. Everything stays on this iPhone — offline by design. Notion (or your protocol notes) stays the brain; this app is the daily log."
         )
     }
 
@@ -113,12 +113,12 @@ struct OnboardingView: View {
         VStack(alignment: .leading, spacing: 20) {
             Label("Reminders", systemImage: "bell.badge")
                 .font(.title2.weight(.bold))
-            Text("Optional local notifications for morning/evening check-ins and overdue 24h responses. You can turn these off anytime. Denying permission still lets you use the full app.")
+            Text("Optional local notifications for morning/evening check-ins, three stretch reminders, and overdue 24h responses. You can turn these off anytime. Denying permission still lets you use the full app.")
                 .font(.body)
                 .foregroundStyle(.secondary)
             Toggle("Enable local reminders", isOn: $wantNotifications)
                 .padding(.vertical, 8)
-            Text("Default times: 08:00 and 18:30 — adjustable in Settings.")
+            Text("Check-ins default to 08:00 and 18:30. Stretch: \(NotificationScheduler.stretchReminderTimesLabel).")
                 .font(.footnote)
                 .foregroundStyle(.tertiary)
             Spacer()

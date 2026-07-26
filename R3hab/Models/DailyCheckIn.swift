@@ -8,6 +8,10 @@ final class DailyCheckIn {
     var restingPainAM: Int?
     var morningStiffness: Int?
     var dailyPainPM: Int?
+    /// Lower back resting pain (morning), 0–10.
+    var lowerBackPainAM: Int?
+    /// Lower back daily-activities pain (evening), 0–10.
+    var lowerBackPainPM: Int?
     var steps: Int?
     var phaseRaw: String
     var notes: String

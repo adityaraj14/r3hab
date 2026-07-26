@@ -61,6 +61,8 @@ struct DailyDTO: Codable {
     var restingPainAM: Int?
     var morningStiffness: Int?
     var dailyPainPM: Int?
+    var lowerBackPainAM: Int?
+    var lowerBackPainPM: Int?
     var steps: Int?
     var phase: String
     var notes: String
@@ -86,7 +88,9 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    static let schemaVersion = 1
+    /// v2 adds lower-back AM/PM pain fields (optional; v1 backups still import).
+    static let schemaVersion = 2
+    static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
 
     static func makeEncoder() -> JSONEncoder {
@@ -132,6 +136,8 @@ enum ExportImportService {
                     restingPainAM: $0.restingPainAM,
                     morningStiffness: $0.morningStiffness,
                     dailyPainPM: $0.dailyPainPM,
+                    lowerBackPainAM: $0.lowerBackPainAM,
+                    lowerBackPainPM: $0.lowerBackPainPM,
                     steps: $0.steps,
                     phase: $0.phaseRaw,
                     notes: $0.notes,
@@ -170,7 +176,7 @@ enum ExportImportService {
         } catch {
             throw ExportImportError.decodeFailed
         }
-        guard backup.schemaVersion == schemaVersion else {
+        guard (minimumSupportedSchemaVersion...schemaVersion).contains(backup.schemaVersion) else {
             throw ExportImportError.unsupportedSchema(backup.schemaVersion)
         }
 
@@ -252,6 +258,8 @@ enum ExportImportService {
         row.restingPainAM = dto.restingPainAM
         row.morningStiffness = dto.morningStiffness
         row.dailyPainPM = dto.dailyPainPM
+        row.lowerBackPainAM = dto.lowerBackPainAM
+        row.lowerBackPainPM = dto.lowerBackPainPM
         row.steps = dto.steps
         row.phaseRaw = dto.phase
         row.notes = dto.notes

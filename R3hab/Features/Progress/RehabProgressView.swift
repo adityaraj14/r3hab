@@ -24,17 +24,41 @@ struct RehabProgressView: View {
                 date: $0.date,
                 restingPainAM: $0.restingPainAM,
                 dailyPainPM: $0.dailyPainPM,
+                lowerBackPainAM: $0.lowerBackPainAM,
+                lowerBackPainPM: $0.lowerBackPainPM,
                 steps: $0.steps
             )
         }
     }
 
-    private var amSeries: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: range.rawValue)
+    private var amPainSeries: [ChartSeriesLine] {
+        [
+            ChartSeriesLine(
+                label: "Knee",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: range.rawValue),
+                color: PainChartColors.knee
+            ),
+            ChartSeriesLine(
+                label: "Lower back",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: range.rawValue),
+                color: PainChartColors.lowerBack
+            )
+        ]
     }
 
-    private var pmSeries: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .dailyPM, dayCount: range.rawValue)
+    private var pmPainSeries: [ChartSeriesLine] {
+        [
+            ChartSeriesLine(
+                label: "Knee",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .dailyPM, dayCount: range.rawValue),
+                color: PainChartColors.knee
+            ),
+            ChartSeriesLine(
+                label: "Lower back",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .lowerBackPM, dayCount: range.rawValue),
+                color: PainChartColors.lowerBack
+            )
+        ]
     }
 
     private var stepsSeries: [DayValue] {
@@ -126,8 +150,8 @@ struct RehabProgressView: View {
                             )
                         }
 
-                        MetricChartCard(title: "Resting pain AM", points: amSeries, yDomain: 0...10)
-                        MetricChartCard(title: "Daily pain PM", points: pmSeries, yDomain: 0...10)
+                        MetricChartCard(title: "Resting pain AM", series: amPainSeries, yDomain: 0...10)
+                        MetricChartCard(title: "Daily pain PM", series: pmPainSeries, yDomain: 0...10)
                         MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
                     }
                 }

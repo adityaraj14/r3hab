@@ -61,16 +61,22 @@ struct SettingsStubView: View {
                 Section("Reminders") {
                     Toggle("Enable local reminders", isOn: notificationsBinding(settings))
                     DatePicker(
-                        "Morning",
+                        "Morning check-in",
                         selection: reminderTimeBinding(settings, isAM: true),
                         displayedComponents: .hourAndMinute
                     )
                     DatePicker(
-                        "Evening",
+                        "Evening check-in",
                         selection: reminderTimeBinding(settings, isAM: false),
                         displayedComponents: .hourAndMinute
                     )
-                    Text("Default evening is 6:30 PM. AM/PM check-in and overdue 24h pending. Works offline.")
+                    LabeledContent("Stretch") {
+                        Text(NotificationScheduler.stretchReminderTimesLabel)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .multilineTextAlignment(.trailing)
+                    }
+                    Text("Check-in times are adjustable. Stretch reminders fire three times daily from 8:00 AM to 7:00 PM (evenly spaced). Also reminds for overdue 24h pending. Works offline.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -364,6 +370,8 @@ struct SettingsStubView: View {
             row.restingPainAM = [2, 1, 2, 3, 1, 2, 2][offset]
             row.morningStiffness = [3, 2, 2, 3, 1, 2, 2][offset]
             row.dailyPainPM = [2, 2, 1, 3, 2, 2, 1][offset]
+            row.lowerBackPainAM = [3, 2, 3, 4, 2, 3, 2][offset]
+            row.lowerBackPainPM = [2, 3, 2, 3, 2, 2, 1][offset]
             row.steps = [4500, 6200, 7100, 3800, 8000, 5500, 6400][offset]
             modelContext.insert(row)
         }

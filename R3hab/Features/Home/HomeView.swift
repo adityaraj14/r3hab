@@ -53,19 +53,43 @@ struct HomeView: View {
         )
     }
 
-    private var amSparkline: [DayValue] {
-        let metrics = checkIns.map {
+    private var metrics: [DailyMetricSnapshot] {
+        checkIns.map {
             DailyMetricSnapshot(
                 date: $0.date,
                 restingPainAM: $0.restingPainAM,
                 dailyPainPM: $0.dailyPainPM,
+                lowerBackPainAM: $0.lowerBackPainAM,
+                lowerBackPainPM: $0.lowerBackPainPM,
                 steps: $0.steps
             )
         }
-        return ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7)
+    }
+
+    private var amSparklineSeries: [ChartSeriesLine] {
+        [
+            ChartSeriesLine(
+                label: "Knee",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7),
+                color: PainChartColors.knee
+            ),
+            ChartSeriesLine(
+                label: "Back",
+                points: ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: 7),
+                color: PainChartColors.lowerBack
+            )
+        ]
     }
 
     private var pendingBadge: Int { overduePending.count }
+
+    private var hasMorningPain: Bool {
+        todayCheckIn?.restingPainAM != nil || todayCheckIn?.lowerBackPainAM != nil
+    }
+
+    private var hasEveningPain: Bool {
+        todayCheckIn?.dailyPainPM != nil || todayCheckIn?.lowerBackPainPM != nil
+    }
 
     var body: some View {
         NavigationStack {
@@ -83,11 +107,18 @@ struct HomeView: View {
 
                     checklist
 
-                    if !amSparkline.isEmpty, amSparkline.contains(where: { $0.value != nil }) {
+                    if amSparklineSeries.contains(where: { line in line.points.contains { $0.value != nil } }) {
                         VStack(alignment: .leading, spacing: 8) {
-                            Text("AM pain · 7 days")
-                                .font(.subheadline.weight(.semibold))
-                            SparklineView(points: amSparkline, height: 44)
+                            HStack {
+                                Text("AM pain · 7 days")
+                                    .font(.subheadline.weight(.semibold))
+                                Spacer()
+                                HStack(spacing: 10) {
+                                    legendDot(color: PainChartColors.knee, label: "Knee")
+                                    legendDot(color: PainChartColors.lowerBack, label: "Back")
+                                }
+                            }
+                            SparklineView(series: amSparklineSeries, height: 44)
                         }
                         .padding()
                         .background(
@@ -255,9 +286,44 @@ struct HomeView: View {
         return VStack(alignment: .leading, spacing: 12) {
             Text("Today")
                 .font(.title3.weight(.semibold))
-            checkRow(title: "Morning pain", done: c?.restingPainAM != nil, detail: c?.restingPainAM.map { "\($0)/10" })
-            checkRow(title: "Evening pain", done: c?.dailyPainPM != nil, detail: c?.dailyPainPM.map { "\($0)/10" })
+            checkRow(
+                title: "Morning pain",
+                done: c?.restingPainAM != nil || c?.lowerBackPainAM != nil,
+                detail: morningPainDetail(c)
+            )
+            checkRow(
+                title: "Evening pain",
+                done: c?.dailyPainPM != nil || c?.lowerBackPainPM != nil,
+                detail: eveningPainDetail(c)
+            )
             checkRow(title: "Steps", done: c?.steps != nil, detail: c?.steps.map { "\($0)" })
+        }
+    }
+
+    private func morningPainDetail(_ c: DailyCheckIn?) -> String? {
+        guard let c else { return nil }
+        let knee = c.restingPainAM.map { "K\($0)" }
+        let back = c.lowerBackPainAM.map { "B\($0)" }
+        let parts = [knee, back].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func eveningPainDetail(_ c: DailyCheckIn?) -> String? {
+        guard let c else { return nil }
+        let knee = c.dailyPainPM.map { "K\($0)" }
+        let back = c.lowerBackPainPM.map { "B\($0)" }
+        let parts = [knee, back].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func legendDot(color: Color, label: String) -> some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(label)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -277,14 +343,14 @@ struct HomeView: View {
     private var actions: some View {
         VStack(spacing: 12) {
             Button { showAM = true } label: {
-                Label(todayCheckIn?.restingPainAM == nil ? "Log morning" : "Edit morning", systemImage: "sun.max.fill")
+                Label(hasMorningPain ? "Edit morning" : "Log morning", systemImage: "sun.max.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
             Button { showPM = true } label: {
-                Label(todayCheckIn?.dailyPainPM == nil ? "Log evening" : "Edit evening", systemImage: "moon.stars.fill")
+                Label(hasEveningPain ? "Edit evening" : "Log evening", systemImage: "moon.stars.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)

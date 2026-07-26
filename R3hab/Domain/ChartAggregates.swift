@@ -31,7 +31,7 @@ enum ChartAggregates {
             switch metric {
             case .restingAM:
                 value = row?.restingPainAM.map(Double.init)
-            case .dailyPM:
+            case .dailyPM, .lowerBackAM, .lowerBackPM:
                 // DailyCheckInSnapshot only has resting + steps; need extended snapshot or pass full models
                 value = nil
             case .steps:
@@ -45,15 +45,19 @@ enum ChartAggregates {
     enum Metric {
         case restingAM
         case dailyPM
+        case lowerBackAM
+        case lowerBackPM
         case steps
     }
 }
 
-/// Full check-in fields for charts (AM/PM/steps).
+/// Full check-in fields for charts (knee + lower back AM/PM/steps).
 struct DailyMetricSnapshot: Equatable, Sendable {
     var date: Date
     var restingPainAM: Int?
     var dailyPainPM: Int?
+    var lowerBackPainAM: Int?
+    var lowerBackPainPM: Int?
     var steps: Int?
 }
 
@@ -79,6 +83,8 @@ enum ChartMetricBuilder {
             switch metric {
             case .restingAM: value = row?.restingPainAM.map(Double.init)
             case .dailyPM: value = row?.dailyPainPM.map(Double.init)
+            case .lowerBackAM: value = row?.lowerBackPainAM.map(Double.init)
+            case .lowerBackPM: value = row?.lowerBackPainPM.map(Double.init)
             case .steps: value = row?.steps.map(Double.init)
             }
             result.append(DayValue(dayKey: key, date: day, value: value))

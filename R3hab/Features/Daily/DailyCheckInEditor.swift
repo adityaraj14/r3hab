@@ -13,6 +13,8 @@ struct DailyCheckInEditor: View {
     @State private var restingPainAM: Int?
     @State private var morningStiffness: Int?
     @State private var dailyPainPM: Int?
+    @State private var lowerBackPainAM: Int?
+    @State private var lowerBackPainPM: Int?
     @State private var stepsText: String = ""
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var notes: String = ""
@@ -40,12 +42,14 @@ struct DailyCheckInEditor: View {
             }
 
             Section("Morning") {
-                PainScoreControl(title: "Resting pain AM", value: $restingPainAM)
+                PainScoreControl(title: "Knee resting pain", value: $restingPainAM)
+                PainScoreControl(title: "Lower back pain", value: $lowerBackPainAM)
                 PainScoreControl(title: "Morning stiffness", value: $morningStiffness)
             }
 
             Section {
-                PainScoreControl(title: "Daily activities pain PM", value: $dailyPainPM)
+                PainScoreControl(title: "Knee daily activities pain", value: $dailyPainPM)
+                PainScoreControl(title: "Lower back pain", value: $lowerBackPainPM)
 
                 HStack {
                     TextField("Steps", text: $stepsText)
@@ -72,7 +76,7 @@ struct DailyCheckInEditor: View {
             } header: {
                 Text("Evening")
             } footer: {
-                Text("Steps power Phase A “near-normal walking” progress. Prefer Import from Health (Watch) — you can still edit the number.")
+                Text("Knee and lower back each use a 0–10 scale. Steps power Phase A “near-normal walking” progress. Prefer Import from Health (Watch) — you can still edit the number.")
             }
 
             Section {
@@ -146,6 +150,8 @@ struct DailyCheckInEditor: View {
             restingPainAM = row.restingPainAM
             morningStiffness = row.morningStiffness
             dailyPainPM = row.dailyPainPM
+            lowerBackPainAM = row.lowerBackPainAM
+            lowerBackPainPM = row.lowerBackPainPM
             stepsText = row.steps.map(String.init) ?? ""
             phase = row.phase
             notes = row.notes
@@ -197,7 +203,7 @@ struct DailyCheckInEditor: View {
     }
 
     private func applySave(steps: Int?) {
-        for score in [restingPainAM, morningStiffness, dailyPainPM, declineL, declineR] {
+        for score in [restingPainAM, morningStiffness, dailyPainPM, lowerBackPainAM, lowerBackPainPM, declineL, declineR] {
             if let score, !(0...10).contains(score) {
                 errorMessage = "Pain scores must be 0–10."
                 return
@@ -216,6 +222,8 @@ struct DailyCheckInEditor: View {
         row.restingPainAM = restingPainAM
         row.morningStiffness = morningStiffness
         row.dailyPainPM = dailyPainPM
+        row.lowerBackPainAM = lowerBackPainAM
+        row.lowerBackPainPM = lowerBackPainPM
         row.steps = steps
         row.phase = phase
         row.notes = notes

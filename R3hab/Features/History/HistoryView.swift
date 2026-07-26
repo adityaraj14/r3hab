@@ -264,10 +264,19 @@ struct HistoryView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(c.date.formatted(date: .abbreviated, time: .omitted))
                 .font(.headline)
-            Text("AM \(c.restingPainAM.map(String.init) ?? "—") · PM \(c.dailyPainPM.map(String.init) ?? "—") · steps \(c.steps.map(String.init) ?? "—")")
+            Text(dailySummary(c))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func dailySummary(_ c: DailyCheckIn) -> String {
+        let kneeAM = c.restingPainAM.map(String.init) ?? "—"
+        let kneePM = c.dailyPainPM.map(String.init) ?? "—"
+        let backAM = c.lowerBackPainAM.map(String.init) ?? "—"
+        let backPM = c.lowerBackPainPM.map(String.init) ?? "—"
+        let steps = c.steps.map(String.init) ?? "—"
+        return "Knee \(kneeAM)/\(kneePM) · Back \(backAM)/\(backPM) · steps \(steps)"
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
