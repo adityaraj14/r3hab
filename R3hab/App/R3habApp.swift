@@ -22,12 +22,15 @@ struct R3habApp: App {
 
     var body: some Scene {
         WindowGroup {
+            // IMPORTANT: attach `.modelContainer` to the root *view*, not to
+            // `WindowGroup`. Scene-level attachment is a known SwiftData/SwiftUI
+            // crash path after long background / background relaunch — see
+            // Apple Forums thread 744194 / 761637 and SO 78265564.
             RootView()
+                .modelContainer(container)
                 .environment(router)
                 .preferredColorScheme(.dark)
                 .task {
-                    let context = ModelContext(container)
-                    _ = try? AppBootstrap.ensureSettings(context: context)
                     AppServices.shared.notificationDelegate.onOpenSession = { [router] id in
                         router.openResolve(sessionId: id)
                     }
@@ -36,7 +39,6 @@ struct R3habApp: App {
                     handleDeepLink(url)
                 }
         }
-        .modelContainer(container)
     }
 
     private func handleDeepLink(_ url: URL) {
