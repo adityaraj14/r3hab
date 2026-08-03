@@ -78,6 +78,10 @@ struct SessionDTO: Codable {
     var whatIDid: String
     var painDuring: Int
     var painAfter: Int
+    var sets: Int?
+    var reps: Int?
+    var loadKg: Double?
+    var holdSeconds: Int?
     var response24h: String
     var decision: String?
     var notes: String
@@ -88,8 +92,8 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    /// v2 adds lower-back AM/PM pain fields (optional; v1 backups still import).
-    static let schemaVersion = 2
+    /// v2 adds lower-back AM/PM pain. v3 adds structured resistance (sets/reps/load/hold).
+    static let schemaVersion = 3
     static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
 
@@ -154,6 +158,10 @@ enum ExportImportService {
                     whatIDid: $0.whatIDid,
                     painDuring: $0.painDuring,
                     painAfter: $0.painAfter,
+                    sets: $0.sets,
+                    reps: $0.reps,
+                    loadKg: $0.loadKg,
+                    holdSeconds: $0.holdSeconds,
                     response24h: $0.response24hRaw,
                     decision: $0.decisionRaw,
                     notes: $0.notes,
@@ -289,6 +297,10 @@ enum ExportImportService {
         s.whatIDid = dto.whatIDid
         s.painDuring = dto.painDuring
         s.painAfter = dto.painAfter
+        s.sets = dto.sets
+        s.reps = dto.reps
+        s.loadKg = dto.loadKg
+        s.holdSeconds = dto.holdSeconds
         s.response24hRaw = dto.response24h
         s.decisionRaw = dto.decision
         s.notes = dto.notes

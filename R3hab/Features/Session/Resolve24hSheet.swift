@@ -26,6 +26,9 @@ struct Resolve24hSheet: View {
                         .font(.body)
                     LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
                     LabeledContent("During / after", value: "\(session.painDuring) → \(session.painAfter)")
+                    if let resistance = session.resistanceSummary {
+                        LabeledContent("Resistance", value: resistance)
+                    }
                 }
 
                 Section("How is the tendon next day?") {

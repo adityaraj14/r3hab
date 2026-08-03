@@ -63,34 +63,60 @@ struct MetricChartCard: View {
     let series: [ChartSeriesLine]
     var yDomain: ClosedRange<Double> = 0...10
     var unitHint: String = ""
+    /// Optional load series in kg; plotted scaled onto the pain axis with real kg in the legend.
+    var loadPoints: [DayValue] = []
 
     init(
         title: String,
         points: [DayValue],
         yDomain: ClosedRange<Double> = 0...10,
         unitHint: String = "",
-        lineColor: Color = .accentColor
+        lineColor: Color = .accentColor,
+        loadPoints: [DayValue] = []
     ) {
         self.title = title
         self.series = [ChartSeriesLine(label: title, points: points, color: lineColor)]
         self.yDomain = yDomain
         self.unitHint = unitHint
+        self.loadPoints = loadPoints
     }
 
     init(
         title: String,
         series: [ChartSeriesLine],
         yDomain: ClosedRange<Double> = 0...10,
-        unitHint: String = ""
+        unitHint: String = "",
+        loadPoints: [DayValue] = []
     ) {
         self.title = title
         self.series = series
         self.yDomain = yDomain
         self.unitHint = unitHint
+        self.loadPoints = loadPoints
     }
 
     private var hasData: Bool {
         series.contains { line in line.points.contains { $0.value != nil } }
+            || loadPoints.contains { $0.value != nil }
+    }
+
+    private var scaledLoad: (scaled: [DayValue], maxLoad: Double?) {
+        ChartMetricBuilder.scaledLoadSeries(loadPoints: loadPoints)
+    }
+
+    private var chartSeries: [ChartSeriesLine] {
+        var lines = series
+        let (scaled, maxLoad) = scaledLoad
+        if maxLoad != nil, scaled.contains(where: { $0.value != nil }) {
+            lines.append(
+                ChartSeriesLine(
+                    label: "Load",
+                    points: scaled,
+                    color: PainChartColors.load
+                )
+            )
+        }
+        return lines
     }
 
     var body: some View {
@@ -99,25 +125,33 @@ struct MetricChartCard: View {
                 Text(title)
                     .font(.headline)
                 Spacer()
-                if series.count == 1, let avg = ChartMetricBuilder.average(of: series[0].points) {
+                if series.count == 1, loadPoints.allSatisfy({ $0.value == nil }),
+                   let avg = ChartMetricBuilder.average(of: series[0].points) {
                     Text("avg \(avg.formatted(.number.precision(.fractionLength(1))))\(unitHint)")
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
                 }
             }
 
-            if series.count > 1 {
+            if series.count > 1 || scaledLoad.maxLoad != nil {
                 HStack(spacing: 12) {
                     ForEach(series) { line in
+                        legendItem(line: line, suffix: nil)
+                    }
+                    if let maxLoad = scaledLoad.maxLoad {
                         HStack(spacing: 6) {
                             Circle()
-                                .fill(line.color)
+                                .fill(PainChartColors.load)
                                 .frame(width: 8, height: 8)
-                            Text(line.label)
+                            Text("Load")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            if let avg = ChartMetricBuilder.average(of: line.points) {
-                                Text(avg.formatted(.number.precision(.fractionLength(1))))
+                            if let avg = ChartMetricBuilder.average(of: loadPoints) {
+                                Text("avg \(formatKg(avg)) · max \(formatKg(maxLoad)) kg")
+                                    .font(.caption.monospacedDigit())
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                Text("max \(formatKg(maxLoad)) kg")
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
@@ -128,8 +162,9 @@ struct MetricChartCard: View {
             }
 
             if hasData {
+                let lines = chartSeries
                 Chart {
-                    ForEach(series) { line in
+                    ForEach(lines) { line in
                         ForEach(line.points.filter { $0.value != nil }) { p in
                             if let v = p.value {
                                 LineMark(
@@ -138,6 +173,7 @@ struct MetricChartCard: View {
                                 )
                                 .interpolationMethod(.catmullRom)
                                 .foregroundStyle(by: .value("Series", line.label))
+                                .lineStyle(StrokeStyle(lineWidth: line.label == "Load" ? 2 : 2.5))
 
                                 PointMark(
                                     x: .value("Day", p.date),
@@ -148,7 +184,7 @@ struct MetricChartCard: View {
                         }
                     }
                 }
-                .chartForegroundStyleScale(domain: series.map(\.label), range: series.map(\.color))
+                .chartForegroundStyleScale(domain: lines.map(\.label), range: lines.map(\.color))
                 .chartLegend(.hidden)
                 .chartYScale(domain: yDomain)
                 .chartXAxis {
@@ -162,6 +198,9 @@ struct MetricChartCard: View {
                     AxisMarks(position: .leading)
                 }
                 .frame(height: 160)
+                .accessibilityLabel(scaledLoad.maxLoad == nil
+                    ? "\(title) trend"
+                    : "\(title) with resistance load trend")
             } else {
                 ContentUnavailableView(
                     "No data yet",
@@ -177,9 +216,33 @@ struct MetricChartCard: View {
                 .fill(Color(.secondarySystemBackground))
         )
     }
+
+    private func legendItem(line: ChartSeriesLine, suffix: String?) -> some View {
+        HStack(spacing: 6) {
+            Circle()
+                .fill(line.color)
+                .frame(width: 8, height: 8)
+            Text(line.label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if let avg = ChartMetricBuilder.average(of: line.points) {
+                Text(avg.formatted(.number.precision(.fractionLength(1))) + (suffix ?? ""))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
+    private func formatKg(_ kg: Double) -> String {
+        if kg.rounded() == kg {
+            return String(Int(kg))
+        }
+        return String(format: "%g", kg)
+    }
 }
 
 enum PainChartColors {
     static let knee = Color.accentColor
     static let lowerBack = Color.teal
+    static let load = Color.orange
 }

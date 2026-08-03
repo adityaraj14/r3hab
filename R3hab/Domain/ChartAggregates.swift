@@ -61,6 +61,12 @@ struct DailyMetricSnapshot: Equatable, Sendable {
     var steps: Int?
 }
 
+/// Session load point for resistance trend charts.
+struct SessionLoadSnapshot: Equatable, Sendable {
+    var date: Date
+    var loadKg: Double?
+}
+
 enum ChartMetricBuilder {
     static func series(
         rows: [DailyMetricSnapshot],
@@ -90,6 +96,55 @@ enum ChartMetricBuilder {
             result.append(DayValue(dayKey: key, date: day, value: value))
         }
         return result
+    }
+
+    /// Max load (kg) per calendar day across sessions that logged resistance.
+    static func loadSeries(
+        sessions: [SessionLoadSnapshot],
+        dayCount: Int,
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [DayValue] {
+        let startToday = calendar.startOfDay(for: today)
+        var maxByDay: [String: Double] = [:]
+        for s in sessions {
+            guard let load = s.loadKg else { continue }
+            let key = CalendarDay.dayKey(s.date, calendar: calendar)
+            maxByDay[key] = max(maxByDay[key] ?? 0, load)
+        }
+
+        var result: [DayValue] = []
+        for offset in stride(from: dayCount - 1, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
+            let key = CalendarDay.dayKey(day, calendar: calendar)
+            result.append(DayValue(dayKey: key, date: day, value: maxByDay[key]))
+        }
+        return result
+    }
+
+    /// Map load kg onto the 0…10 pain axis so pain and load trends can share one chart.
+    static func scaledLoadSeries(
+        loadPoints: [DayValue],
+        painDomainMax: Double = 10
+    ) -> (scaled: [DayValue], maxLoad: Double?) {
+        let loads = loadPoints.compactMap(\.value)
+        guard let maxLoad = loads.max(), maxLoad > 0 else {
+            return (
+                loadPoints.map { DayValue(dayKey: $0.dayKey, date: $0.date, value: nil) },
+                nil
+            )
+        }
+        let scaled = loadPoints.map { point -> DayValue in
+            guard let v = point.value else {
+                return DayValue(dayKey: point.dayKey, date: point.date, value: nil)
+            }
+            return DayValue(
+                dayKey: point.dayKey,
+                date: point.date,
+                value: (v / maxLoad) * painDomainMax
+            )
+        }
+        return (scaled, maxLoad)
     }
 
     static func average(of series: [DayValue]) -> Double? {

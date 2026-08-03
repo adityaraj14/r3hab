@@ -380,9 +380,13 @@ struct SettingsStubView: View {
                 date: today,
                 phase: phase,
                 sessionType: .isometrics,
-                whatIDid: "Wall sit 3×30s",
+                whatIDid: "Leg extension 3×1 @ 20 kg 30s hold",
                 painDuring: 2,
-                painAfter: 1
+                painAfter: 1,
+                sets: 3,
+                reps: 1,
+                loadKg: 20,
+                holdSeconds: 30
             )
             modelContext.insert(s)
         }
