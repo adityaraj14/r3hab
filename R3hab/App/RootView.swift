@@ -1,9 +1,11 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Main tab shell: Today / Log / Progress. Dark mode only. Onboarding gate (PR-13).
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(AppRouter.self) private var router
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
@@ -53,6 +55,14 @@ struct RootView: View {
         .onChange(of: sessions.count) { _, _ in
             Task { await syncNotifications() }
         }
+        .onChange(of: scenePhase) { _, phase in
+            // Finish SwiftData work under a background task before suspension.
+            // Holding a SQLite lock across suspend → OS SIGKILL 0xdead10cc
+            // ("dead lock"), which users see as “the app crashed” hours later.
+            if phase == .background {
+                flushSwiftDataForSuspension()
+            }
+        }
         .fullScreenCover(isPresented: $showOnboarding) {
             OnboardingView {
                 showOnboarding = false
@@ -88,10 +98,33 @@ struct RootView: View {
         guard let settings = try? AppBootstrap.ensureSettings(context: modelContext) else { return }
         await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
     }
+
+    @MainActor
+    private func flushSwiftDataForSuspension() {
+        let handle = BackgroundTaskBox()
+        handle.id = UIApplication.shared.beginBackgroundTask(withName: "r3hab.swiftdata.flush") {
+            handle.end()
+        }
+        guard handle.id != .invalid else { return }
+        defer { handle.end() }
+        try? modelContext.save()
+    }
+}
+
+/// Mutable box so the expiration handler can end the same background task id.
+private final class BackgroundTaskBox {
+    var id: UIBackgroundTaskIdentifier = .invalid
+
+    func end() {
+        guard id != .invalid else { return }
+        UIApplication.shared.endBackgroundTask(id)
+        id = .invalid
+    }
 }
 
 #Preview {
     RootView()
         .environment(AppRouter())
+        .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
         .preferredColorScheme(.dark)
 }
