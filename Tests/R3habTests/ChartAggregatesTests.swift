@@ -79,4 +79,36 @@ final class ChartAggregatesTests: XCTestCase {
         )
         XCTAssertEqual(knee.first?.value, 2)
     }
+
+    func testLoadSeriesTakesMaxPerDayAndFillsGaps() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let sessions: [SessionLoadSnapshot] = [
+            SessionLoadSnapshot(date: day(-2, from: today), loadKg: 20),
+            SessionLoadSnapshot(date: day(-2, from: today), loadKg: 25),
+            SessionLoadSnapshot(date: day(0, from: today), loadKg: 30)
+        ]
+
+        let series = ChartMetricBuilder.loadSeries(
+            sessions: sessions,
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(series.count, 3)
+        XCTAssertEqual(series[0].value, 25)
+        XCTAssertNil(series[1].value)
+        XCTAssertEqual(series[2].value, 30)
+    }
+
+    func testScaledLoadMapsOntoPainDomain() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let loadPoints = [
+            DayValue(dayKey: "a", date: day(-1, from: today), value: 20),
+            DayValue(dayKey: "b", date: today, value: 40)
+        ]
+        let (scaled, maxLoad) = ChartMetricBuilder.scaledLoadSeries(loadPoints: loadPoints)
+        XCTAssertEqual(maxLoad, 40)
+        XCTAssertEqual(scaled[0].value, 5)
+        XCTAssertEqual(scaled[1].value, 10)
+    }
 }

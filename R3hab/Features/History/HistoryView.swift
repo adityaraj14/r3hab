@@ -290,10 +290,24 @@ struct HistoryView: View {
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
             }
-            Text("\(s.date.formatted(date: .abbreviated, time: .omitted)) · \(s.painDuring)/\(s.painAfter)\(s.decision.map { " · \($0.title)" } ?? "")")
+            Text(sessionSubtitle(s))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func sessionSubtitle(_ s: TrainingSession) -> String {
+        var parts = [
+            s.date.formatted(date: .abbreviated, time: .omitted),
+            "\(s.painDuring)/\(s.painAfter)"
+        ]
+        if let resistance = s.resistanceSummary {
+            parts.append(resistance)
+        }
+        if let decision = s.decision {
+            parts.append(decision.title)
+        }
+        return parts.joined(separator: " · ")
     }
 }
 

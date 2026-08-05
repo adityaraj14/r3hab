@@ -66,19 +66,20 @@ struct HomeView: View {
         }
     }
 
-    private var amSparklineSeries: [ChartSeriesLine] {
-        [
-            ChartSeriesLine(
-                label: "Knee",
-                points: ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7),
-                color: PainChartColors.knee
-            ),
-            ChartSeriesLine(
-                label: "Back",
-                points: ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: 7),
-                color: PainChartColors.lowerBack
-            )
-        ]
+    private var kneeAMSparkline: [DayValue] {
+        ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7)
+    }
+
+    private var backAMSparkline: [DayValue] {
+        ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: 7)
+    }
+
+    private var hasKneeAMSparkline: Bool {
+        kneeAMSparkline.contains { $0.value != nil }
+    }
+
+    private var hasBackAMSparkline: Bool {
+        backAMSparkline.contains { $0.value != nil }
     }
 
     private var pendingBadge: Int { overduePending.count }
@@ -107,18 +108,32 @@ struct HomeView: View {
 
                     checklist
 
-                    if amSparklineSeries.contains(where: { line in line.points.contains { $0.value != nil } }) {
-                        VStack(alignment: .leading, spacing: 8) {
-                            HStack {
-                                Text("AM pain · 7 days")
-                                    .font(.subheadline.weight(.semibold))
-                                Spacer()
-                                HStack(spacing: 10) {
+                    if hasKneeAMSparkline || hasBackAMSparkline {
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("AM pain · 7 days")
+                                .font(.subheadline.weight(.semibold))
+
+                            if hasKneeAMSparkline {
+                                VStack(alignment: .leading, spacing: 6) {
                                     legendDot(color: PainChartColors.knee, label: "Knee")
-                                    legendDot(color: PainChartColors.lowerBack, label: "Back")
+                                    SparklineView(
+                                        points: kneeAMSparkline,
+                                        lineColor: PainChartColors.knee,
+                                        height: 40
+                                    )
                                 }
                             }
-                            SparklineView(series: amSparklineSeries, height: 44)
+
+                            if hasBackAMSparkline {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    legendDot(color: PainChartColors.lowerBack, label: "Lower back")
+                                    SparklineView(
+                                        points: backAMSparkline,
+                                        lineColor: PainChartColors.lowerBack,
+                                        height: 40
+                                    )
+                                }
+                            }
                         }
                         .padding()
                         .background(
@@ -231,7 +246,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text(session.whatIDid)
                 .font(.subheadline.weight(.semibold))
-            Text("\(session.date.formatted(date: .abbreviated, time: .omitted)) · during \(session.painDuring) / after \(session.painAfter)")
+            Text(pendingSubtitle(session))
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
@@ -260,6 +275,17 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.orange.opacity(0.12))
         )
+    }
+
+    private func pendingSubtitle(_ session: TrainingSession) -> String {
+        var parts = [
+            session.date.formatted(date: .abbreviated, time: .omitted),
+            "during \(session.painDuring) / after \(session.painAfter)"
+        ]
+        if let resistance = session.resistanceSummary {
+            parts.append(resistance)
+        }
+        return parts.joined(separator: " · ")
     }
 
     private func phaseABanner(_ status: PhaseAExitStatus) -> some View {

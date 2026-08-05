@@ -10,6 +10,13 @@ final class TrainingSession {
     var whatIDid: String
     var painDuring: Int
     var painAfter: Int
+    /// Structured resistance for leg-extension isometrics / HSR (optional).
+    var sets: Int?
+    var reps: Int?
+    /// Machine load in kilograms.
+    var loadKg: Double?
+    /// Hold duration in seconds (isometrics). Nil for HSR (fixed 3s up / 3s down tempo).
+    var holdSeconds: Int?
     var response24hRaw: String
     var decisionRaw: String?
     var notes: String
@@ -50,6 +57,10 @@ final class TrainingSession {
         whatIDid: String,
         painDuring: Int,
         painAfter: Int,
+        sets: Int? = nil,
+        reps: Int? = nil,
+        loadKg: Double? = nil,
+        holdSeconds: Int? = nil,
         calendar: Calendar = .current
     ) {
         self.id = id
@@ -59,6 +70,10 @@ final class TrainingSession {
         self.whatIDid = whatIDid
         self.painDuring = painDuring
         self.painAfter = painAfter
+        self.sets = sets
+        self.reps = reps
+        self.loadKg = loadKg
+        self.holdSeconds = holdSeconds
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
@@ -67,5 +82,38 @@ final class TrainingSession {
         self.resolvedAt = nil
         self.createdAt = Date()
         self.updatedAt = Date()
+    }
+
+    /// True when this session carries structured load suitable for resistance charts.
+    var hasResistanceLog: Bool {
+        loadKg != nil || sets != nil || reps != nil || holdSeconds != nil
+    }
+
+    var resistanceSummary: String? {
+        guard hasResistanceLog else { return nil }
+        var parts: [String] = []
+        if let sets, let reps {
+            parts.append("\(sets)×\(reps)")
+        } else if let sets {
+            parts.append("\(sets) sets")
+        } else if let reps {
+            parts.append("\(reps) reps")
+        }
+        if let loadKg {
+            parts.append(Self.formatLoad(loadKg) + " kg")
+        }
+        if sessionType == .isometrics, let holdSeconds {
+            parts.append("\(holdSeconds)s hold")
+        } else if sessionType == .hsrStrength {
+            parts.append("3s up / 3s down")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    static func formatLoad(_ kg: Double) -> String {
+        if kg.rounded() == kg {
+            return String(Int(kg))
+        }
+        return String(format: "%g", kg)
     }
 }
