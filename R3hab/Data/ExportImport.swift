@@ -83,6 +83,7 @@ struct SessionDTO: Codable {
     /// Pounds. JSON may still use `loadKg` from older backups (same numeric field).
     var loadLbs: Double?
     var holdSeconds: Int?
+    var loadRegion: String?
     var response24h: String
     var decision: String?
     var notes: String
@@ -93,7 +94,7 @@ struct SessionDTO: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
-        case sets, reps, loadLbs, holdSeconds
+        case sets, reps, loadLbs, holdSeconds, loadRegion
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
         case loadKg // legacy key
     }
@@ -110,6 +111,7 @@ struct SessionDTO: Codable {
         reps: Int?,
         loadLbs: Double?,
         holdSeconds: Int?,
+        loadRegion: String?,
         response24h: String,
         decision: String?,
         notes: String,
@@ -129,6 +131,7 @@ struct SessionDTO: Codable {
         self.reps = reps
         self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
+        self.loadRegion = loadRegion
         self.response24h = response24h
         self.decision = decision
         self.notes = notes
@@ -152,6 +155,7 @@ struct SessionDTO: Codable {
         loadLbs = try c.decodeIfPresent(Double.self, forKey: .loadLbs)
             ?? c.decodeIfPresent(Double.self, forKey: .loadKg)
         holdSeconds = try c.decodeIfPresent(Int.self, forKey: .holdSeconds)
+        loadRegion = try c.decodeIfPresent(String.self, forKey: .loadRegion)
         response24h = try c.decode(String.self, forKey: .response24h)
         decision = try c.decodeIfPresent(String.self, forKey: .decision)
         notes = try c.decode(String.self, forKey: .notes)
@@ -174,6 +178,7 @@ struct SessionDTO: Codable {
         try c.encodeIfPresent(reps, forKey: .reps)
         try c.encodeIfPresent(loadLbs, forKey: .loadLbs)
         try c.encodeIfPresent(holdSeconds, forKey: .holdSeconds)
+        try c.encodeIfPresent(loadRegion, forKey: .loadRegion)
         try c.encode(response24h, forKey: .response24h)
         try c.encodeIfPresent(decision, forKey: .decision)
         try c.encode(notes, forKey: .notes)
@@ -185,8 +190,8 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    /// v2 adds lower-back AM/PM pain. v3 adds structured resistance (sets/reps/load/hold).
-    static let schemaVersion = 3
+    /// v2 lower-back pain. v3 resistance load. v4 loadRegion (knee vs lowerBack).
+    static let schemaVersion = 4
     static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
 
@@ -255,6 +260,7 @@ enum ExportImportService {
                     reps: $0.reps,
                     loadLbs: $0.loadLbs,
                     holdSeconds: $0.holdSeconds,
+                    loadRegion: $0.loadRegionRaw,
                     response24h: $0.response24hRaw,
                     decision: $0.decisionRaw,
                     notes: $0.notes,
@@ -394,6 +400,7 @@ enum ExportImportService {
         s.reps = dto.reps
         s.loadLbs = dto.loadLbs
         s.holdSeconds = dto.holdSeconds
+        s.loadRegionRaw = dto.loadRegion
         s.response24hRaw = dto.response24h
         s.decisionRaw = dto.decision
         s.notes = dto.notes

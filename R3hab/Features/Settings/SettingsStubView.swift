@@ -386,7 +386,8 @@ struct SettingsStubView: View {
                 sets: 3,
                 reps: 1,
                 loadLbs: 15,
-                holdSeconds: 30
+                holdSeconds: 30,
+                loadRegion: .knee
             )
             modelContext.insert(s)
         }

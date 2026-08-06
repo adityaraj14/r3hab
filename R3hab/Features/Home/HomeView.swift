@@ -12,6 +12,7 @@ struct HomeView: View {
     @State private var showAM = false
     @State private var showPM = false
     @State private var showSession = false
+    @State private var showBackSession = false
     @State private var resolveTargetId: UUID?
     @State private var restConfirmId: UUID?
 
@@ -170,7 +171,11 @@ struct HomeView: View {
                     .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showSession) {
-                NavigationStack { SessionEditor(targetDate: today) }
+                NavigationStack { SessionEditor(targetDate: today, focus: .kneeResistance) }
+                    .preferredColorScheme(.dark)
+            }
+            .sheet(isPresented: $showBackSession) {
+                NavigationStack { SessionEditor(targetDate: today, focus: .lowerBackResistance) }
                     .preferredColorScheme(.dark)
             }
             .sheet(isPresented: Binding(
@@ -383,7 +388,14 @@ struct HomeView: View {
             .controlSize(.large)
 
             Button { showSession = true } label: {
-                Label("Log training session", systemImage: "figure.strengthtraining.traditional")
+                Label("Log knee training", systemImage: "figure.strengthtraining.traditional")
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .controlSize(.large)
+
+            Button { showBackSession = true } label: {
+                Label("Log hip thrust (back)", systemImage: "figure.core.training")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.bordered)

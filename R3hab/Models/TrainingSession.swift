@@ -10,7 +10,7 @@ final class TrainingSession {
     var whatIDid: String
     var painDuring: Int
     var painAfter: Int
-    /// Structured resistance for leg-extension isometrics / HSR (optional).
+    /// Structured resistance (optional).
     var sets: Int?
     var reps: Int?
     /// Machine load in pounds. Stored under original column name `loadKg` for existing installs.
@@ -18,6 +18,8 @@ final class TrainingSession {
     var loadLbs: Double?
     /// Hold duration in seconds (isometrics). Nil for HSR (fixed 3s up / 3s down tempo).
     var holdSeconds: Int?
+    /// Which Progress chart series this load plots on (`knee` / `lowerBack`). Nil + load → treated as knee for legacy rows.
+    var loadRegionRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
     var notes: String
@@ -50,6 +52,21 @@ final class TrainingSession {
         set { decisionRaw = newValue?.rawValue }
     }
 
+    var loadRegion: LoadRegion? {
+        get {
+            guard let loadRegionRaw else { return nil }
+            return LoadRegion(rawValue: loadRegionRaw)
+        }
+        set { loadRegionRaw = newValue?.rawValue }
+    }
+
+    /// Region used for Progress load series. Legacy rows with load but no region map to knee.
+    var effectiveLoadRegion: LoadRegion? {
+        if let loadRegion { return loadRegion }
+        if hasResistanceLog { return .knee }
+        return nil
+    }
+
     init(
         id: UUID = UUID(),
         date: Date,
@@ -62,6 +79,7 @@ final class TrainingSession {
         reps: Int? = nil,
         loadLbs: Double? = nil,
         holdSeconds: Int? = nil,
+        loadRegion: LoadRegion? = nil,
         calendar: Calendar = .current
     ) {
         self.id = id
@@ -75,6 +93,7 @@ final class TrainingSession {
         self.reps = reps
         self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
+        self.loadRegionRaw = loadRegion?.rawValue
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
@@ -93,6 +112,9 @@ final class TrainingSession {
     var resistanceSummary: String? {
         guard hasResistanceLog else { return nil }
         var parts: [String] = []
+        if let region = effectiveLoadRegion {
+            parts.append(region == .lowerBack ? "Back" : "Knee")
+        }
         if let sets, let reps {
             parts.append("\(sets)×\(reps)")
         } else if let sets {

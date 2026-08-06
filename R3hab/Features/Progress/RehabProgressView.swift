@@ -31,9 +31,20 @@ struct RehabProgressView: View {
         }
     }
 
-    private var loadPoints: [DayValue] {
+    private var kneeLoadPoints: [DayValue] {
         ChartMetricBuilder.loadSeries(
-            sessions: sessions.map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
+            sessions: sessions
+                .filter { $0.effectiveLoadRegion == .knee }
+                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
+            dayCount: range.rawValue
+        )
+    }
+
+    private var backLoadPoints: [DayValue] {
+        ChartMetricBuilder.loadSeries(
+            sessions: sessions
+                .filter { $0.effectiveLoadRegion == .lowerBack }
+                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
             dayCount: range.rawValue
         )
     }
@@ -152,14 +163,14 @@ struct RehabProgressView: View {
                             points: kneeAM,
                             yDomain: 0...10,
                             lineColor: PainChartColors.knee,
-                            loadPoints: loadPoints
+                            loadPoints: kneeLoadPoints
                         )
                         MetricChartCard(
                             title: "Knee daily pain PM",
                             points: kneePM,
                             yDomain: 0...10,
                             lineColor: PainChartColors.knee,
-                            loadPoints: loadPoints
+                            loadPoints: kneeLoadPoints
                         )
 
                         Text("Lower back")
@@ -170,13 +181,15 @@ struct RehabProgressView: View {
                             title: "Back resting pain AM",
                             points: backAM,
                             yDomain: 0...10,
-                            lineColor: PainChartColors.lowerBack
+                            lineColor: PainChartColors.lowerBack,
+                            loadPoints: backLoadPoints
                         )
                         MetricChartCard(
                             title: "Back daily pain PM",
                             points: backPM,
                             yDomain: 0...10,
-                            lineColor: PainChartColors.lowerBack
+                            lineColor: PainChartColors.lowerBack,
+                            loadPoints: backLoadPoints
                         )
 
                         MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")

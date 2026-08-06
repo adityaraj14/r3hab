@@ -13,11 +13,14 @@ struct SessionEditor: View {
     var targetDate: Date = Date()
     /// When set, editor updates this row (backfill resistance, fix free-text, etc.).
     var existing: TrainingSession?
+    /// New-session shortcut: knee machine vs hip thrust vs freeform.
+    var focus: SessionLogFocus = .general
 
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var sessionType: SessionType = .isometrics
     @State private var whatIDid: String = ""
     @State private var selectedPresetId: String?
+    @State private var loadRegion: LoadRegion = .knee
     @State private var painDuring: Int? = nil
     @State private var painAfter: Int? = nil
     @State private var setsText: String = ""
@@ -40,6 +43,9 @@ struct SessionEditor: View {
            preset.tracksResistance {
             return true
         }
+        if focus == .kneeResistance || focus == .lowerBackResistance {
+            return true
+        }
         if sessionType == .isometrics || sessionType == .hsrStrength {
             return true
         }
@@ -51,6 +57,19 @@ struct SessionEditor: View {
 
     private var isIsometricResistance: Bool {
         sessionType == .isometrics
+    }
+
+    private var isHipThrustFocus: Bool {
+        selectedPresetId == SessionPreset.hipThrustId || loadRegion == .lowerBack
+    }
+
+    private var navigationTitleText: String {
+        if isEditing { return "Edit session" }
+        switch focus {
+        case .lowerBackResistance: return "Log hip thrust"
+        case .kneeResistance: return "Log knee training"
+        case .general: return "Log session"
+        }
     }
 
     var body: some View {
@@ -65,33 +84,41 @@ struct SessionEditor: View {
                     }
                 }
                 .onChange(of: phase) { _, newPhase in
-                    guard !isEditing else { return }
+                    guard !isEditing, focus == .general || focus == .kneeResistance else { return }
+                    if focus == .lowerBackResistance { return }
                     if let preferred = SessionPreset.resistancePreset(for: newPhase) {
                         applyPreset(preferred)
                     }
                 }
             }
 
-            Section("Preset") {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(SessionPreset.forPhase(phase)) { preset in
-                            Button(preset.label) {
-                                applyPreset(preset)
+            if focus != .lowerBackResistance {
+                Section("Preset") {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack {
+                            ForEach(SessionPreset.forPhase(phase)) { preset in
+                                Button(preset.label) {
+                                    applyPreset(preset)
+                                }
+                                .buttonStyle(.bordered)
+                                .controlSize(.small)
+                                .tint(selectedPresetId == preset.id ? .accentColor : nil)
                             }
-                            .buttonStyle(.bordered)
-                            .controlSize(.small)
-                            .tint(selectedPresetId == preset.id ? .accentColor : nil)
                         }
                     }
                 }
             }
 
             Section("Session") {
-                Picker("Type", selection: $sessionType) {
-                    ForEach(SessionType.allCases) { t in
-                        Text(t.title).tag(t)
+                if focus != .lowerBackResistance {
+                    Picker("Type", selection: $sessionType) {
+                        ForEach(SessionType.allCases) { t in
+                            Text(t.title).tag(t)
+                        }
                     }
+                } else {
+                    LabeledContent("Type", value: "HSR / strength")
+                    LabeledContent("Focus", value: "Lower back · hip thrust")
                 }
                 TextField("What I did", text: $whatIDid, axis: .vertical)
                     .lineLimit(2...5)
@@ -140,7 +167,7 @@ struct SessionEditor: View {
                 }
             }
         }
-        .navigationTitle(isEditing ? "Edit session" : "Log session")
+        .navigationTitle(navigationTitleText)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -174,12 +201,20 @@ struct SessionEditor: View {
     @ViewBuilder
     private var resistanceSection: some View {
         Section {
+            if focus == .general || isEditing {
+                Picker("Plots on", selection: $loadRegion) {
+                    Text("Knee Progress").tag(LoadRegion.knee)
+                    Text("Back Progress").tag(LoadRegion.lowerBack)
+                }
+                .pickerStyle(.segmented)
+            }
+
             HStack {
                 labeledField(title: "Sets", text: $setsText, keyboard: .numberPad)
                 labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
                 labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
             }
-            if isIsometricResistance {
+            if isIsometricResistance, loadRegion == .knee {
                 HStack {
                     Text("Time (sec)")
                         .font(.subheadline)
@@ -191,30 +226,14 @@ struct SessionEditor: View {
                         .frame(maxWidth: 80)
                         .accessibilityLabel("Hold time in seconds")
                 }
-            } else if sessionType == .hsrStrength {
-                HStack {
-                    Text("Tempo")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("3s up · 3s down")
-                        .font(.subheadline.monospacedDigit().weight(.medium))
-                        .foregroundStyle(.primary)
-                }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("Tempo: 3 seconds up, 3 seconds down")
             }
         } header: {
-            Text("Resistance (for Progress)")
+            Text(loadRegion == .lowerBack ? "Hip thrust resistance" : "Leg extension resistance")
         } footer: {
             Text(
-                isEditing
-                    ? "Add sets, reps, and load in pounds so this session plots on Progress knee charts (orange Load line)."
-                    : (
-                        isIsometricResistance
-                            ? "Track machine load in pounds so Progress can plot pain vs resistance."
-                            : "Heavy slow resistance uses a fixed 3 second up / 3 second down tempo. Load is in pounds."
-                    )
+                loadRegion == .lowerBack
+                    ? "Load (lb) plots as the orange line on Progress → Lower back charts."
+                    : "Load (lb) plots as the orange line on Progress → Knee charts."
             )
         }
     }
@@ -242,6 +261,7 @@ struct SessionEditor: View {
             painDuring = existing.painDuring
             painAfter = existing.painAfter
             notes = existing.notes
+            loadRegion = existing.effectiveLoadRegion ?? .knee
             if let sets = existing.sets { setsText = String(sets) }
             if let reps = existing.reps { repsText = String(reps) }
             if let load = existing.loadLbs {
@@ -252,8 +272,10 @@ struct SessionEditor: View {
             } else if existing.sessionType == .isometrics {
                 holdSecondsText = "30"
             }
-            if let match = SessionPreset.all.first(where: {
-                $0.tracksResistance && $0.sessionType == existing.sessionType
+            if loadRegion == .lowerBack {
+                selectedPresetId = SessionPreset.hipThrustId
+            } else if let match = SessionPreset.all.first(where: {
+                $0.tracksResistance && $0.loadRegion == .knee && $0.sessionType == existing.sessionType
             }) {
                 selectedPresetId = match.id
             }
@@ -266,10 +288,28 @@ struct SessionEditor: View {
         } else if let settings {
             phase = settings.currentPhase
         }
-        if let preferred = SessionPreset.resistancePreset(for: phase) {
-            applyPreset(preferred)
-        } else if let first = SessionPreset.forPhase(phase).first(where: { $0.id != "custom" }) {
-            applyPreset(first)
+
+        switch focus {
+        case .lowerBackResistance:
+            applyPreset(SessionPreset.hipThrust)
+            loadRegion = .lowerBack
+            if setsText.isEmpty { setsText = "3" }
+            if repsText.isEmpty { repsText = "8" }
+            syncWhatIDidFromResistance()
+        case .kneeResistance:
+            loadRegion = .knee
+            if let preferred = SessionPreset.resistancePreset(for: phase) {
+                applyPreset(preferred)
+            } else {
+                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.legExtensionIsometricId }!)
+            }
+        case .general:
+            loadRegion = .knee
+            if let preferred = SessionPreset.resistancePreset(for: phase) {
+                applyPreset(preferred)
+            } else if let first = SessionPreset.forPhase(phase).first(where: { $0.id != "custom" }) {
+                applyPreset(first)
+            }
         }
         refreshSpacing()
     }
@@ -277,6 +317,9 @@ struct SessionEditor: View {
     private func applyPreset(_ preset: SessionPreset) {
         selectedPresetId = preset.id
         sessionType = preset.sessionType
+        if let region = preset.loadRegion {
+            loadRegion = region
+        }
         if !preset.whatIDid.isEmpty, !isEditing || whatIDid.isEmpty {
             whatIDid = preset.whatIDid
         }
@@ -295,8 +338,6 @@ struct SessionEditor: View {
 
     private func syncWhatIDidFromResistance() {
         guard showsResistanceTracker else { return }
-        // Don't overwrite free-text history unless user is actively filling resistance fields
-        // or the current text is already a generated leg-extension summary.
         let sets = Int(setsText.trimmingCharacters(in: .whitespaces))
         let reps = Int(repsText.trimmingCharacters(in: .whitespaces))
         let load = Double(loadText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
@@ -306,24 +347,22 @@ struct SessionEditor: View {
             || (isIsometricResistance && hold != nil)
         guard hasAnyResistanceInput else { return }
 
-        if isEditing, !whatIDid.isEmpty, !whatIDid.lowercased().contains("leg extension") {
-            // Keep original free-text description when backfilling structured load.
+        let lower = whatIDid.lowercased()
+        if isEditing, !whatIDid.isEmpty,
+           !lower.contains("leg extension"), !lower.contains("hip thrust") {
             return
         }
 
-        var parts: [String] = ["Leg extension"]
+        let name = isHipThrustFocus || loadRegion == .lowerBack ? "Hip thrust" : "Leg extension"
+        var parts: [String] = [name]
         if let sets, let reps {
             parts.append("\(sets)×\(reps)")
         }
         if let load {
             parts.append("@ \(TrainingSession.formatLoad(load)) lb")
         }
-        if isIsometricResistance {
-            if let hold {
-                parts.append("\(hold)s hold")
-            }
-        } else if sessionType == .hsrStrength {
-            parts.append("3s up / 3s down")
+        if isIsometricResistance, loadRegion == .knee, let hold {
+            parts.append("\(hold)s hold")
         }
         whatIDid = parts.joined(separator: " ")
     }
@@ -361,6 +400,7 @@ struct SessionEditor: View {
         var reps: Int?
         var loadLbs: Double?
         var holdSeconds: Int?
+        var region: LoadRegion?
 
         if showsResistanceTracker {
             let setsTrim = setsText.trimmingCharacters(in: .whitespaces)
@@ -389,12 +429,15 @@ struct SessionEditor: View {
                 }
                 loadLbs = parsed
             }
-            if isIsometricResistance, !holdTrim.isEmpty {
+            if isIsometricResistance, loadRegion == .knee, !holdTrim.isEmpty {
                 guard let parsed = Int(holdTrim), parsed > 0 else {
                     errorMessage = "Hold time must be a positive number of seconds."
                     return
                 }
                 holdSeconds = parsed
+            }
+            if loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil {
+                region = loadRegion
             }
         }
 
@@ -408,7 +451,8 @@ struct SessionEditor: View {
             existing.sets = sets
             existing.reps = reps
             existing.loadLbs = loadLbs
-            existing.holdSeconds = isIsometricResistance ? holdSeconds : nil
+            existing.holdSeconds = (isIsometricResistance && loadRegion == .knee) ? holdSeconds : nil
+            existing.loadRegion = region
             existing.updatedAt = Date()
             do {
                 try modelContext.save()
@@ -430,7 +474,8 @@ struct SessionEditor: View {
             sets: sets,
             reps: reps,
             loadLbs: loadLbs,
-            holdSeconds: isIsometricResistance ? holdSeconds : nil,
+            holdSeconds: (isIsometricResistance && loadRegion == .knee) ? holdSeconds : nil,
+            loadRegion: region,
             calendar: calendar
         )
         session.notes = notes
@@ -456,7 +501,7 @@ struct SessionEditor: View {
 
 #Preview {
     NavigationStack {
-        SessionEditor()
+        SessionEditor(focus: .lowerBackResistance)
     }
     .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
     .preferredColorScheme(.dark)

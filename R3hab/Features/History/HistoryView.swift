@@ -32,9 +32,15 @@ struct HistoryView: View {
     }
 
     enum BackdateKind: String, CaseIterable, Identifiable {
-        case daily, session
+        case daily, session, hipThrust
         var id: String { rawValue }
-        var title: String { self == .daily ? "Check-in" : "Session" }
+        var title: String {
+            switch self {
+            case .daily: return "Check-in"
+            case .session: return "Knee session"
+            case .hipThrust: return "Hip thrust"
+            }
+        }
     }
 
     var body: some View {
@@ -98,8 +104,13 @@ struct HistoryView: View {
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
-                        Button("Log past session") {
+                        Button("Log past knee session") {
                             backdateKind = .session
+                            backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
+                            showBackdate = true
+                        }
+                        Button("Log past hip thrust") {
+                            backdateKind = .hipThrust
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
@@ -173,11 +184,11 @@ struct HistoryView: View {
                             Button("Continue") {
                                 showBackdate = false
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                    if backdateKind == .daily {
+                                    switch backdateKind {
+                                    case .daily:
                                         editDailyKey = DailyCheckIn.dayKey(for: backdateDate)
-                                        // open editor even if no row yet — use date via temp state
                                         pendingBackdateDaily = Calendar.current.startOfDay(for: backdateDate)
-                                    } else {
+                                    case .session, .hipThrust:
                                         pendingBackdateSession = Calendar.current.startOfDay(for: backdateDate)
                                     }
                                 }
@@ -205,7 +216,10 @@ struct HistoryView: View {
             )) {
                 if let d = pendingBackdateSession {
                     NavigationStack {
-                        SessionEditor(targetDate: d)
+                        SessionEditor(
+                            targetDate: d,
+                            focus: backdateKind == .hipThrust ? .lowerBackResistance : .kneeResistance
+                        )
                     }
                     .preferredColorScheme(.dark)
                 }
