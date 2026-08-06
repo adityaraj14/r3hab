@@ -35,7 +35,7 @@ struct RehabProgressView: View {
         ChartMetricBuilder.loadSeries(
             sessions: sessions
                 .filter { $0.effectiveLoadRegion == .knee }
-                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
+                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.chartLoadLbs) },
             dayCount: range.rawValue
         )
     }
@@ -44,7 +44,7 @@ struct RehabProgressView: View {
         ChartMetricBuilder.loadSeries(
             sessions: sessions
                 .filter { $0.effectiveLoadRegion == .lowerBack }
-                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
+                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.chartLoadLbs) },
             dayCount: range.rawValue
         )
     }

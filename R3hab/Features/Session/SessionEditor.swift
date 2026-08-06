@@ -27,6 +27,10 @@ struct SessionEditor: View {
     @State private var repsText: String = ""
     @State private var loadText: String = ""
     @State private var holdSecondsText: String = "30"
+    /// Isometric-style warm-up before HSR leg extension (reps / time / load).
+    @State private var warmupRepsText: String = ""
+    @State private var warmupHoldSecondsText: String = "30"
+    @State private var warmupLoadText: String = ""
     @State private var notes: String = ""
     @State private var errorMessage: String?
     @State private var spacingWarning: String?
@@ -57,6 +61,13 @@ struct SessionEditor: View {
 
     private var isIsometricResistance: Bool {
         sessionType == .isometrics
+    }
+
+    /// Warm-up block (iso form) before working HSR sets — knee leg extension HSR only.
+    private var showsHSRWarmup: Bool {
+        showsResistanceTracker
+            && sessionType == .hsrStrength
+            && loadRegion == .knee
     }
 
     private var isHipThrustFocus: Bool {
@@ -184,6 +195,9 @@ struct SessionEditor: View {
         .onChange(of: repsText) { _, _ in syncWhatIDidFromResistance() }
         .onChange(of: loadText) { _, _ in syncWhatIDidFromResistance() }
         .onChange(of: holdSecondsText) { _, _ in syncWhatIDidFromResistance() }
+        .onChange(of: warmupRepsText) { _, _ in syncWhatIDidFromResistance() }
+        .onChange(of: warmupHoldSecondsText) { _, _ in syncWhatIDidFromResistance() }
+        .onChange(of: warmupLoadText) { _, _ in syncWhatIDidFromResistance() }
         .sheet(isPresented: $showResolve) {
             if let existing {
                 Resolve24hSheet(session: existing)
@@ -200,24 +214,38 @@ struct SessionEditor: View {
 
     @ViewBuilder
     private var resistanceSection: some View {
-        Section {
-            if focus == .general || isEditing {
+        if focus == .general || isEditing {
+            Section {
                 Picker("Plots on", selection: $loadRegion) {
                     Text("Knee Progress").tag(LoadRegion.knee)
                     Text("Back Progress").tag(LoadRegion.lowerBack)
                 }
                 .pickerStyle(.segmented)
             }
+        }
 
+        if showsHSRWarmup {
+            Section {
+                isoStyleFields(
+                    repsText: $warmupRepsText,
+                    holdSecondsText: $warmupHoldSecondsText,
+                    loadText: $warmupLoadText
+                )
+            } header: {
+                Text("Warm-up (isometrics)")
+            } footer: {
+                Text("Same style as pure isometrics: reps (holds), time per hold, load (lb).")
+            }
+        }
+
+        Section {
             if isIsometricResistance {
-                // Isometrics: number of holds (reps), hold time, load — no “sets”.
-                HStack {
-                    labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
-                    labeledField(title: "Time (sec)", text: $holdSecondsText, keyboard: .numberPad)
-                    labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
-                }
+                isoStyleFields(
+                    repsText: $repsText,
+                    holdSecondsText: $holdSecondsText,
+                    loadText: $loadText
+                )
             } else {
-                // HSR / hip thrust: classic sets × reps @ load
                 HStack {
                     labeledField(title: "Sets", text: $setsText, keyboard: .numberPad)
                     labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
@@ -226,11 +254,11 @@ struct SessionEditor: View {
             }
         } header: {
             if loadRegion == .lowerBack {
-                Text("Hip thrust resistance")
+                Text("Hip thrust (work)")
             } else if isIsometricResistance {
                 Text("Isometric resistance")
             } else {
-                Text("HSR resistance")
+                Text(showsHSRWarmup ? "HSR (work)" : "HSR resistance")
             }
         } footer: {
             if isIsometricResistance {
@@ -238,8 +266,21 @@ struct SessionEditor: View {
             } else if loadRegion == .lowerBack {
                 Text("Sets × reps @ load (lb). Plots on Progress → Lower back charts.")
             } else {
-                Text("Sets × reps @ load (lb). Plots on Progress → Knee charts.")
+                Text("Working sets × reps @ load (lb). Progress load uses the heavier of warm-up vs work.")
             }
+        }
+    }
+
+    /// Shared isometric field row: reps (holds) · time · load.
+    private func isoStyleFields(
+        repsText: Binding<String>,
+        holdSecondsText: Binding<String>,
+        loadText: Binding<String>
+    ) -> some View {
+        HStack {
+            labeledField(title: "Reps", text: repsText, keyboard: .numberPad)
+            labeledField(title: "Time (sec)", text: holdSecondsText, keyboard: .numberPad)
+            labeledField(title: "Load (lb)", text: loadText, keyboard: .decimalPad)
         }
     }
 
@@ -276,6 +317,13 @@ struct SessionEditor: View {
                 holdSecondsText = String(hold)
             } else if existing.sessionType == .isometrics {
                 holdSecondsText = "30"
+            }
+            if let wuReps = existing.warmupReps { warmupRepsText = String(wuReps) }
+            if let wuHold = existing.warmupHoldSeconds {
+                warmupHoldSecondsText = String(wuHold)
+            }
+            if let wuLoad = existing.warmupLoadLbs {
+                warmupLoadText = TrainingSession.formatLoad(wuLoad)
             }
             if loadRegion == .lowerBack {
                 selectedPresetId = SessionPreset.hipThrustId
@@ -340,6 +388,11 @@ struct SessionEditor: View {
             } else {
                 if setsText.isEmpty { setsText = "3" }
                 if repsText.isEmpty { repsText = "8" }
+                // Knee HSR: seed a light iso warm-up block if empty
+                if preset.loadRegion == .knee {
+                    if warmupRepsText.isEmpty { warmupRepsText = "3" }
+                    if warmupHoldSecondsText.isEmpty { warmupHoldSecondsText = "30" }
+                }
             }
             syncWhatIDidFromResistance()
         }
@@ -352,9 +405,12 @@ struct SessionEditor: View {
         let reps = Int(repsText.trimmingCharacters(in: .whitespaces))
         let load = Double(loadText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let hold = Int(holdSecondsText.trimmingCharacters(in: .whitespaces))
+        let wuReps = Int(warmupRepsText.trimmingCharacters(in: .whitespaces))
+        let wuHold = Int(warmupHoldSecondsText.trimmingCharacters(in: .whitespaces))
+        let wuLoad = Double(warmupLoadText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
 
         let hasAnyResistanceInput = sets != nil || reps != nil || load != nil
-            || (isIsometricResistance && hold != nil)
+            || hold != nil || wuReps != nil || wuHold != nil || wuLoad != nil
         guard hasAnyResistanceInput else { return }
 
         let lower = whatIDid.lowercased()
@@ -365,17 +421,12 @@ struct SessionEditor: View {
 
         let name = isHipThrustFocus || loadRegion == .lowerBack ? "Hip thrust" : "Leg extension"
         var parts: [String] = [name]
+        if showsHSRWarmup, let wu = formatIsoPhrase(reps: wuReps, hold: wuHold, load: wuLoad) {
+            parts.append("WU \(wu)")
+        }
         if isIsometricResistance {
-            // e.g. Leg extension 4×30s @ 15 lb
-            if let reps, let hold {
-                parts.append("\(reps)×\(hold)s")
-            } else if let reps {
-                parts.append("\(reps) reps")
-            } else if let hold {
-                parts.append("\(hold)s hold")
-            }
-            if let load {
-                parts.append("@ \(TrainingSession.formatLoad(load)) lb")
+            if let block = formatIsoPhrase(reps: reps, hold: hold, load: load) {
+                parts.append(block)
             }
         } else {
             if let sets, let reps {
@@ -386,6 +437,21 @@ struct SessionEditor: View {
             }
         }
         whatIDid = parts.joined(separator: " ")
+    }
+
+    private func formatIsoPhrase(reps: Int?, hold: Int?, load: Double?) -> String? {
+        var bits: [String] = []
+        if let reps, let hold {
+            bits.append("\(reps)×\(hold)s")
+        } else if let reps {
+            bits.append("\(reps) holds")
+        } else if let hold {
+            bits.append("\(hold)s")
+        }
+        if let load {
+            bits.append("@ \(TrainingSession.formatLoad(load)) lb")
+        }
+        return bits.isEmpty ? nil : bits.joined(separator: " ")
     }
 
     private func refreshSpacing() {
@@ -421,6 +487,9 @@ struct SessionEditor: View {
         var reps: Int?
         var loadLbs: Double?
         var holdSeconds: Int?
+        var warmupReps: Int?
+        var warmupHoldSeconds: Int?
+        var warmupLoadLbs: Double?
         var region: LoadRegion?
 
         if showsResistanceTracker {
@@ -430,7 +499,6 @@ struct SessionEditor: View {
             let holdTrim = holdSecondsText.trimmingCharacters(in: .whitespaces)
 
             if isIsometricResistance {
-                // Isometrics: reps + hold time + load (sets unused)
                 sets = nil
                 if !repsTrim.isEmpty {
                     guard let parsed = Int(repsTrim), parsed > 0 else {
@@ -476,8 +544,37 @@ struct SessionEditor: View {
                     }
                     loadLbs = parsed
                 }
+
+                if showsHSRWarmup {
+                    let wuRepsTrim = warmupRepsText.trimmingCharacters(in: .whitespaces)
+                    let wuHoldTrim = warmupHoldSecondsText.trimmingCharacters(in: .whitespaces)
+                    let wuLoadTrim = warmupLoadText.trimmingCharacters(in: .whitespaces)
+                        .replacingOccurrences(of: ",", with: ".")
+                    if !wuRepsTrim.isEmpty {
+                        guard let parsed = Int(wuRepsTrim), parsed > 0 else {
+                            errorMessage = "Warm-up reps must be a positive whole number."
+                            return
+                        }
+                        warmupReps = parsed
+                    }
+                    if !wuHoldTrim.isEmpty {
+                        guard let parsed = Int(wuHoldTrim), parsed > 0 else {
+                            errorMessage = "Warm-up time must be a positive number of seconds."
+                            return
+                        }
+                        warmupHoldSeconds = parsed
+                    }
+                    if !wuLoadTrim.isEmpty {
+                        guard let parsed = Double(wuLoadTrim), parsed >= 0 else {
+                            errorMessage = "Warm-up load must be a number (lb)."
+                            return
+                        }
+                        warmupLoadLbs = parsed
+                    }
+                }
             }
-            if loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil {
+            if loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil
+                || warmupLoadLbs != nil || warmupReps != nil || warmupHoldSeconds != nil {
                 region = loadRegion
             }
         }
@@ -493,6 +590,9 @@ struct SessionEditor: View {
             existing.reps = reps
             existing.loadLbs = loadLbs
             existing.holdSeconds = isIsometricResistance ? holdSeconds : nil
+            existing.warmupReps = showsHSRWarmup ? warmupReps : nil
+            existing.warmupHoldSeconds = showsHSRWarmup ? warmupHoldSeconds : nil
+            existing.warmupLoadLbs = showsHSRWarmup ? warmupLoadLbs : nil
             existing.loadRegion = region
             existing.updatedAt = Date()
             do {
@@ -516,6 +616,9 @@ struct SessionEditor: View {
             reps: reps,
             loadLbs: loadLbs,
             holdSeconds: isIsometricResistance ? holdSeconds : nil,
+            warmupReps: showsHSRWarmup ? warmupReps : nil,
+            warmupHoldSeconds: showsHSRWarmup ? warmupHoldSeconds : nil,
+            warmupLoadLbs: showsHSRWarmup ? warmupLoadLbs : nil,
             loadRegion: region,
             calendar: calendar
         )

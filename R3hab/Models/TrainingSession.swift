@@ -16,8 +16,12 @@ final class TrainingSession {
     /// Machine load in pounds. Stored under original column name `loadKg` for existing installs.
     @Attribute(originalName: "loadKg")
     var loadLbs: Double?
-    /// Hold duration in seconds (isometrics). Nil for HSR (fixed 3s up / 3s down tempo).
+    /// Hold duration in seconds (isometrics). Nil for pure HSR working sets.
     var holdSeconds: Int?
+    /// Optional isometric warm-up before HSR (reps = holds, time, load).
+    var warmupReps: Int?
+    var warmupHoldSeconds: Int?
+    var warmupLoadLbs: Double?
     /// Which Progress chart series this load plots on (`knee` / `lowerBack`). Nil + load → treated as knee for legacy rows.
     var loadRegionRaw: String?
     var response24hRaw: String
@@ -79,6 +83,9 @@ final class TrainingSession {
         reps: Int? = nil,
         loadLbs: Double? = nil,
         holdSeconds: Int? = nil,
+        warmupReps: Int? = nil,
+        warmupHoldSeconds: Int? = nil,
+        warmupLoadLbs: Double? = nil,
         loadRegion: LoadRegion? = nil,
         calendar: Calendar = .current
     ) {
@@ -93,6 +100,9 @@ final class TrainingSession {
         self.reps = reps
         self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
+        self.warmupReps = warmupReps
+        self.warmupHoldSeconds = warmupHoldSeconds
+        self.warmupLoadLbs = warmupLoadLbs
         self.loadRegionRaw = loadRegion?.rawValue
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
@@ -107,36 +117,57 @@ final class TrainingSession {
     /// True when this session carries structured load suitable for resistance charts.
     var hasResistanceLog: Bool {
         loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil
+            || warmupLoadLbs != nil || warmupReps != nil || warmupHoldSeconds != nil
+    }
+
+    /// Prefer working-set load for Progress; fall back to warm-up load if only warm-up logged.
+    var chartLoadLbs: Double? {
+        if let loadLbs { return loadLbs }
+        return warmupLoadLbs
     }
 
     var resistanceSummary: String? {
         guard hasResistanceLog else { return nil }
         var parts: [String] = []
+        if let wu = Self.formatIsoBlock(reps: warmupReps, holdSeconds: warmupHoldSeconds, loadLbs: warmupLoadLbs) {
+            parts.append("WU \(wu)")
+        }
         if sessionType == .isometrics {
-            // e.g. 4×30s @ 15 lb
-            if let reps, let holdSeconds {
-                parts.append("\(reps)×\(holdSeconds)s")
-            } else if let reps {
-                parts.append("\(reps) holds")
-            } else if let holdSeconds {
-                parts.append("\(holdSeconds)s")
-            }
-            if let loadLbs {
-                parts.append("@ \(Self.formatLoad(loadLbs)) lb")
+            if let block = Self.formatIsoBlock(reps: reps, holdSeconds: holdSeconds, loadLbs: loadLbs) {
+                parts.append(block)
             }
         } else {
+            var work: [String] = []
             if let sets, let reps {
-                parts.append("\(sets)×\(reps)")
+                work.append("\(sets)×\(reps)")
             } else if let sets {
-                parts.append("\(sets) sets")
+                work.append("\(sets) sets")
             } else if let reps {
-                parts.append("\(reps) reps")
+                work.append("\(reps) reps")
             }
             if let loadLbs {
-                parts.append("@ \(Self.formatLoad(loadLbs)) lb")
+                work.append("@ \(Self.formatLoad(loadLbs)) lb")
+            }
+            if !work.isEmpty {
+                parts.append(work.joined(separator: " "))
             }
         }
-        return parts.isEmpty ? nil : parts.joined(separator: " ")
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private static func formatIsoBlock(reps: Int?, holdSeconds: Int?, loadLbs: Double?) -> String? {
+        var bits: [String] = []
+        if let reps, let holdSeconds {
+            bits.append("\(reps)×\(holdSeconds)s")
+        } else if let reps {
+            bits.append("\(reps) holds")
+        } else if let holdSeconds {
+            bits.append("\(holdSeconds)s")
+        }
+        if let loadLbs {
+            bits.append("@ \(Self.formatLoad(loadLbs)) lb")
+        }
+        return bits.isEmpty ? nil : bits.joined(separator: " ")
     }
 
     static func formatLoad(_ lbs: Double) -> String {

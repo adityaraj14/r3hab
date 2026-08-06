@@ -83,6 +83,9 @@ struct SessionDTO: Codable {
     /// Pounds. JSON may still use `loadKg` from older backups (same numeric field).
     var loadLbs: Double?
     var holdSeconds: Int?
+    var warmupReps: Int?
+    var warmupHoldSeconds: Int?
+    var warmupLoadLbs: Double?
     var loadRegion: String?
     var response24h: String
     var decision: String?
@@ -95,6 +98,7 @@ struct SessionDTO: Codable {
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
         case sets, reps, loadLbs, holdSeconds, loadRegion
+        case warmupReps, warmupHoldSeconds, warmupLoadLbs
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
         case loadKg // legacy key
     }
@@ -111,6 +115,9 @@ struct SessionDTO: Codable {
         reps: Int?,
         loadLbs: Double?,
         holdSeconds: Int?,
+        warmupReps: Int?,
+        warmupHoldSeconds: Int?,
+        warmupLoadLbs: Double?,
         loadRegion: String?,
         response24h: String,
         decision: String?,
@@ -131,6 +138,9 @@ struct SessionDTO: Codable {
         self.reps = reps
         self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
+        self.warmupReps = warmupReps
+        self.warmupHoldSeconds = warmupHoldSeconds
+        self.warmupLoadLbs = warmupLoadLbs
         self.loadRegion = loadRegion
         self.response24h = response24h
         self.decision = decision
@@ -155,6 +165,9 @@ struct SessionDTO: Codable {
         loadLbs = try c.decodeIfPresent(Double.self, forKey: .loadLbs)
             ?? c.decodeIfPresent(Double.self, forKey: .loadKg)
         holdSeconds = try c.decodeIfPresent(Int.self, forKey: .holdSeconds)
+        warmupReps = try c.decodeIfPresent(Int.self, forKey: .warmupReps)
+        warmupHoldSeconds = try c.decodeIfPresent(Int.self, forKey: .warmupHoldSeconds)
+        warmupLoadLbs = try c.decodeIfPresent(Double.self, forKey: .warmupLoadLbs)
         loadRegion = try c.decodeIfPresent(String.self, forKey: .loadRegion)
         response24h = try c.decode(String.self, forKey: .response24h)
         decision = try c.decodeIfPresent(String.self, forKey: .decision)
@@ -178,6 +191,9 @@ struct SessionDTO: Codable {
         try c.encodeIfPresent(reps, forKey: .reps)
         try c.encodeIfPresent(loadLbs, forKey: .loadLbs)
         try c.encodeIfPresent(holdSeconds, forKey: .holdSeconds)
+        try c.encodeIfPresent(warmupReps, forKey: .warmupReps)
+        try c.encodeIfPresent(warmupHoldSeconds, forKey: .warmupHoldSeconds)
+        try c.encodeIfPresent(warmupLoadLbs, forKey: .warmupLoadLbs)
         try c.encodeIfPresent(loadRegion, forKey: .loadRegion)
         try c.encode(response24h, forKey: .response24h)
         try c.encodeIfPresent(decision, forKey: .decision)
@@ -190,8 +206,8 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    /// v2 lower-back pain. v3 resistance load. v4 loadRegion (knee vs lowerBack).
-    static let schemaVersion = 4
+    /// v2 lower-back pain. v3 resistance. v4 loadRegion. v5 HSR iso warm-up fields.
+    static let schemaVersion = 5
     static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
 
@@ -260,6 +276,9 @@ enum ExportImportService {
                     reps: $0.reps,
                     loadLbs: $0.loadLbs,
                     holdSeconds: $0.holdSeconds,
+                    warmupReps: $0.warmupReps,
+                    warmupHoldSeconds: $0.warmupHoldSeconds,
+                    warmupLoadLbs: $0.warmupLoadLbs,
                     loadRegion: $0.loadRegionRaw,
                     response24h: $0.response24hRaw,
                     decision: $0.decisionRaw,
@@ -400,6 +419,9 @@ enum ExportImportService {
         s.reps = dto.reps
         s.loadLbs = dto.loadLbs
         s.holdSeconds = dto.holdSeconds
+        s.warmupReps = dto.warmupReps
+        s.warmupHoldSeconds = dto.warmupHoldSeconds
+        s.warmupLoadLbs = dto.warmupLoadLbs
         s.loadRegionRaw = dto.loadRegion
         s.response24hRaw = dto.response24h
         s.decisionRaw = dto.decision
