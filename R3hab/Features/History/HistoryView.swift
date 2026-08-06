@@ -314,20 +314,65 @@ struct HistoryView: View {
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 8) {
                 Text(s.whatIDid)
                     .font(.headline)
                     .lineLimit(2)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 Text(s.response24h.title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
+            }
+            HStack(spacing: 6) {
+                sessionTypeTag(s.sessionType)
+                if let region = s.effectiveLoadRegion, s.hasResistanceLog {
+                    regionTag(region)
+                }
             }
             Text(sessionSubtitle(s))
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func sessionTypeTag(_ type: SessionType) -> some View {
+        Text(type.shortTag)
+            .font(.caption2.weight(.semibold))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(sessionTypeTagForeground(type))
+            .background(sessionTypeTagBackground(type), in: Capsule())
+            .accessibilityLabel("Session type: \(type.title)")
+    }
+
+    private func sessionTypeTagBackground(_ type: SessionType) -> Color {
+        switch type {
+        case .isometrics: return Color.blue.opacity(0.22)
+        case .hsrStrength: return Color.orange.opacity(0.22)
+        case .energyStorage: return Color.purple.opacity(0.22)
+        case .tennisSport: return Color.green.opacity(0.22)
+        case .other: return Color.secondary.opacity(0.18)
+        }
+    }
+
+    private func sessionTypeTagForeground(_ type: SessionType) -> Color {
+        switch type {
+        case .isometrics: return .blue
+        case .hsrStrength: return .orange
+        case .energyStorage: return .purple
+        case .tennisSport: return .green
+        case .other: return .secondary
+        }
+    }
+
+    private func regionTag(_ region: LoadRegion) -> some View {
+        Text(region == .lowerBack ? "Back" : "Knee")
+            .font(.caption2.weight(.medium))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .foregroundStyle(.secondary)
+            .background(Color(.tertiarySystemFill), in: Capsule())
     }
 
     private func sessionSubtitle(_ s: TrainingSession) -> String {

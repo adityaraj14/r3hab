@@ -209,32 +209,37 @@ struct SessionEditor: View {
                 .pickerStyle(.segmented)
             }
 
-            HStack {
-                labeledField(title: "Sets", text: $setsText, keyboard: .numberPad)
-                labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
-                labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
-            }
-            if isIsometricResistance, loadRegion == .knee {
+            if isIsometricResistance {
+                // Isometrics: number of holds (reps), hold time, load — no “sets”.
                 HStack {
-                    Text("Time (sec)")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    TextField("Seconds", text: $holdSecondsText)
-                        .keyboardType(.numberPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 80)
-                        .accessibilityLabel("Hold time in seconds")
+                    labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
+                    labeledField(title: "Time (sec)", text: $holdSecondsText, keyboard: .numberPad)
+                    labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
+                }
+            } else {
+                // HSR / hip thrust: classic sets × reps @ load
+                HStack {
+                    labeledField(title: "Sets", text: $setsText, keyboard: .numberPad)
+                    labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
+                    labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
                 }
             }
         } header: {
-            Text(loadRegion == .lowerBack ? "Hip thrust resistance" : "Leg extension resistance")
+            if loadRegion == .lowerBack {
+                Text("Hip thrust resistance")
+            } else if isIsometricResistance {
+                Text("Isometric resistance")
+            } else {
+                Text("HSR resistance")
+            }
         } footer: {
-            Text(
-                loadRegion == .lowerBack
-                    ? "Load (lb) plots as the orange line on Progress → Lower back charts."
-                    : "Load (lb) plots as the orange line on Progress → Knee charts."
-            )
+            if isIsometricResistance {
+                Text("Reps = number of holds. Time = seconds per hold. Load in lb. Plots on Progress (orange Load line).")
+            } else if loadRegion == .lowerBack {
+                Text("Sets × reps @ load (lb). Plots on Progress → Lower back charts.")
+            } else {
+                Text("Sets × reps @ load (lb). Plots on Progress → Knee charts.")
+            }
         }
     }
 
@@ -295,6 +300,7 @@ struct SessionEditor: View {
             loadRegion = .lowerBack
             if setsText.isEmpty { setsText = "3" }
             if repsText.isEmpty { repsText = "8" }
+            holdSecondsText = ""
             syncWhatIDidFromResistance()
         case .kneeResistance:
             loadRegion = .knee
@@ -324,12 +330,16 @@ struct SessionEditor: View {
             whatIDid = preset.whatIDid
         }
         if preset.tracksResistance {
-            if setsText.isEmpty { setsText = "3" }
-            if repsText.isEmpty {
-                repsText = preset.sessionType == .isometrics ? "1" : "8"
-            }
-            if preset.sessionType == .isometrics, holdSecondsText.isEmpty {
-                holdSecondsText = "30"
+            if preset.sessionType == .isometrics {
+                // Isometrics: reps = number of holds; time = hold duration
+                if setsText.isEmpty { setsText = "" }
+                if repsText.isEmpty { repsText = "4" }
+                if holdSecondsText.isEmpty || holdSecondsText == "1" {
+                    holdSecondsText = "30"
+                }
+            } else {
+                if setsText.isEmpty { setsText = "3" }
+                if repsText.isEmpty { repsText = "8" }
             }
             syncWhatIDidFromResistance()
         }
@@ -355,14 +365,25 @@ struct SessionEditor: View {
 
         let name = isHipThrustFocus || loadRegion == .lowerBack ? "Hip thrust" : "Leg extension"
         var parts: [String] = [name]
-        if let sets, let reps {
-            parts.append("\(sets)×\(reps)")
-        }
-        if let load {
-            parts.append("@ \(TrainingSession.formatLoad(load)) lb")
-        }
-        if isIsometricResistance, loadRegion == .knee, let hold {
-            parts.append("\(hold)s hold")
+        if isIsometricResistance {
+            // e.g. Leg extension 4×30s @ 15 lb
+            if let reps, let hold {
+                parts.append("\(reps)×\(hold)s")
+            } else if let reps {
+                parts.append("\(reps) reps")
+            } else if let hold {
+                parts.append("\(hold)s hold")
+            }
+            if let load {
+                parts.append("@ \(TrainingSession.formatLoad(load)) lb")
+            }
+        } else {
+            if let sets, let reps {
+                parts.append("\(sets)×\(reps)")
+            }
+            if let load {
+                parts.append("@ \(TrainingSession.formatLoad(load)) lb")
+            }
         }
         whatIDid = parts.joined(separator: " ")
     }
@@ -408,33 +429,53 @@ struct SessionEditor: View {
             let loadTrim = loadText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
             let holdTrim = holdSecondsText.trimmingCharacters(in: .whitespaces)
 
-            if !setsTrim.isEmpty {
-                guard let parsed = Int(setsTrim), parsed > 0 else {
-                    errorMessage = "Sets must be a positive whole number."
-                    return
+            if isIsometricResistance {
+                // Isometrics: reps + hold time + load (sets unused)
+                sets = nil
+                if !repsTrim.isEmpty {
+                    guard let parsed = Int(repsTrim), parsed > 0 else {
+                        errorMessage = "Reps (holds) must be a positive whole number."
+                        return
+                    }
+                    reps = parsed
                 }
-                sets = parsed
-            }
-            if !repsTrim.isEmpty {
-                guard let parsed = Int(repsTrim), parsed > 0 else {
-                    errorMessage = "Reps must be a positive whole number."
-                    return
+                if !holdTrim.isEmpty {
+                    guard let parsed = Int(holdTrim), parsed > 0 else {
+                        errorMessage = "Time must be a positive number of seconds."
+                        return
+                    }
+                    holdSeconds = parsed
                 }
-                reps = parsed
-            }
-            if !loadTrim.isEmpty {
-                guard let parsed = Double(loadTrim), parsed >= 0 else {
-                    errorMessage = "Load must be a number (lb)."
-                    return
+                if !loadTrim.isEmpty {
+                    guard let parsed = Double(loadTrim), parsed >= 0 else {
+                        errorMessage = "Load must be a number (lb)."
+                        return
+                    }
+                    loadLbs = parsed
                 }
-                loadLbs = parsed
-            }
-            if isIsometricResistance, loadRegion == .knee, !holdTrim.isEmpty {
-                guard let parsed = Int(holdTrim), parsed > 0 else {
-                    errorMessage = "Hold time must be a positive number of seconds."
-                    return
+            } else {
+                holdSeconds = nil
+                if !setsTrim.isEmpty {
+                    guard let parsed = Int(setsTrim), parsed > 0 else {
+                        errorMessage = "Sets must be a positive whole number."
+                        return
+                    }
+                    sets = parsed
                 }
-                holdSeconds = parsed
+                if !repsTrim.isEmpty {
+                    guard let parsed = Int(repsTrim), parsed > 0 else {
+                        errorMessage = "Reps must be a positive whole number."
+                        return
+                    }
+                    reps = parsed
+                }
+                if !loadTrim.isEmpty {
+                    guard let parsed = Double(loadTrim), parsed >= 0 else {
+                        errorMessage = "Load must be a number (lb)."
+                        return
+                    }
+                    loadLbs = parsed
+                }
             }
             if loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil {
                 region = loadRegion
@@ -451,7 +492,7 @@ struct SessionEditor: View {
             existing.sets = sets
             existing.reps = reps
             existing.loadLbs = loadLbs
-            existing.holdSeconds = (isIsometricResistance && loadRegion == .knee) ? holdSeconds : nil
+            existing.holdSeconds = isIsometricResistance ? holdSeconds : nil
             existing.loadRegion = region
             existing.updatedAt = Date()
             do {
@@ -474,7 +515,7 @@ struct SessionEditor: View {
             sets: sets,
             reps: reps,
             loadLbs: loadLbs,
-            holdSeconds: (isIsometricResistance && loadRegion == .knee) ? holdSeconds : nil,
+            holdSeconds: isIsometricResistance ? holdSeconds : nil,
             loadRegion: region,
             calendar: calendar
         )

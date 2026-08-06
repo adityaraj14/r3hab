@@ -112,25 +112,31 @@ final class TrainingSession {
     var resistanceSummary: String? {
         guard hasResistanceLog else { return nil }
         var parts: [String] = []
-        if let region = effectiveLoadRegion {
-            parts.append(region == .lowerBack ? "Back" : "Knee")
+        if sessionType == .isometrics {
+            // e.g. 4×30s @ 15 lb
+            if let reps, let holdSeconds {
+                parts.append("\(reps)×\(holdSeconds)s")
+            } else if let reps {
+                parts.append("\(reps) holds")
+            } else if let holdSeconds {
+                parts.append("\(holdSeconds)s")
+            }
+            if let loadLbs {
+                parts.append("@ \(Self.formatLoad(loadLbs)) lb")
+            }
+        } else {
+            if let sets, let reps {
+                parts.append("\(sets)×\(reps)")
+            } else if let sets {
+                parts.append("\(sets) sets")
+            } else if let reps {
+                parts.append("\(reps) reps")
+            }
+            if let loadLbs {
+                parts.append("@ \(Self.formatLoad(loadLbs)) lb")
+            }
         }
-        if let sets, let reps {
-            parts.append("\(sets)×\(reps)")
-        } else if let sets {
-            parts.append("\(sets) sets")
-        } else if let reps {
-            parts.append("\(reps) reps")
-        }
-        if let loadLbs {
-            parts.append(Self.formatLoad(loadLbs) + " lb")
-        }
-        if sessionType == .isometrics, let holdSeconds {
-            parts.append("\(holdSeconds)s hold")
-        } else if sessionType == .hsrStrength {
-            parts.append("3s up / 3s down")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
     }
 
     static func formatLoad(_ lbs: Double) -> String {

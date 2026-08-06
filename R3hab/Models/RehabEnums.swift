@@ -41,6 +41,17 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
         case .other: return "Other"
         }
     }
+
+    /// Compact chip label for Log list.
+    var shortTag: String {
+        switch self {
+        case .isometrics: return "Isometrics"
+        case .hsrStrength: return "HSR"
+        case .energyStorage: return "Energy"
+        case .tennisSport: return "Tennis"
+        case .other: return "Other"
+        }
+    }
 }
 
 /// Which body-region resistance chart a structured load belongs on.
