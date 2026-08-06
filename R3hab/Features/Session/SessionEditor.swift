@@ -2,14 +2,17 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Log a training session (PR-07). Creates with 24h = Pending.
+/// Log or edit a training session. Creates with 24h = Pending when new.
 struct SessionEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
 
+    /// Calendar day for a new session. Ignored when `existing` is set (uses existing.date).
     var targetDate: Date = Date()
+    /// When set, editor updates this row (backfill resistance, fix free-text, etc.).
+    var existing: TrainingSession?
 
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var sessionType: SessionType = .isometrics
@@ -25,14 +28,23 @@ struct SessionEditor: View {
     @State private var errorMessage: String?
     @State private var spacingWarning: String?
     @State private var didLoad = false
+    @State private var showResolve = false
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
+    private var isEditing: Bool { existing != nil }
 
     private var showsResistanceTracker: Bool {
         if let id = selectedPresetId,
-           let preset = SessionPreset.all.first(where: { $0.id == id }) {
-            return preset.tracksResistance
+           let preset = SessionPreset.all.first(where: { $0.id == id }),
+           preset.tracksResistance {
+            return true
+        }
+        if sessionType == .isometrics || sessionType == .hsrStrength {
+            return true
+        }
+        if existing?.hasResistanceLog == true {
+            return true
         }
         return false
     }
@@ -44,7 +56,7 @@ struct SessionEditor: View {
     var body: some View {
         Form {
             Section {
-                Text(calendar.startOfDay(for: targetDate).formatted(date: .complete, time: .omitted))
+                Text(displayDate.formatted(date: .complete, time: .omitted))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                 Picker("Phase", selection: $phase) {
@@ -53,6 +65,7 @@ struct SessionEditor: View {
                     }
                 }
                 .onChange(of: phase) { _, newPhase in
+                    guard !isEditing else { return }
                     if let preferred = SessionPreset.resistancePreset(for: newPhase) {
                         applyPreset(preferred)
                     }
@@ -103,6 +116,16 @@ struct SessionEditor: View {
                     .lineLimit(2...4)
             }
 
+            if isEditing, let existing, existing.response24h == .pending {
+                Section {
+                    Button("Resolve 24h response…") {
+                        showResolve = true
+                    }
+                } footer: {
+                    Text("Edit load and pain here anytime. Use Resolve when you’re ready to close the 24h loop.")
+                }
+            }
+
             if let spacingWarning {
                 Section {
                     Text(spacingWarning)
@@ -117,7 +140,7 @@ struct SessionEditor: View {
                 }
             }
         }
-        .navigationTitle("Log session")
+        .navigationTitle(isEditing ? "Edit session" : "Log session")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -134,6 +157,18 @@ struct SessionEditor: View {
         .onChange(of: repsText) { _, _ in syncWhatIDidFromResistance() }
         .onChange(of: loadText) { _, _ in syncWhatIDidFromResistance() }
         .onChange(of: holdSecondsText) { _, _ in syncWhatIDidFromResistance() }
+        .sheet(isPresented: $showResolve) {
+            if let existing {
+                Resolve24hSheet(session: existing)
+            }
+        }
+    }
+
+    private var displayDate: Date {
+        if let existing {
+            return calendar.startOfDay(for: existing.date)
+        }
+        return calendar.startOfDay(for: targetDate)
     }
 
     @ViewBuilder
@@ -142,7 +177,7 @@ struct SessionEditor: View {
             HStack {
                 labeledField(title: "Sets", text: $setsText, keyboard: .numberPad)
                 labeledField(title: "Reps", text: $repsText, keyboard: .numberPad)
-                labeledField(title: "Load (kg)", text: $loadText, keyboard: .decimalPad)
+                labeledField(title: "Load (lb)", text: $loadText, keyboard: .decimalPad)
             }
             if isIsometricResistance {
                 HStack {
@@ -156,7 +191,7 @@ struct SessionEditor: View {
                         .frame(maxWidth: 80)
                         .accessibilityLabel("Hold time in seconds")
                 }
-            } else {
+            } else if sessionType == .hsrStrength {
                 HStack {
                     Text("Tempo")
                         .font(.subheadline)
@@ -170,12 +205,16 @@ struct SessionEditor: View {
                 .accessibilityLabel("Tempo: 3 seconds up, 3 seconds down")
             }
         } header: {
-            Text("Leg extension resistance")
+            Text("Resistance (for Progress)")
         } footer: {
             Text(
-                isIsometricResistance
-                    ? "Track machine load so Progress can plot pain vs resistance."
-                    : "Heavy slow resistance uses a fixed 3 second up / 3 second down tempo."
+                isEditing
+                    ? "Add sets, reps, and load in pounds so this session plots on Progress knee charts (orange Load line)."
+                    : (
+                        isIsometricResistance
+                            ? "Track machine load in pounds so Progress can plot pain vs resistance."
+                            : "Heavy slow resistance uses a fixed 3 second up / 3 second down tempo. Load is in pounds."
+                    )
             )
         }
     }
@@ -195,12 +234,38 @@ struct SessionEditor: View {
     private func load() {
         guard !didLoad else { return }
         didLoad = true
+
+        if let existing {
+            phase = existing.phase
+            sessionType = existing.sessionType
+            whatIDid = existing.whatIDid
+            painDuring = existing.painDuring
+            painAfter = existing.painAfter
+            notes = existing.notes
+            if let sets = existing.sets { setsText = String(sets) }
+            if let reps = existing.reps { repsText = String(reps) }
+            if let load = existing.loadLbs {
+                loadText = TrainingSession.formatLoad(load)
+            }
+            if let hold = existing.holdSeconds {
+                holdSecondsText = String(hold)
+            } else if existing.sessionType == .isometrics {
+                holdSecondsText = "30"
+            }
+            if let match = SessionPreset.all.first(where: {
+                $0.tracksResistance && $0.sessionType == existing.sessionType
+            }) {
+                selectedPresetId = match.id
+            }
+            refreshSpacing()
+            return
+        }
+
         if let settings = try? AppBootstrap.ensureSettings(context: modelContext) {
             phase = settings.currentPhase
         } else if let settings {
             phase = settings.currentPhase
         }
-        // Prefer leg-extension resistance presets when in B/C; otherwise first phase preset.
         if let preferred = SessionPreset.resistancePreset(for: phase) {
             applyPreset(preferred)
         } else if let first = SessionPreset.forPhase(phase).first(where: { $0.id != "custom" }) {
@@ -212,7 +277,7 @@ struct SessionEditor: View {
     private func applyPreset(_ preset: SessionPreset) {
         selectedPresetId = preset.id
         sessionType = preset.sessionType
-        if !preset.whatIDid.isEmpty {
+        if !preset.whatIDid.isEmpty, !isEditing || whatIDid.isEmpty {
             whatIDid = preset.whatIDid
         }
         if preset.tracksResistance {
@@ -230,29 +295,44 @@ struct SessionEditor: View {
 
     private func syncWhatIDidFromResistance() {
         guard showsResistanceTracker else { return }
+        // Don't overwrite free-text history unless user is actively filling resistance fields
+        // or the current text is already a generated leg-extension summary.
         let sets = Int(setsText.trimmingCharacters(in: .whitespaces))
         let reps = Int(repsText.trimmingCharacters(in: .whitespaces))
         let load = Double(loadText.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: "."))
         let hold = Int(holdSecondsText.trimmingCharacters(in: .whitespaces))
+
+        let hasAnyResistanceInput = sets != nil || reps != nil || load != nil
+            || (isIsometricResistance && hold != nil)
+        guard hasAnyResistanceInput else { return }
+
+        if isEditing, !whatIDid.isEmpty, !whatIDid.lowercased().contains("leg extension") {
+            // Keep original free-text description when backfilling structured load.
+            return
+        }
 
         var parts: [String] = ["Leg extension"]
         if let sets, let reps {
             parts.append("\(sets)×\(reps)")
         }
         if let load {
-            parts.append("@ \(TrainingSession.formatLoad(load)) kg")
+            parts.append("@ \(TrainingSession.formatLoad(load)) lb")
         }
         if isIsometricResistance {
             if let hold {
                 parts.append("\(hold)s hold")
             }
-        } else {
+        } else if sessionType == .hsrStrength {
             parts.append("3s up / 3s down")
         }
         whatIDid = parts.joined(separator: " ")
     }
 
     private func refreshSpacing() {
+        guard !isEditing else {
+            spacingWarning = nil
+            return
+        }
         let snaps = sessions.map(\.snapshot)
         if SessionSpacing.shouldWarnUnder48h(sessions: snaps, newType: sessionType, now: Date()) {
             spacingWarning = "Less than 48 hours since last hard session. Soft warning only — you can still save."
@@ -279,7 +359,7 @@ struct SessionEditor: View {
 
         var sets: Int?
         var reps: Int?
-        var loadKg: Double?
+        var loadLbs: Double?
         var holdSeconds: Int?
 
         if showsResistanceTracker {
@@ -304,10 +384,10 @@ struct SessionEditor: View {
             }
             if !loadTrim.isEmpty {
                 guard let parsed = Double(loadTrim), parsed >= 0 else {
-                    errorMessage = "Load must be a number (kg)."
+                    errorMessage = "Load must be a number (lb)."
                     return
                 }
-                loadKg = parsed
+                loadLbs = parsed
             }
             if isIsometricResistance, !holdTrim.isEmpty {
                 guard let parsed = Int(holdTrim), parsed > 0 else {
@@ -316,6 +396,28 @@ struct SessionEditor: View {
                 }
                 holdSeconds = parsed
             }
+        }
+
+        if let existing {
+            existing.phase = phase
+            existing.sessionType = sessionType
+            existing.whatIDid = text
+            existing.painDuring = painDuring
+            existing.painAfter = painAfter
+            existing.notes = notes
+            existing.sets = sets
+            existing.reps = reps
+            existing.loadLbs = loadLbs
+            existing.holdSeconds = isIsometricResistance ? holdSeconds : nil
+            existing.updatedAt = Date()
+            do {
+                try modelContext.save()
+                Haptics.success()
+                dismiss()
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+            return
         }
 
         let session = TrainingSession(
@@ -327,8 +429,8 @@ struct SessionEditor: View {
             painAfter: painAfter,
             sets: sets,
             reps: reps,
-            loadKg: loadKg,
-            holdSeconds: holdSeconds,
+            loadLbs: loadLbs,
+            holdSeconds: isIsometricResistance ? holdSeconds : nil,
             calendar: calendar
         )
         session.notes = notes

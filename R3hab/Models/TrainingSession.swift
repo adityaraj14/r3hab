@@ -13,8 +13,9 @@ final class TrainingSession {
     /// Structured resistance for leg-extension isometrics / HSR (optional).
     var sets: Int?
     var reps: Int?
-    /// Machine load in kilograms.
-    var loadKg: Double?
+    /// Machine load in pounds. Stored under original column name `loadKg` for existing installs.
+    @Attribute(originalName: "loadKg")
+    var loadLbs: Double?
     /// Hold duration in seconds (isometrics). Nil for HSR (fixed 3s up / 3s down tempo).
     var holdSeconds: Int?
     var response24hRaw: String
@@ -59,7 +60,7 @@ final class TrainingSession {
         painAfter: Int,
         sets: Int? = nil,
         reps: Int? = nil,
-        loadKg: Double? = nil,
+        loadLbs: Double? = nil,
         holdSeconds: Int? = nil,
         calendar: Calendar = .current
     ) {
@@ -72,7 +73,7 @@ final class TrainingSession {
         self.painAfter = painAfter
         self.sets = sets
         self.reps = reps
-        self.loadKg = loadKg
+        self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
@@ -86,7 +87,7 @@ final class TrainingSession {
 
     /// True when this session carries structured load suitable for resistance charts.
     var hasResistanceLog: Bool {
-        loadKg != nil || sets != nil || reps != nil || holdSeconds != nil
+        loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil
     }
 
     var resistanceSummary: String? {
@@ -99,8 +100,8 @@ final class TrainingSession {
         } else if let reps {
             parts.append("\(reps) reps")
         }
-        if let loadKg {
-            parts.append(Self.formatLoad(loadKg) + " kg")
+        if let loadLbs {
+            parts.append(Self.formatLoad(loadLbs) + " lb")
         }
         if sessionType == .isometrics, let holdSeconds {
             parts.append("\(holdSeconds)s hold")
@@ -110,10 +111,10 @@ final class TrainingSession {
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }
 
-    static func formatLoad(_ kg: Double) -> String {
-        if kg.rounded() == kg {
-            return String(Int(kg))
+    static func formatLoad(_ lbs: Double) -> String {
+        if lbs.rounded() == lbs {
+            return String(Int(lbs))
         }
-        return String(format: "%g", kg)
+        return String(format: "%g", lbs)
     }
 }

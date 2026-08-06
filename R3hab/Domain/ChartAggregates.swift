@@ -61,10 +61,10 @@ struct DailyMetricSnapshot: Equatable, Sendable {
     var steps: Int?
 }
 
-/// Session load point for resistance trend charts.
+/// Session load point for resistance trend charts (pounds).
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
-    var loadKg: Double?
+    var loadLbs: Double?
 }
 
 enum ChartMetricBuilder {
@@ -98,7 +98,7 @@ enum ChartMetricBuilder {
         return result
     }
 
-    /// Max load (kg) per calendar day across sessions that logged resistance.
+    /// Max load (lb) per calendar day across sessions that logged resistance.
     static func loadSeries(
         sessions: [SessionLoadSnapshot],
         dayCount: Int,
@@ -108,7 +108,7 @@ enum ChartMetricBuilder {
         let startToday = calendar.startOfDay(for: today)
         var maxByDay: [String: Double] = [:]
         for s in sessions {
-            guard let load = s.loadKg else { continue }
+            guard let load = s.loadLbs else { continue }
             let key = CalendarDay.dayKey(s.date, calendar: calendar)
             maxByDay[key] = max(maxByDay[key] ?? 0, load)
         }
@@ -122,7 +122,7 @@ enum ChartMetricBuilder {
         return result
     }
 
-    /// Map load kg onto the 0…10 pain axis so pain and load trends can share one chart.
+    /// Map load (lb) onto the 0…10 pain axis so pain and load trends can share one chart.
     static func scaledLoadSeries(
         loadPoints: [DayValue],
         painDomainMax: Double = 10

@@ -9,6 +9,7 @@ struct HistoryView: View {
 
     @State private var filter: Filter = .all
     @State private var editDailyKey: String?
+    @State private var editSessionId: UUID?
     @State private var resolveSessionId: UUID?
     @State private var showBackdate = false
     @State private var backdateKind: BackdateKind = .daily
@@ -64,11 +65,19 @@ struct HistoryView: View {
                         }
                     case .session(let s):
                         Button {
-                            if s.response24h == .pending {
-                                resolveSessionId = s.id
-                            }
+                            editSessionId = s.id
                         } label: {
                             sessionRow(s)
+                        }
+                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                            if s.response24h == .pending {
+                                Button {
+                                    resolveSessionId = s.id
+                                } label: {
+                                    Label("Resolve", systemImage: "checkmark.circle")
+                                }
+                                .tint(.orange)
+                            }
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
@@ -115,6 +124,17 @@ struct HistoryView: View {
                 if let key = editDailyKey, let c = checkIns.first(where: { $0.dayKey == key }) {
                     NavigationStack {
                         DailyCheckInEditor(targetDate: c.date)
+                    }
+                    .preferredColorScheme(.dark)
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { editSessionId != nil },
+                set: { if !$0 { editSessionId = nil } }
+            )) {
+                if let id = editSessionId, let s = sessions.first(where: { $0.id == id }) {
+                    NavigationStack {
+                        SessionEditor(existing: s)
                     }
                     .preferredColorScheme(.dark)
                 }

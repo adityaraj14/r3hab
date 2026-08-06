@@ -63,7 +63,7 @@ struct MetricChartCard: View {
     let series: [ChartSeriesLine]
     var yDomain: ClosedRange<Double> = 0...10
     var unitHint: String = ""
-    /// Optional load series in kg; plotted scaled onto the pain axis with real kg in the legend.
+    /// Optional load series in lb; plotted scaled onto the pain axis with real lb in the legend.
     var loadPoints: [DayValue] = []
 
     init(
@@ -147,11 +147,11 @@ struct MetricChartCard: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if let avg = ChartMetricBuilder.average(of: loadPoints) {
-                                Text("avg \(formatKg(avg)) · max \(formatKg(maxLoad)) kg")
+                                Text("avg \(formatLoad(avg)) · max \(formatLoad(maxLoad)) lb")
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text("max \(formatKg(maxLoad)) kg")
+                                Text("max \(formatLoad(maxLoad)) lb")
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }
@@ -233,11 +233,11 @@ struct MetricChartCard: View {
         }
     }
 
-    private func formatKg(_ kg: Double) -> String {
-        if kg.rounded() == kg {
-            return String(Int(kg))
+    private func formatLoad(_ lbs: Double) -> String {
+        if lbs.rounded() == lbs {
+            return String(Int(lbs))
         }
-        return String(format: "%g", kg)
+        return String(format: "%g", lbs)
     }
 }
 

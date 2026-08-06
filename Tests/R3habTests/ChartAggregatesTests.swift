@@ -83,9 +83,9 @@ final class ChartAggregatesTests: XCTestCase {
     func testLoadSeriesTakesMaxPerDayAndFillsGaps() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let sessions: [SessionLoadSnapshot] = [
-            SessionLoadSnapshot(date: day(-2, from: today), loadKg: 20),
-            SessionLoadSnapshot(date: day(-2, from: today), loadKg: 25),
-            SessionLoadSnapshot(date: day(0, from: today), loadKg: 30)
+            SessionLoadSnapshot(date: day(-2, from: today), loadLbs: 20),
+            SessionLoadSnapshot(date: day(-2, from: today), loadLbs: 25),
+            SessionLoadSnapshot(date: day(0, from: today), loadLbs: 30)
         ]
 
         let series = ChartMetricBuilder.loadSeries(

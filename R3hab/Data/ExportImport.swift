@@ -80,7 +80,8 @@ struct SessionDTO: Codable {
     var painAfter: Int
     var sets: Int?
     var reps: Int?
-    var loadKg: Double?
+    /// Pounds. JSON may still use `loadKg` from older backups (same numeric field).
+    var loadLbs: Double?
     var holdSeconds: Int?
     var response24h: String
     var decision: String?
@@ -89,6 +90,98 @@ struct SessionDTO: Codable {
     var snoozeUsed: Bool
     var resolvedAt: Date?
     var createdAt: Date
+
+    enum CodingKeys: String, CodingKey {
+        case id, date, phase, type, whatIDid, painDuring, painAfter
+        case sets, reps, loadLbs, holdSeconds
+        case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
+        case loadKg // legacy key
+    }
+
+    init(
+        id: UUID,
+        date: Date,
+        phase: String,
+        type: String,
+        whatIDid: String,
+        painDuring: Int,
+        painAfter: Int,
+        sets: Int?,
+        reps: Int?,
+        loadLbs: Double?,
+        holdSeconds: Int?,
+        response24h: String,
+        decision: String?,
+        notes: String,
+        snoozedUntil: Date?,
+        snoozeUsed: Bool,
+        resolvedAt: Date?,
+        createdAt: Date
+    ) {
+        self.id = id
+        self.date = date
+        self.phase = phase
+        self.type = type
+        self.whatIDid = whatIDid
+        self.painDuring = painDuring
+        self.painAfter = painAfter
+        self.sets = sets
+        self.reps = reps
+        self.loadLbs = loadLbs
+        self.holdSeconds = holdSeconds
+        self.response24h = response24h
+        self.decision = decision
+        self.notes = notes
+        self.snoozedUntil = snoozedUntil
+        self.snoozeUsed = snoozeUsed
+        self.resolvedAt = resolvedAt
+        self.createdAt = createdAt
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(UUID.self, forKey: .id)
+        date = try c.decode(Date.self, forKey: .date)
+        phase = try c.decode(String.self, forKey: .phase)
+        type = try c.decode(String.self, forKey: .type)
+        whatIDid = try c.decode(String.self, forKey: .whatIDid)
+        painDuring = try c.decode(Int.self, forKey: .painDuring)
+        painAfter = try c.decode(Int.self, forKey: .painAfter)
+        sets = try c.decodeIfPresent(Int.self, forKey: .sets)
+        reps = try c.decodeIfPresent(Int.self, forKey: .reps)
+        loadLbs = try c.decodeIfPresent(Double.self, forKey: .loadLbs)
+            ?? c.decodeIfPresent(Double.self, forKey: .loadKg)
+        holdSeconds = try c.decodeIfPresent(Int.self, forKey: .holdSeconds)
+        response24h = try c.decode(String.self, forKey: .response24h)
+        decision = try c.decodeIfPresent(String.self, forKey: .decision)
+        notes = try c.decode(String.self, forKey: .notes)
+        snoozedUntil = try c.decodeIfPresent(Date.self, forKey: .snoozedUntil)
+        snoozeUsed = try c.decode(Bool.self, forKey: .snoozeUsed)
+        resolvedAt = try c.decodeIfPresent(Date.self, forKey: .resolvedAt)
+        createdAt = try c.decode(Date.self, forKey: .createdAt)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(date, forKey: .date)
+        try c.encode(phase, forKey: .phase)
+        try c.encode(type, forKey: .type)
+        try c.encode(whatIDid, forKey: .whatIDid)
+        try c.encode(painDuring, forKey: .painDuring)
+        try c.encode(painAfter, forKey: .painAfter)
+        try c.encodeIfPresent(sets, forKey: .sets)
+        try c.encodeIfPresent(reps, forKey: .reps)
+        try c.encodeIfPresent(loadLbs, forKey: .loadLbs)
+        try c.encodeIfPresent(holdSeconds, forKey: .holdSeconds)
+        try c.encode(response24h, forKey: .response24h)
+        try c.encodeIfPresent(decision, forKey: .decision)
+        try c.encode(notes, forKey: .notes)
+        try c.encodeIfPresent(snoozedUntil, forKey: .snoozedUntil)
+        try c.encode(snoozeUsed, forKey: .snoozeUsed)
+        try c.encodeIfPresent(resolvedAt, forKey: .resolvedAt)
+        try c.encode(createdAt, forKey: .createdAt)
+    }
 }
 
 enum ExportImportService {
@@ -160,7 +253,7 @@ enum ExportImportService {
                     painAfter: $0.painAfter,
                     sets: $0.sets,
                     reps: $0.reps,
-                    loadKg: $0.loadKg,
+                    loadLbs: $0.loadLbs,
                     holdSeconds: $0.holdSeconds,
                     response24h: $0.response24hRaw,
                     decision: $0.decisionRaw,
@@ -299,7 +392,7 @@ enum ExportImportService {
         s.painAfter = dto.painAfter
         s.sets = dto.sets
         s.reps = dto.reps
-        s.loadKg = dto.loadKg
+        s.loadLbs = dto.loadLbs
         s.holdSeconds = dto.holdSeconds
         s.response24hRaw = dto.response24h
         s.decisionRaw = dto.decision

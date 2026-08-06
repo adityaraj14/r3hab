@@ -33,7 +33,7 @@ struct RehabProgressView: View {
 
     private var loadPoints: [DayValue] {
         ChartMetricBuilder.loadSeries(
-            sessions: sessions.map { SessionLoadSnapshot(date: $0.date, loadKg: $0.loadKg) },
+            sessions: sessions.map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.loadLbs) },
             dayCount: range.rawValue
         )
     }
