@@ -46,14 +46,8 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
-                Picker("Filter", selection: $filter) {
-                    ForEach(Filter.allCases) { f in
-                        Text(f.title).tag(f)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .listRowBackground(Color.clear)
-
+                // Entries only — filter lives outside the list so the first/last
+                // rows get matching inset-grouped corner radius.
                 ForEach(rows, id: \.id) { row in
                     switch row {
                     case .daily(let c):
@@ -94,6 +88,18 @@ struct HistoryView: View {
                         }
                     }
                 }
+            }
+            .listStyle(.insetGrouped)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                Picker("Filter", selection: $filter) {
+                    ForEach(Filter.allCases) { f in
+                        Text(f.title).tag(f)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 10)
+                .background(Color(.systemBackground))
             }
             .navigationTitle("Log")
             .toolbar {
