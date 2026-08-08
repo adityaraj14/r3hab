@@ -368,7 +368,6 @@ struct SettingsStubView: View {
             if existing?.isEmpty == false { continue }
             let row = DailyCheckIn(date: day, phase: phase)
             row.restingPainAM = [2, 1, 2, 3, 1, 2, 2][offset]
-            row.morningStiffness = [3, 2, 2, 3, 1, 2, 2][offset]
             row.dailyPainPM = [2, 2, 1, 3, 2, 2, 1][offset]
             row.lowerBackPainAM = [3, 2, 3, 4, 2, 3, 2][offset]
             row.lowerBackPainPM = [2, 3, 2, 3, 2, 2, 1][offset]

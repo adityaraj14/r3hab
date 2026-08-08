@@ -6,7 +6,6 @@ final class DailyCheckIn {
     @Attribute(.unique) var dayKey: String
     var date: Date
     var restingPainAM: Int?
-    var morningStiffness: Int?
     var dailyPainPM: Int?
     /// Lower back resting pain (morning), 0–10.
     var lowerBackPainAM: Int?

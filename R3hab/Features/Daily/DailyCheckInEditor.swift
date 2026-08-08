@@ -11,7 +11,6 @@ struct DailyCheckInEditor: View {
     var focusPM: Bool = false
 
     @State private var restingPainAM: Int?
-    @State private var morningStiffness: Int?
     @State private var dailyPainPM: Int?
     @State private var lowerBackPainAM: Int?
     @State private var lowerBackPainPM: Int?
@@ -44,7 +43,6 @@ struct DailyCheckInEditor: View {
             Section("Morning") {
                 PainScoreControl(title: "Knee resting pain", value: $restingPainAM)
                 PainScoreControl(title: "Lower back pain", value: $lowerBackPainAM)
-                PainScoreControl(title: "Morning stiffness", value: $morningStiffness)
             }
 
             Section {
@@ -148,7 +146,6 @@ struct DailyCheckInEditor: View {
         if let row = try? modelContext.fetch(descriptor).first {
             existing = row
             restingPainAM = row.restingPainAM
-            morningStiffness = row.morningStiffness
             dailyPainPM = row.dailyPainPM
             lowerBackPainAM = row.lowerBackPainAM
             lowerBackPainPM = row.lowerBackPainPM
@@ -203,7 +200,7 @@ struct DailyCheckInEditor: View {
     }
 
     private func applySave(steps: Int?) {
-        for score in [restingPainAM, morningStiffness, dailyPainPM, lowerBackPainAM, lowerBackPainPM, declineL, declineR] {
+        for score in [restingPainAM, dailyPainPM, lowerBackPainAM, lowerBackPainPM, declineL, declineR] {
             if let score, !(0...10).contains(score) {
                 errorMessage = "Pain scores must be 0–10."
                 return
@@ -220,7 +217,6 @@ struct DailyCheckInEditor: View {
         }
 
         row.restingPainAM = restingPainAM
-        row.morningStiffness = morningStiffness
         row.dailyPainPM = dailyPainPM
         row.lowerBackPainAM = lowerBackPainAM
         row.lowerBackPainPM = lowerBackPainPM

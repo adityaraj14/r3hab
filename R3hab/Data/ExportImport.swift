@@ -59,7 +59,6 @@ struct DailyDTO: Codable {
     var dayKey: String
     var date: Date
     var restingPainAM: Int?
-    var morningStiffness: Int?
     var dailyPainPM: Int?
     var lowerBackPainAM: Int?
     var lowerBackPainPM: Int?
@@ -252,7 +251,6 @@ enum ExportImportService {
                     dayKey: $0.dayKey,
                     date: $0.date,
                     restingPainAM: $0.restingPainAM,
-                    morningStiffness: $0.morningStiffness,
                     dailyPainPM: $0.dailyPainPM,
                     lowerBackPainAM: $0.lowerBackPainAM,
                     lowerBackPainPM: $0.lowerBackPainPM,
@@ -382,7 +380,6 @@ enum ExportImportService {
         row.date = Calendar.current.startOfDay(for: dto.date)
         row.dayKey = dto.dayKey.isEmpty ? DailyCheckIn.dayKey(for: row.date) : dto.dayKey
         row.restingPainAM = dto.restingPainAM
-        row.morningStiffness = dto.morningStiffness
         row.dailyPainPM = dto.dailyPainPM
         row.lowerBackPainAM = dto.lowerBackPainAM
         row.lowerBackPainPM = dto.lowerBackPainPM

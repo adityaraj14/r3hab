@@ -83,7 +83,7 @@ enum NotificationScheduler {
             hour: amHour,
             minute: amMinute,
             title: "Morning check-in",
-            body: "Log resting pain and stiffness when you’re ready."
+            body: "Log resting knee and back pain when you’re ready."
         )
         scheduleDailyReminder(
             id: pmReminderId,
