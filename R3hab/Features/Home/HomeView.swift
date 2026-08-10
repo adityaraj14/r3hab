@@ -416,7 +416,7 @@ struct HomeView: View {
 
             if settings?.isBackTrackActive != false {
                 VStack(alignment: .leading, spacing: 8) {
-                    Label("Low back · QL / trunk", systemImage: "figure.core.training")
+                    Label("Low back · trunk", systemImage: "figure.core.training")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(PainChartColors.lowerBack)
                     Text(RehabTemplate.lowerBack.objective80_20)

@@ -17,7 +17,7 @@ enum RehabTrackID: String, Codable, CaseIterable, Identifiable, Sendable {
     var subtitle: String {
         switch self {
         case .knee: return "Patellar tendon"
-        case .lowerBack: return "QL / side-bend capacity"
+        case .lowerBack: return "Trunk / side-bend capacity"
         }
     }
 
@@ -53,9 +53,9 @@ struct RehabTemplate: Identifiable, Hashable, Sendable {
 
     static let lowerBack = RehabTemplate(
         id: .lowerBack,
-        name: "Low back · QL / trunk",
-        shortDescription: "Side-bend + extension capacity; side plank / suitcase + hip thrust; walk.",
-        objective80_20: "2–3×/week trunk holds + hip thrust; walk most days; soft-cut if next-day back is worse."
+        name: "Low back · trunk",
+        shortDescription: "NSLBP-first: stay active, walk, rebuild side-bend + hip extension. Side plank / suitcase + hip thrust as 80/20 menu.",
+        objective80_20: "Walk most days; 2–3×/week trunk holds + hip thrust; soft-cut if next-day back is worse."
     )
 
     static let all: [RehabTemplate] = [.knee, .lowerBack]

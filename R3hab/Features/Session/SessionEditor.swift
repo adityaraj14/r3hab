@@ -97,7 +97,7 @@ struct SessionEditor: View {
                         .foregroundStyle(.secondary)
                 }
             } header: {
-                Text(activeTrack == .knee ? "Knee · patellar tendon" : "Low back · QL / trunk")
+                Text(activeTrack == .knee ? "Knee · patellar tendon" : "Low back · trunk")
             }
 
             Section("Exercise") {

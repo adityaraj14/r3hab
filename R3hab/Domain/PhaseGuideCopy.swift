@@ -1,7 +1,7 @@
 import Foundation
 
 enum PhaseGuideCopy {
-    static let protocolRevision = "v1"
+    static let protocolRevision = "v1.1 · 2026-08-10"
 
     static func summary(for phase: RehabPhase) -> String {
         switch phase {

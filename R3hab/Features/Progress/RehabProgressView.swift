@@ -190,7 +190,7 @@ struct RehabProgressView: View {
                         }
 
                         if settingsList.first?.isBackTrackActive != false {
-                            Text("Low back · QL / trunk")
+                            Text("Low back · trunk")
                                 .font(.title3.weight(.semibold))
                                 .padding(.top, 4)
 

@@ -30,7 +30,7 @@ struct SettingsStubView: View {
             if let settings {
                 Section {
                     Toggle("Knee · patellar tendon", isOn: trackToggle(settings, .knee))
-                    Toggle("Low back · QL / trunk", isOn: trackToggle(settings, .lowerBack))
+                    Toggle("Low back · trunk", isOn: trackToggle(settings, .lowerBack))
                     Text("Both can be active. Today and Progress only show tracks you enable.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
