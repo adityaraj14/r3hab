@@ -63,8 +63,9 @@ struct MetricChartCard: View {
     let series: [ChartSeriesLine]
     var yDomain: ClosedRange<Double> = 0...10
     var unitHint: String = ""
-    /// Optional load series in lb; plotted scaled onto the pain axis with real lb in the legend.
+    /// Optional resistance series (volume preferred); scaled onto the pain axis. Legend shows real totals.
     var loadPoints: [DayValue] = []
+    var loadLegendUnit: String = "vol"
 
     init(
         title: String,
@@ -147,11 +148,11 @@ struct MetricChartCard: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             if let avg = ChartMetricBuilder.average(of: loadPoints) {
-                                Text("avg \(formatLoad(avg)) · max \(formatLoad(maxLoad)) lb")
+                                Text("avg \(formatLoad(avg)) · peak \(formatLoad(maxLoad)) \(loadLegendUnit)")
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             } else {
-                                Text("max \(formatLoad(maxLoad)) lb")
+                                Text("peak \(formatLoad(maxLoad)) \(loadLegendUnit)")
                                     .font(.caption.monospacedDigit())
                                     .foregroundStyle(.secondary)
                             }

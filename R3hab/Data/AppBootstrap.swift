@@ -12,8 +12,15 @@ enum AppBootstrap {
             if existing.pmReminderHour == 21, existing.pmReminderMinute == 0 {
                 existing.pmReminderHour = 18
                 existing.pmReminderMinute = 30
-                try? context.save()
             }
+            // Dual-track defaults for installs that predate activeTracksCSV.
+            if existing.activeTracksCSV.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                existing.activeTracksCSV = "knee,lowerBack"
+            }
+            if existing.backTrackStageRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                existing.backTrackStageRaw = "iso"
+            }
+            try? context.save()
             return existing
         }
         let settings = AppSettings()

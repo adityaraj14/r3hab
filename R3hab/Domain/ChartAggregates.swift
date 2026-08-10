@@ -61,10 +61,22 @@ struct DailyMetricSnapshot: Equatable, Sendable {
     var steps: Int?
 }
 
-/// Session load point for resistance trend charts (pounds).
+/// Session load point for resistance trend charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
+    /// Preferred chart metric: volume (Σ reps × lb) when available.
+    var volume: Double?
+    /// Max load that session (lb).
+    var maxLoadLbs: Double?
+    /// Legacy single load.
     var loadLbs: Double?
+
+    init(date: Date, volume: Double? = nil, maxLoadLbs: Double? = nil, loadLbs: Double? = nil) {
+        self.date = date
+        self.volume = volume
+        self.maxLoadLbs = maxLoadLbs
+        self.loadLbs = loadLbs
+    }
 }
 
 enum ChartMetricBuilder {
@@ -98,7 +110,35 @@ enum ChartMetricBuilder {
         return result
     }
 
-    /// Max load (lb) per calendar day across sessions that logged resistance.
+    /// Daily **volume** (sum of session volumes) for resistance sessions.
+    static func volumeSeries(
+        sessions: [SessionLoadSnapshot],
+        dayCount: Int,
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [DayValue] {
+        let startToday = calendar.startOfDay(for: today)
+        var volByDay: [String: Double] = [:]
+        for s in sessions {
+            let key = CalendarDay.dayKey(s.date, calendar: calendar)
+            let v = s.volume ?? {
+                // Fallback: max load as weak proxy when volume missing
+                s.maxLoadLbs ?? s.loadLbs
+            }()
+            guard let v, v > 0 else { continue }
+            volByDay[key, default: 0] += v
+        }
+
+        var result: [DayValue] = []
+        for offset in stride(from: dayCount - 1, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
+            let key = CalendarDay.dayKey(day, calendar: calendar)
+            result.append(DayValue(dayKey: key, date: day, value: volByDay[key]))
+        }
+        return result
+    }
+
+    /// Max load (lb) per calendar day (for legend / secondary).
     static func loadSeries(
         sessions: [SessionLoadSnapshot],
         dayCount: Int,
@@ -108,7 +148,7 @@ enum ChartMetricBuilder {
         let startToday = calendar.startOfDay(for: today)
         var maxByDay: [String: Double] = [:]
         for s in sessions {
-            guard let load = s.loadLbs else { continue }
+            guard let load = s.maxLoadLbs ?? s.loadLbs else { continue }
             let key = CalendarDay.dayKey(s.date, calendar: calendar)
             maxByDay[key] = max(maxByDay[key] ?? 0, load)
         }
@@ -122,7 +162,7 @@ enum ChartMetricBuilder {
         return result
     }
 
-    /// Map load (lb) onto the 0…10 pain axis so pain and load trends can share one chart.
+    /// Map volume (or load) onto the 0…10 pain axis so trends can share one chart.
     static func scaledLoadSeries(
         loadPoints: [DayValue],
         painDomainMax: Double = 10

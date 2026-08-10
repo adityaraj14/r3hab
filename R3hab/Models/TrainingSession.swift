@@ -10,20 +10,21 @@ final class TrainingSession {
     var whatIDid: String
     var painDuring: Int
     var painAfter: Int
-    /// Structured resistance (optional).
+    /// Legacy single-block fields (kept for migration / old rows).
     var sets: Int?
     var reps: Int?
-    /// Machine load in pounds. Stored under original column name `loadKg` for existing installs.
     @Attribute(originalName: "loadKg")
     var loadLbs: Double?
-    /// Hold duration in seconds (isometrics). Nil for pure HSR working sets.
     var holdSeconds: Int?
-    /// Optional isometric warm-up before HSR (reps = holds, time, load).
     var warmupReps: Int?
     var warmupHoldSeconds: Int?
     var warmupLoadLbs: Double?
-    /// Which Progress chart series this load plots on (`knee` / `lowerBack`). Nil + load → treated as knee for legacy rows.
+    /// JSON array of `ResistanceSet` — preferred source for multi-set logging.
+    var resistanceSetsJSON: String?
+    /// Which Progress chart series this load plots on (`knee` / `lowerBack`).
     var loadRegionRaw: String?
+    /// Rehab track this session belongs to (`knee` / `lowerBack`). Defaults from load region.
+    var trackRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
     var notes: String
@@ -64,6 +65,20 @@ final class TrainingSession {
         set { loadRegionRaw = newValue?.rawValue }
     }
 
+    var track: RehabTrackID {
+        get {
+            if let trackRaw, let t = RehabTrackID(rawValue: trackRaw) { return t }
+            if let loadRegion {
+                return loadRegion == .lowerBack ? .lowerBack : .knee
+            }
+            return .knee
+        }
+        set {
+            trackRaw = newValue.rawValue
+            loadRegionRaw = newValue.loadRegion.rawValue
+        }
+    }
+
     /// Region used for Progress load series. Legacy rows with load but no region map to knee.
     var effectiveLoadRegion: LoadRegion? {
         if let loadRegion { return loadRegion }
@@ -87,6 +102,8 @@ final class TrainingSession {
         warmupHoldSeconds: Int? = nil,
         warmupLoadLbs: Double? = nil,
         loadRegion: LoadRegion? = nil,
+        track: RehabTrackID? = nil,
+        resistanceSets: [ResistanceSet] = [],
         calendar: Calendar = .current
     ) {
         self.id = id
@@ -103,7 +120,9 @@ final class TrainingSession {
         self.warmupReps = warmupReps
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
-        self.loadRegionRaw = loadRegion?.rawValue
+        self.loadRegionRaw = loadRegion?.rawValue ?? track?.loadRegion.rawValue
+        self.trackRaw = track?.rawValue
+            ?? (loadRegion == .lowerBack ? RehabTrackID.lowerBack.rawValue : RehabTrackID.knee.rawValue)
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
@@ -112,62 +131,122 @@ final class TrainingSession {
         self.resolvedAt = nil
         self.createdAt = Date()
         self.updatedAt = Date()
+        if !resistanceSets.isEmpty {
+            self.setResistanceSets(resistanceSets)
+        }
     }
 
-    /// True when this session carries structured load suitable for resistance charts.
+    // MARK: - Multi-set payload
+
+    func resistanceSets() -> [ResistanceSet] {
+        if let resistanceSetsJSON,
+           let data = resistanceSetsJSON.data(using: .utf8),
+           let decoded = try? JSONDecoder().decode([ResistanceSet].self, from: data),
+           !decoded.isEmpty {
+            return decoded
+        }
+        return legacyAsSets()
+    }
+
+    func setResistanceSets(_ sets: [ResistanceSet]) {
+        if sets.isEmpty {
+            resistanceSetsJSON = nil
+            return
+        }
+        if let data = try? JSONEncoder().encode(sets),
+           let str = String(data: data, encoding: .utf8) {
+            resistanceSetsJSON = str
+        }
+        // Mirror first work set into legacy fields for older chart/export paths
+        let work = sets.filter { !$0.isWarmup }
+        let primary = work.first ?? sets.first
+        self.sets = work.isEmpty ? nil : work.count
+        self.reps = primary?.reps
+        self.loadLbs = primary?.loadLbs
+        self.holdSeconds = primary?.holdSeconds
+        let wu = sets.filter(\.isWarmup)
+        if let firstWU = wu.first {
+            warmupReps = firstWU.reps
+            warmupHoldSeconds = firstWU.holdSeconds
+            warmupLoadLbs = firstWU.loadLbs
+        } else {
+            warmupReps = nil
+            warmupHoldSeconds = nil
+            warmupLoadLbs = nil
+        }
+    }
+
+    private func legacyAsSets() -> [ResistanceSet] {
+        var result: [ResistanceSet] = []
+        if warmupReps != nil || warmupHoldSeconds != nil || warmupLoadLbs != nil {
+            result.append(
+                ResistanceSet(
+                    reps: warmupReps,
+                    loadLbs: warmupLoadLbs,
+                    holdSeconds: warmupHoldSeconds,
+                    isWarmup: true
+                )
+            )
+        }
+        if sessionType == .isometrics {
+            if reps != nil || holdSeconds != nil || loadLbs != nil {
+                result.append(
+                    ResistanceSet(reps: reps, loadLbs: loadLbs, holdSeconds: holdSeconds, isWarmup: false)
+                )
+            }
+        } else if let setCount = sets, setCount > 0, reps != nil || loadLbs != nil {
+            // Expand uniform sets into individual rows
+            for _ in 0..<setCount {
+                result.append(
+                    ResistanceSet(reps: reps, loadLbs: loadLbs, holdSeconds: nil, isWarmup: false)
+                )
+            }
+        } else if reps != nil || loadLbs != nil {
+            result.append(
+                ResistanceSet(reps: reps, loadLbs: loadLbs, holdSeconds: holdSeconds, isWarmup: false)
+            )
+        }
+        return result
+    }
+
     var hasResistanceLog: Bool {
-        loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil
+        !resistanceSets().isEmpty
+            || loadLbs != nil || sets != nil || reps != nil || holdSeconds != nil
             || warmupLoadLbs != nil || warmupReps != nil || warmupHoldSeconds != nil
     }
 
-    /// Prefer working-set load for Progress; fall back to warm-up load if only warm-up logged.
+    /// Volume (Σ reps × lb) for Progress charts.
+    var chartVolume: Double? {
+        let all = resistanceSets()
+        return ResistanceMath.chartVolume(work: all)
+    }
+
+    /// Max load (lb) for legend context.
+    var chartMaxLoad: Double? {
+        ResistanceMath.chartMaxLoad(work: resistanceSets())
+    }
+
+    /// Backward-compatible single load for older call sites.
     var chartLoadLbs: Double? {
-        if let loadLbs { return loadLbs }
-        return warmupLoadLbs
+        chartMaxLoad
     }
 
     var resistanceSummary: String? {
-        guard hasResistanceLog else { return nil }
+        let all = resistanceSets()
+        guard !all.isEmpty else { return nil }
+        let wu = all.filter(\.isWarmup)
+        let work = all.filter { !$0.isWarmup }
         var parts: [String] = []
-        if let wu = Self.formatIsoBlock(reps: warmupReps, holdSeconds: warmupHoldSeconds, loadLbs: warmupLoadLbs) {
-            parts.append("WU \(wu)")
+        if !wu.isEmpty {
+            parts.append("WU " + wu.map(\.summary).joined(separator: ", "))
         }
-        if sessionType == .isometrics {
-            if let block = Self.formatIsoBlock(reps: reps, holdSeconds: holdSeconds, loadLbs: loadLbs) {
-                parts.append(block)
-            }
-        } else {
-            var work: [String] = []
-            if let sets, let reps {
-                work.append("\(sets)×\(reps)")
-            } else if let sets {
-                work.append("\(sets) sets")
-            } else if let reps {
-                work.append("\(reps) reps")
-            }
-            if let loadLbs {
-                work.append("@ \(Self.formatLoad(loadLbs)) lb")
-            }
-            if !work.isEmpty {
-                parts.append(work.joined(separator: " "))
-            }
+        if !work.isEmpty {
+            parts.append(work.map(\.summary).joined(separator: ", "))
+        }
+        if let vol = chartVolume, vol > 0 {
+            parts.append("vol \(TrainingSession.formatLoad(vol))")
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-    private static func formatIsoBlock(reps: Int?, holdSeconds: Int?, loadLbs: Double?) -> String? {
-        var bits: [String] = []
-        if let reps, let holdSeconds {
-            bits.append("\(reps)×\(holdSeconds)s")
-        } else if let reps {
-            bits.append("\(reps) holds")
-        } else if let holdSeconds {
-            bits.append("\(holdSeconds)s")
-        }
-        if let loadLbs {
-            bits.append("@ \(Self.formatLoad(loadLbs)) lb")
-        }
-        return bits.isEmpty ? nil : bits.joined(separator: " ")
     }
 
     static func formatLoad(_ lbs: Double) -> String {

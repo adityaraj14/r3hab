@@ -18,6 +18,7 @@
 		C906FBBA88814D529A9B926F /* PendingQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingQueue.swift; sourceTree = "<group>"; };
 		6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseAExitEvaluator.swift; sourceTree = "<group>"; };
 		F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
+		FE12F1740BB44F23A9F7A661 /* BackProtocolCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackProtocolCopy.swift; sourceTree = "<group>"; };
 		33852A11DB0D407691655972 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
 		180612735F20428098D5B5BE /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
 		6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
@@ -32,6 +33,8 @@
 		79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckIn.swift; sourceTree = "<group>"; };
 		3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
 		E8011A626D364764ADC7D7E8 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
+		EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistanceSet.swift; sourceTree = "<group>"; };
+		C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTemplate.swift; sourceTree = "<group>"; };
 		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
@@ -70,6 +73,9 @@
 		0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */; };
 		73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */; };
 		47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8011A626D364764ADC7D7E8 /* TrainingSession.swift */; };
+		9CE90E4A544E4368A5413069 /* BackProtocolCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE12F1740BB44F23A9F7A661 /* BackProtocolCopy.swift */; };
+		B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */; };
+		37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */; };
 		D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B121FF0B2974BD1A2491DB9 /* LogStore.swift */; };
 		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
 		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
@@ -186,6 +192,7 @@
 				C906FBBA88814D529A9B926F /* PendingQueue.swift */,
 				6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */,
 				F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */,
+				FE12F1740BB44F23A9F7A661 /* BackProtocolCopy.swift */,
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 			);
 			path = Domain;
@@ -212,6 +219,8 @@
 				79F8853CCF5148C7B3EAB965 /* DailyCheckIn.swift */,
 				3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */,
 				E8011A626D364764ADC7D7E8 /* TrainingSession.swift */,
+				EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */,
+				C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -289,6 +298,9 @@
 				0D8C01628ABB49F08177F8F0 /* DailyCheckIn.swift in Sources */,
 				73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */,
 				47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */,
+				9CE90E4A544E4368A5413069 /* BackProtocolCopy.swift in Sources */,
+				B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */,
+				37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */,
 				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
 				57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */,
 				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,
@@ -353,7 +365,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
@@ -383,7 +395,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 11;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;

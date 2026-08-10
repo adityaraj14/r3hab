@@ -28,15 +28,27 @@ struct SettingsStubView: View {
     var body: some View {
         List {
             if let settings {
-                Section("Current phase") {
-                    Picker("Phase", selection: phaseBinding(settings)) {
-                        ForEach(RehabPhase.allCases) { p in
-                            Text(p.title).tag(p)
+                Section {
+                    Toggle("Knee · patellar tendon", isOn: trackToggle(settings, .knee))
+                    Toggle("Low back · QL / trunk", isOn: trackToggle(settings, .lowerBack))
+                    Text("Both can be active. Today and Progress only show tracks you enable.")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                } header: {
+                    Text("Active rehab templates")
+                }
+
+                if settings.isKneeTrackActive {
+                    Section("Knee phase") {
+                        Picker("Phase", selection: phaseBinding(settings)) {
+                            ForEach(RehabPhase.allCases) { p in
+                                Text(p.title).tag(p)
+                            }
                         }
+                        Text(PhaseGuideCopy.summary(for: settings.currentPhase))
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
                     }
-                    Text(PhaseGuideCopy.summary(for: settings.currentPhase))
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                 }
 
                 Section("Phase A thresholds") {
@@ -116,7 +128,7 @@ struct SettingsStubView: View {
                 NavigationLink {
                     PhaseGuideView()
                 } label: {
-                    Label("Phase guide", systemImage: "list.bullet.clipboard")
+                    Label("Rehab templates guide", systemImage: "list.bullet.clipboard")
                 }
                 LabeledContent("Revision", value: PhaseGuideCopy.protocolRevision)
             }
@@ -222,6 +234,23 @@ struct SettingsStubView: View {
             get: { settings.currentPhase },
             set: { newValue in
                 settings.currentPhase = newValue
+                try? modelContext.save()
+            }
+        )
+    }
+
+    private func trackToggle(_ settings: AppSettings, _ track: RehabTrackID) -> Binding<Bool> {
+        Binding(
+            get: { settings.activeTracks.contains(track) },
+            set: { on in
+                var tracks = settings.activeTracks
+                if on {
+                    if !tracks.contains(track) { tracks.append(track) }
+                } else {
+                    tracks.removeAll { $0 == track }
+                    if tracks.isEmpty { tracks = [.knee] }
+                }
+                settings.activeTracks = tracks
                 try? modelContext.save()
             }
         )

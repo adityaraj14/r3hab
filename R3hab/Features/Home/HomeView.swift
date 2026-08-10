@@ -171,12 +171,16 @@ struct HomeView: View {
                     .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showSession) {
-                NavigationStack { SessionEditor(targetDate: today, focus: .kneeResistance) }
-                    .preferredColorScheme(.dark)
+                NavigationStack {
+                    SessionEditor(targetDate: today, focus: .kneeResistance, track: .knee)
+                }
+                .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showBackSession) {
-                NavigationStack { SessionEditor(targetDate: today, focus: .lowerBackResistance) }
-                    .preferredColorScheme(.dark)
+                NavigationStack {
+                    SessionEditor(targetDate: today, focus: .lowerBackResistance, track: .lowerBack)
+                }
+                .preferredColorScheme(.dark)
             }
             .sheet(isPresented: Binding(
                 get: { resolveTargetId != nil },
@@ -387,29 +391,70 @@ struct HomeView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            Button { showSession = true } label: {
-                Label("Log knee training", systemImage: "figure.strengthtraining.traditional")
-                    .frame(maxWidth: .infinity)
+            if settings?.isKneeTrackActive != false {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Knee · patellar tendon", systemImage: "figure.strengthtraining.traditional")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(PainChartColors.knee)
+                    Text(RehabTemplate.knee.objective80_20)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Button { showSession = true } label: {
+                        Text("Log knee session")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
 
-            Button { showBackSession = true } label: {
-                Label("Log hip thrust (back)", systemImage: "figure.core.training")
-                    .frame(maxWidth: .infinity)
+            if settings?.isBackTrackActive != false {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Low back · QL / trunk", systemImage: "figure.core.training")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(PainChartColors.lowerBack)
+                    Text(RehabTemplate.lowerBack.objective80_20)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Button { showBackSession = true } label: {
+                        Text("Log back session")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.large)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(.secondarySystemBackground))
+                )
             }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
         }
     }
 
     private var guide: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("This phase")
-                .font(.headline)
-            Text(PhaseGuideCopy.summary(for: settings?.currentPhase ?? .aFlareDeLoad))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 10) {
+            if settings?.isKneeTrackActive != false {
+                Text("Knee phase")
+                    .font(.headline)
+                Text(PhaseGuideCopy.summary(for: settings?.currentPhase ?? .aFlareDeLoad))
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+            if settings?.isBackTrackActive != false {
+                Text("Low back program")
+                    .font(.headline)
+                Text(BackProtocolCopy.summary)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
             Text(PhaseGuideCopy.redFlags)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)

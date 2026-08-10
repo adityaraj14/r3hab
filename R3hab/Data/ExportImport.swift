@@ -86,6 +86,8 @@ struct SessionDTO: Codable {
     var warmupHoldSeconds: Int?
     var warmupLoadLbs: Double?
     var loadRegion: String?
+    var track: String?
+    var resistanceSets: [ResistanceSet]?
     var response24h: String
     var decision: String?
     var notes: String
@@ -96,7 +98,7 @@ struct SessionDTO: Codable {
 
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
-        case sets, reps, loadLbs, holdSeconds, loadRegion
+        case sets, reps, loadLbs, holdSeconds, loadRegion, track, resistanceSets
         case warmupReps, warmupHoldSeconds, warmupLoadLbs
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
         case loadKg // legacy key
@@ -118,6 +120,8 @@ struct SessionDTO: Codable {
         warmupHoldSeconds: Int?,
         warmupLoadLbs: Double?,
         loadRegion: String?,
+        track: String?,
+        resistanceSets: [ResistanceSet]?,
         response24h: String,
         decision: String?,
         notes: String,
@@ -141,6 +145,8 @@ struct SessionDTO: Codable {
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
         self.loadRegion = loadRegion
+        self.track = track
+        self.resistanceSets = resistanceSets
         self.response24h = response24h
         self.decision = decision
         self.notes = notes
@@ -168,6 +174,8 @@ struct SessionDTO: Codable {
         warmupHoldSeconds = try c.decodeIfPresent(Int.self, forKey: .warmupHoldSeconds)
         warmupLoadLbs = try c.decodeIfPresent(Double.self, forKey: .warmupLoadLbs)
         loadRegion = try c.decodeIfPresent(String.self, forKey: .loadRegion)
+        track = try c.decodeIfPresent(String.self, forKey: .track)
+        resistanceSets = try c.decodeIfPresent([ResistanceSet].self, forKey: .resistanceSets)
         response24h = try c.decode(String.self, forKey: .response24h)
         decision = try c.decodeIfPresent(String.self, forKey: .decision)
         notes = try c.decode(String.self, forKey: .notes)
@@ -194,6 +202,8 @@ struct SessionDTO: Codable {
         try c.encodeIfPresent(warmupHoldSeconds, forKey: .warmupHoldSeconds)
         try c.encodeIfPresent(warmupLoadLbs, forKey: .warmupLoadLbs)
         try c.encodeIfPresent(loadRegion, forKey: .loadRegion)
+        try c.encodeIfPresent(track, forKey: .track)
+        try c.encodeIfPresent(resistanceSets, forKey: .resistanceSets)
         try c.encode(response24h, forKey: .response24h)
         try c.encodeIfPresent(decision, forKey: .decision)
         try c.encode(notes, forKey: .notes)
@@ -205,8 +215,8 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    /// v2 lower-back pain. v3 resistance. v4 loadRegion. v5 HSR iso warm-up fields.
-    static let schemaVersion = 5
+    /// v6: multi-set resistance payload + rehab track.
+    static let schemaVersion = 6
     static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
 
@@ -278,6 +288,8 @@ enum ExportImportService {
                     warmupHoldSeconds: $0.warmupHoldSeconds,
                     warmupLoadLbs: $0.warmupLoadLbs,
                     loadRegion: $0.loadRegionRaw,
+                    track: $0.trackRaw,
+                    resistanceSets: $0.resistanceSets(),
                     response24h: $0.response24hRaw,
                     decision: $0.decisionRaw,
                     notes: $0.notes,
@@ -420,6 +432,10 @@ enum ExportImportService {
         s.warmupHoldSeconds = dto.warmupHoldSeconds
         s.warmupLoadLbs = dto.warmupLoadLbs
         s.loadRegionRaw = dto.loadRegion
+        s.trackRaw = dto.track
+        if let sets = dto.resistanceSets, !sets.isEmpty {
+            s.setResistanceSets(sets)
+        }
         s.response24hRaw = dto.response24h
         s.decisionRaw = dto.decision
         s.notes = dto.notes

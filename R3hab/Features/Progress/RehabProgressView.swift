@@ -32,19 +32,33 @@ struct RehabProgressView: View {
     }
 
     private var kneeLoadPoints: [DayValue] {
-        ChartMetricBuilder.loadSeries(
+        ChartMetricBuilder.volumeSeries(
             sessions: sessions
-                .filter { $0.effectiveLoadRegion == .knee }
-                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.chartLoadLbs) },
+                .filter { $0.track == .knee || $0.effectiveLoadRegion == .knee }
+                .map {
+                    SessionLoadSnapshot(
+                        date: $0.date,
+                        volume: $0.chartVolume,
+                        maxLoadLbs: $0.chartMaxLoad,
+                        loadLbs: $0.chartLoadLbs
+                    )
+                },
             dayCount: range.rawValue
         )
     }
 
     private var backLoadPoints: [DayValue] {
-        ChartMetricBuilder.loadSeries(
+        ChartMetricBuilder.volumeSeries(
             sessions: sessions
-                .filter { $0.effectiveLoadRegion == .lowerBack }
-                .map { SessionLoadSnapshot(date: $0.date, loadLbs: $0.chartLoadLbs) },
+                .filter { $0.track == .lowerBack || $0.effectiveLoadRegion == .lowerBack }
+                .map {
+                    SessionLoadSnapshot(
+                        date: $0.date,
+                        volume: $0.chartVolume,
+                        maxLoadLbs: $0.chartMaxLoad,
+                        loadLbs: $0.chartLoadLbs
+                    )
+                },
             dayCount: range.rawValue
         )
     }
@@ -154,43 +168,47 @@ struct RehabProgressView: View {
                             )
                         }
 
-                        Text("Knee")
-                            .font(.title3.weight(.semibold))
-                            .padding(.top, 4)
+                        if settingsList.first?.isKneeTrackActive != false {
+                            Text("Knee · tendon")
+                                .font(.title3.weight(.semibold))
+                                .padding(.top, 4)
 
-                        MetricChartCard(
-                            title: "Knee resting pain AM",
-                            points: kneeAM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.knee,
-                            loadPoints: kneeLoadPoints
-                        )
-                        MetricChartCard(
-                            title: "Knee daily pain PM",
-                            points: kneePM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.knee,
-                            loadPoints: kneeLoadPoints
-                        )
+                            MetricChartCard(
+                                title: "Knee resting pain AM",
+                                points: kneeAM,
+                                yDomain: 0...10,
+                                lineColor: PainChartColors.knee,
+                                loadPoints: kneeLoadPoints
+                            )
+                            MetricChartCard(
+                                title: "Knee daily pain PM",
+                                points: kneePM,
+                                yDomain: 0...10,
+                                lineColor: PainChartColors.knee,
+                                loadPoints: kneeLoadPoints
+                            )
+                        }
 
-                        Text("Lower back")
-                            .font(.title3.weight(.semibold))
-                            .padding(.top, 4)
+                        if settingsList.first?.isBackTrackActive != false {
+                            Text("Low back · QL / trunk")
+                                .font(.title3.weight(.semibold))
+                                .padding(.top, 4)
 
-                        MetricChartCard(
-                            title: "Back resting pain AM",
-                            points: backAM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.lowerBack,
-                            loadPoints: backLoadPoints
-                        )
-                        MetricChartCard(
-                            title: "Back daily pain PM",
-                            points: backPM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.lowerBack,
-                            loadPoints: backLoadPoints
-                        )
+                            MetricChartCard(
+                                title: "Back resting pain AM",
+                                points: backAM,
+                                yDomain: 0...10,
+                                lineColor: PainChartColors.lowerBack,
+                                loadPoints: backLoadPoints
+                            )
+                            MetricChartCard(
+                                title: "Back daily pain PM",
+                                points: backPM,
+                                yDomain: 0...10,
+                                lineColor: PainChartColors.lowerBack,
+                                loadPoints: backLoadPoints
+                            )
+                        }
 
                         MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
                     }
