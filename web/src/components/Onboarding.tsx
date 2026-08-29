@@ -12,7 +12,7 @@ export function Onboarding({
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [alreadyLoading, setAlreadyLoading] = useState(true);
-  const [unit, setUnit] = useState<LoadUnit>("kg");
+  const [unit, setUnit] = useState<LoadUnit>("lb");
 
   const finish = async (skipped: boolean) => {
     setLoading(true);
@@ -67,8 +67,8 @@ export function Onboarding({
               value={unit}
               onChange={setUnit}
               options={[
-                { value: "kg", label: "Kilograms" },
                 { value: "lb", label: "lbs" },
+                { value: "kg", label: "Kilograms" },
               ]}
             />
           </>

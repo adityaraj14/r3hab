@@ -200,7 +200,7 @@ export function defaultSettings(): AppSettings {
     stepNearNormalMin: 6000,
     stepBaselineTypical: 7500,
     hasCompletedOnboarding: false,
-    loadUnit: "kg",
+    loadUnit: "lb",
     isoProtocol: "holds45",
     protocolRevision: PROTOCOL_REVISION,
     demoSeeded: false,

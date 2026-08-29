@@ -56,6 +56,10 @@ describe("nextLoadSuggester", () => {
     expect(formatLoad(20, "kg")).toMatch(/ kg$/);
   });
 
+  it("22.5 kg machine load displays as 50 lbs", () => {
+    expect(formatLoad(22.5, "lb")).toBe("50 lbs");
+  });
+
   it("null decision behaves as Stay", () => {
     const next = suggestNextLoad({
       lastLoadKg: 22.5,
