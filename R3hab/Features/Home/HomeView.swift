@@ -64,12 +64,19 @@ struct HomeView: View {
         }
     }
 
-    private var kneeAMSparkline: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7)
-    }
-
-    private var hasKneeAMSparkline: Bool {
-        kneeAMSparkline.contains { $0.value != nil }
+    private var explorePoints: [DayExplorePoint] {
+        ChartMetricBuilder.explorePoints(
+            checkIns: metrics,
+            sideLoads: sessions.map {
+                SessionSideLoadSnapshot(
+                    date: $0.date,
+                    leftMaxLbs: $0.chartMaxLoadLeft,
+                    rightMaxLbs: $0.chartMaxLoadRight,
+                    unspecifiedMaxLbs: $0.chartMaxLoad
+                )
+            },
+            dayCount: 7
+        )
     }
 
     private var pendingBadge: Int { overduePending.count }
@@ -98,15 +105,11 @@ struct HomeView: View {
 
                     checklist
 
-                    if hasKneeAMSparkline {
-                        VStack(alignment: .leading, spacing: 14) {
-                            Text("AM pain · 7 days")
+                    if explorePoints.contains(where: \.hasValues) {
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Knee · 7 days")
                                 .font(.subheadline.weight(.semibold))
-                            SparklineView(
-                                points: kneeAMSparkline,
-                                lineColor: PainChartColors.knee,
-                                height: 40
-                            )
+                            KneeExploreChart(points: explorePoints, height: 120, visibleDays: 7)
                         }
                         .padding()
                         .background(
@@ -346,7 +349,7 @@ struct HomeView: View {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button { showSession = true } label: {
-                    Text("Log session")
+                    Text("Log seated extension")
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)

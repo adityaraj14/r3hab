@@ -219,6 +219,14 @@ final class TrainingSession {
         ResistanceMath.chartMaxLoad(work: resistanceSets())
     }
 
+    var chartMaxLoadLeft: Double? {
+        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .left })
+    }
+
+    var chartMaxLoadRight: Double? {
+        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .right })
+    }
+
     /// Backward-compatible single load for older call sites.
     var chartLoadLbs: Double? {
         chartMaxLoad

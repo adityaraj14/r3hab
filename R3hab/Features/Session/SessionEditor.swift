@@ -98,7 +98,7 @@ struct SessionEditor: View {
                 if showsWarmup {
                     setListSection(
                         title: "Warm-up (isometric holds)",
-                        footer: "Reps = holds · time per hold · load (lb). Same pattern as pure isometrics.",
+                        footer: "Reps = holds · time per hold · load (lbs). Same pattern as pure isometrics.",
                         sets: $warmupSets,
                         isoStyle: true
                     )
@@ -107,17 +107,17 @@ struct SessionEditor: View {
                 setListSection(
                     title: usesIsoHolds ? "Working holds" : "Working sets",
                     footer: usesIsoHolds
-                        ? "Each row is one hold: reps (count), time (sec), load (lb). Add rows as needed."
-                        : "Each row is one set with its own reps and load (lb). Volume = Σ reps × load.",
+                        ? "Each hold is one side. Both knees stay in this session — one 24h resolve tomorrow. Load (lbs)."
+                        : "L and R rows are one session. One 24h resolve. Load (lbs). Volume = Σ reps × load.",
                     sets: $workSets,
                     isoStyle: usesIsoHolds
                 )
 
                 if volumePreview > 0 {
                     Section {
-                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lb·reps")
+                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lbs·reps")
                         if let maxL = ResistanceMath.maxLoad(workSets + warmupSets) {
-                            LabeledContent("Max load", value: "\(TrainingSession.formatLoad(maxL)) lb")
+                            LabeledContent("Max load", value: LoadCopy.labeled(maxL))
                         }
                     } footer: {
                         Text("Progress charts plot daily volume (and max load in the legend).")
@@ -125,9 +125,13 @@ struct SessionEditor: View {
                 }
             }
 
-            Section("Pain") {
+            Section {
                 PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
                 PainScoreControl(title: "After (required)", value: $painAfter, allowsClear: false)
+            } header: {
+                Text("Pain")
+            } footer: {
+                Text("Starts empty. Both sides share this score and one 24h resolve.")
             }
 
             Section("Notes") {
@@ -190,9 +194,20 @@ struct SessionEditor: View {
             ForEach(Array(sets.wrappedValue.enumerated()), id: \.element.id) { index, _ in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(isoStyle ? "Hold \(index + 1)" : "Set \(index + 1)")
+                        Text(rowTitle(isoStyle: isoStyle, index: index, set: sets.wrappedValue[index]))
                             .font(.subheadline.weight(.semibold))
                         Spacer()
+                        if !title.lowercased().contains("warm") {
+                            Picker(
+                                "Side",
+                                selection: bindingSide(sets, index: index)
+                            ) {
+                                Text("L").tag(KneeSide.left)
+                                Text("R").tag(KneeSide.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(maxWidth: 96)
+                        }
                         if sets.wrappedValue.count > 1 {
                             Button(role: .destructive) {
                                 sets.wrappedValue.remove(at: index)
@@ -214,30 +229,78 @@ struct SessionEditor: View {
                             )
                         }
                         labeledLoadField(
-                            title: "Load (lb)",
+                            title: "Load (lbs)",
                             value: bindingLoad(sets, index: index)
                         )
                     }
                 }
                 .padding(.vertical, 4)
             }
-            Button {
-                sets.wrappedValue.append(
-                    ResistanceSet(
-                        reps: isoStyle ? 1 : 8,
-                        loadLbs: nil,
-                        holdSeconds: isoStyle ? 30 : nil,
-                        isWarmup: title.lowercased().contains("warm")
+            if title.lowercased().contains("warm") {
+                Button {
+                    sets.wrappedValue.append(
+                        ResistanceSet(
+                            reps: isoStyle ? 1 : 3,
+                            loadLbs: nil,
+                            holdSeconds: isoStyle ? 30 : 30,
+                            isWarmup: true
+                        )
                     )
-                )
-            } label: {
-                Label(isoStyle ? "Add hold" : "Add set", systemImage: "plus.circle")
+                } label: {
+                    Label("Add warm-up", systemImage: "plus.circle")
+                }
+            } else {
+                HStack {
+                    Button {
+                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .left)
+                    } label: {
+                        Label(isoStyle ? "Add L hold" : "Add L set", systemImage: "plus.circle")
+                    }
+                    Button {
+                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .right)
+                    } label: {
+                        Label(isoStyle ? "Add R hold" : "Add R set", systemImage: "plus.circle")
+                    }
+                }
             }
         } header: {
             Text(title)
         } footer: {
             Text(footer)
         }
+    }
+
+    private func rowTitle(isoStyle: Bool, index: Int, set: ResistanceSet) -> String {
+        let kind = isoStyle ? "Hold" : "Set"
+        if let side = set.side {
+            return "\(side.shortLabel) \(kind)"
+        }
+        return "\(kind) \(index + 1)"
+    }
+
+    private func bindingSide(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<KneeSide> {
+        Binding(
+            get: {
+                guard sets.wrappedValue.indices.contains(index) else { return .left }
+                return sets.wrappedValue[index].side ?? .left
+            },
+            set: { new in
+                guard sets.wrappedValue.indices.contains(index) else { return }
+                sets.wrappedValue[index].side = new
+            }
+        )
+    }
+
+    private func appendWorkSet(to sets: Binding<[ResistanceSet]>, isoStyle: Bool, side: KneeSide) {
+        sets.wrappedValue.append(
+            ResistanceSet(
+                reps: isoStyle ? 4 : 8,
+                loadLbs: nil,
+                holdSeconds: isoStyle ? 30 : nil,
+                isWarmup: false,
+                side: side
+            )
+        )
     }
 
     private func bindingReps(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<String> {
@@ -346,6 +409,10 @@ struct SessionEditor: View {
         if !preset.whatIDid.isEmpty {
             whatIDid = preset.whatIDid
         }
+        if !isEditing {
+            workSets = []
+            warmupSets = []
+        }
         seedDefaultSets()
         syncWhatIDid()
         refreshSpacing()
@@ -356,7 +423,8 @@ struct SessionEditor: View {
             warmupSets = []
             if workSets.isEmpty {
                 workSets = [
-                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false)
+                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .left),
+                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .right)
                 ]
             }
         } else {
@@ -367,9 +435,8 @@ struct SessionEditor: View {
             }
             if workSets.isEmpty {
                 workSets = [
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false),
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false),
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false)
+                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .left),
+                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .right)
                 ]
             }
         }
@@ -395,7 +462,7 @@ struct SessionEditor: View {
         // Don't clobber free-text history on edit unless it looks structured
         if isEditing, !whatIDid.isEmpty {
             let lower = whatIDid.lowercased()
-            let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("×")
+            let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("lbs") || lower.contains("×")
                 || lower.contains("x") || lower.contains("set")
             if !structured { return }
         }

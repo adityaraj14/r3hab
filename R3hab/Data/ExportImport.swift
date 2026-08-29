@@ -79,7 +79,7 @@ struct SessionDTO: Codable {
     var painAfter: Int
     var sets: Int?
     var reps: Int?
-    /// Pounds. JSON may still use `loadKg` from older backups (same numeric field).
+    /// Stored as lb. JSON may still use `loadKg` from older backups (same numeric field).
     var loadLbs: Double?
     var holdSeconds: Int?
     var warmupReps: Int?

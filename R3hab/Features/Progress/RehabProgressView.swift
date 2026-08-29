@@ -29,22 +29,19 @@ struct RehabProgressView: View {
         }
     }
 
-    private var kneeLoadPoints: [DayValue] {
-        ChartMetricBuilder.volumeSeries(
-            sessions: sessions.map {
-                SessionLoadSnapshot(
+    private var explorePoints: [DayExplorePoint] {
+        ChartMetricBuilder.explorePoints(
+            checkIns: metrics,
+            sideLoads: sessions.map {
+                SessionSideLoadSnapshot(
                     date: $0.date,
-                    volume: $0.chartVolume,
-                    maxLoadLbs: $0.chartMaxLoad,
-                    loadLbs: $0.chartLoadLbs
+                    leftMaxLbs: $0.chartMaxLoadLeft,
+                    rightMaxLbs: $0.chartMaxLoadRight,
+                    unspecifiedMaxLbs: $0.chartMaxLoad
                 )
             },
             dayCount: range.rawValue
         )
-    }
-
-    private var kneeAM: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: range.rawValue)
     }
 
     private var kneePM: [DayValue] {
@@ -144,19 +141,29 @@ struct RehabProgressView: View {
                             .font(.title3.weight(.semibold))
                             .padding(.top, 4)
 
-                        MetricChartCard(
-                            title: "Knee resting pain AM",
-                            points: kneeAM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.knee,
-                            loadPoints: kneeLoadPoints
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("AM pain + L/R load")
+                                .font(.headline)
+                            Text("Tap a point. Scroll to move the window.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            KneeExploreChart(
+                                points: explorePoints,
+                                height: 160,
+                                visibleDays: min(7, range.rawValue)
+                            )
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(.secondarySystemBackground))
                         )
+
                         MetricChartCard(
                             title: "Knee daily pain PM",
                             points: kneePM,
                             yDomain: 0...10,
-                            lineColor: PainChartColors.knee,
-                            loadPoints: kneeLoadPoints
+                            lineColor: PainChartColors.knee
                         )
 
                         MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")

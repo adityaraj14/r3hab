@@ -41,7 +41,7 @@ struct SessionPreset: Identifiable, Hashable {
             label: "Seated knee extension",
             sessionType: .isometrics,
             whatIDid: "Seated knee extension hold ~60°",
-            phases: [.bIsometrics],
+            phases: [.bIsometrics, .aFlareDeLoad],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: true
@@ -82,10 +82,22 @@ struct SessionPreset: Identifiable, Hashable {
         }
     }
 
+    var isPrimarySeatedExtension: Bool {
+        id == SessionPreset.seatedExtensionIsometricId || id == SessionPreset.seatedExtensionHSRId
+    }
+
     static func forPhase(_ phase: RehabPhase) -> [SessionPreset] {
-        all.filter { preset in
+        let filtered = all.enumerated().filter { _, preset in
             guard let phases = preset.phases else { return true }
             return phases.contains(phase)
         }
+        return filtered
+            .sorted { a, b in
+                let ap = a.element.isPrimarySeatedExtension ? 0 : 1
+                let bp = b.element.isPrimarySeatedExtension ? 0 : 1
+                if ap != bp { return ap < bp }
+                return a.offset < b.offset
+            }
+            .map(\.element)
     }
 }

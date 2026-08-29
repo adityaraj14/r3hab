@@ -56,6 +56,27 @@ struct DailyMetricSnapshot: Equatable, Sendable {
     var steps: Int?
 }
 
+struct SessionSideLoadSnapshot: Equatable, Sendable {
+    var date: Date
+    var leftMaxLbs: Double?
+    var rightMaxLbs: Double?
+    var unspecifiedMaxLbs: Double?
+}
+
+/// One calendar day for the explorable knee chart.
+struct DayExplorePoint: Identifiable, Equatable, Sendable {
+    var id: String { dayKey }
+    var dayKey: String
+    var date: Date
+    var amPain: Double?
+    var leftLoadLbs: Double?
+    var rightLoadLbs: Double?
+
+    var hasValues: Bool {
+        amPain != nil || leftLoadLbs != nil || rightLoadLbs != nil
+    }
+}
+
 /// Session load point for resistance trend charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
@@ -178,6 +199,50 @@ enum ChartMetricBuilder {
             )
         }
         return (scaled, maxLoad)
+    }
+
+    static func explorePoints(
+        checkIns: [DailyMetricSnapshot],
+        sideLoads: [SessionSideLoadSnapshot],
+        dayCount: Int,
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> [DayExplorePoint] {
+        let startToday = calendar.startOfDay(for: today)
+        var painByDay: [String: DailyMetricSnapshot] = [:]
+        for row in checkIns {
+            painByDay[CalendarDay.dayKey(row.date, calendar: calendar)] = row
+        }
+        var leftByDay: [String: Double] = [:]
+        var rightByDay: [String: Double] = [:]
+        for session in sideLoads {
+            let key = CalendarDay.dayKey(session.date, calendar: calendar)
+            if let left = session.leftMaxLbs {
+                leftByDay[key] = max(leftByDay[key] ?? 0, left)
+            }
+            if let right = session.rightMaxLbs {
+                rightByDay[key] = max(rightByDay[key] ?? 0, right)
+            }
+            if session.leftMaxLbs == nil, session.rightMaxLbs == nil, let load = session.unspecifiedMaxLbs {
+                leftByDay[key] = max(leftByDay[key] ?? 0, load)
+            }
+        }
+
+        var result: [DayExplorePoint] = []
+        for offset in stride(from: dayCount - 1, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
+            let key = CalendarDay.dayKey(day, calendar: calendar)
+            result.append(
+                DayExplorePoint(
+                    dayKey: key,
+                    date: day,
+                    amPain: painByDay[key]?.restingPainAM.map(Double.init),
+                    leftLoadLbs: leftByDay[key],
+                    rightLoadLbs: rightByDay[key]
+                )
+            )
+        }
+        return result
     }
 
     static func average(of series: [DayValue]) -> Double? {

@@ -35,7 +35,7 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .isometrics: return "Isometrics"
-        case .hsrStrength: return "HSR / strength"
+        case .hsrStrength: return "HSR"
         case .energyStorage: return "Energy storage"
         case .tennisSport: return "Tennis / sport"
         case .other: return "Other"
