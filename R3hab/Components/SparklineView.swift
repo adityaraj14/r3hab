@@ -101,44 +101,10 @@ struct KneeExploreChart: View {
     private var loadChart: some View {
         Chart {
             ForEach(points) { point in
-                if let left = point.leftLoadLbs {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", left),
-                        series: .value("Side", "L")
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(PainChartColors.left)
-                    PointMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", left),
-                        series: .value("Side", "L")
-                    )
-                    .foregroundStyle(PainChartColors.left)
-                    .symbolSize(28)
-                }
-                if let right = point.rightLoadLbs {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", right),
-                        series: .value("Side", "R")
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(PainChartColors.right)
-                    PointMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", right),
-                        series: .value("Side", "R")
-                    )
-                    .foregroundStyle(PainChartColors.right)
-                    .symbolSize(28)
-                }
+                leftMarks(for: point)
+                rightMarks(for: point)
             }
-            if let selected {
-                RuleMark(x: .value("Selected", selected.date))
-                    .foregroundStyle(PainChartColors.left.opacity(0.55))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            }
+            selectionRule
         }
         .chartXSelection(value: $selectedDate)
         .chartScrollableAxes(.horizontal)
@@ -155,6 +121,55 @@ struct KneeExploreChart: View {
         }
         .frame(height: height)
         .accessibilityLabel("L and R load in lbs. Scroll to zoom the date window.")
+    }
+
+    @ChartContentBuilder
+    private func leftMarks(for point: DayExplorePoint) -> some ChartContent {
+        if let left = point.leftLoadLbs {
+            LineMark(
+                x: .value("Day", point.date),
+                y: .value("Load", left),
+                series: .value("Side", "L")
+            )
+            .interpolationMethod(.linear)
+            .foregroundStyle(PainChartColors.left)
+            PointMark(
+                x: .value("Day", point.date),
+                y: .value("Load", left),
+                series: .value("Side", "L")
+            )
+            .foregroundStyle(PainChartColors.left)
+            .symbolSize(28)
+        }
+    }
+
+    @ChartContentBuilder
+    private func rightMarks(for point: DayExplorePoint) -> some ChartContent {
+        if let right = point.rightLoadLbs {
+            LineMark(
+                x: .value("Day", point.date),
+                y: .value("Load", right),
+                series: .value("Side", "R")
+            )
+            .interpolationMethod(.linear)
+            .foregroundStyle(PainChartColors.right)
+            PointMark(
+                x: .value("Day", point.date),
+                y: .value("Load", right),
+                series: .value("Side", "R")
+            )
+            .foregroundStyle(PainChartColors.right)
+            .symbolSize(28)
+        }
+    }
+
+    @ChartContentBuilder
+    private var selectionRule: some ChartContent {
+        if let selected {
+            RuleMark(x: .value("Selected", selected.date))
+                .foregroundStyle(PainChartColors.left.opacity(0.55))
+                .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
     }
 
     @ViewBuilder
