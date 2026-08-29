@@ -21,9 +21,9 @@ final class TrainingSession {
     var warmupLoadLbs: Double?
     /// JSON array of `ResistanceSet` — preferred source for multi-set logging.
     var resistanceSetsJSON: String?
-    /// Which Progress chart series this load plots on (`knee` / `lowerBack`).
+    /// Stored region string. Knee-only in UI; leftover `lowerBack` values map to knee.
     var loadRegionRaw: String?
-    /// Rehab track this session belongs to (`knee` / `lowerBack`). Defaults from load region.
+    /// Stored track string. Knee-only in UI; leftover `lowerBack` values map to knee.
     var trackRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
@@ -66,16 +66,10 @@ final class TrainingSession {
     }
 
     var track: RehabTrackID {
-        get {
-            if let trackRaw, let t = RehabTrackID(rawValue: trackRaw) { return t }
-            if let loadRegion {
-                return loadRegion == .lowerBack ? .lowerBack : .knee
-            }
-            return .knee
-        }
+        get { .knee }
         set {
-            trackRaw = newValue.rawValue
-            loadRegionRaw = newValue.loadRegion.rawValue
+            trackRaw = RehabTrackID.knee.rawValue
+            loadRegionRaw = LoadRegion.knee.rawValue
         }
     }
 
@@ -120,9 +114,8 @@ final class TrainingSession {
         self.warmupReps = warmupReps
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
-        self.loadRegionRaw = loadRegion?.rawValue ?? track?.loadRegion.rawValue
-        self.trackRaw = track?.rawValue
-            ?? (loadRegion == .lowerBack ? RehabTrackID.lowerBack.rawValue : RehabTrackID.knee.rawValue)
+        self.loadRegionRaw = LoadRegion.knee.rawValue
+        self.trackRaw = RehabTrackID.knee.rawValue
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
@@ -224,6 +217,14 @@ final class TrainingSession {
     /// Max load (lb) for legend context.
     var chartMaxLoad: Double? {
         ResistanceMath.chartMaxLoad(work: resistanceSets())
+    }
+
+    var chartMaxLoadLeft: Double? {
+        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .left })
+    }
+
+    var chartMaxLoadRight: Double? {
+        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .right })
     }
 
     /// Backward-compatible single load for older call sites.

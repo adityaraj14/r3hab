@@ -28,27 +28,15 @@ struct SettingsStubView: View {
     var body: some View {
         List {
             if let settings {
-                Section {
-                    Toggle("Knee · patellar tendon", isOn: trackToggle(settings, .knee))
-                    Toggle("Low back · trunk", isOn: trackToggle(settings, .lowerBack))
-                    Text("Both can be active. Today and Progress only show tracks you enable.")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                } header: {
-                    Text("Active rehab templates")
-                }
-
-                if settings.isKneeTrackActive {
-                    Section("Knee phase") {
-                        Picker("Phase", selection: phaseBinding(settings)) {
-                            ForEach(RehabPhase.allCases) { p in
-                                Text(p.title).tag(p)
-                            }
+                Section("Phase") {
+                    Picker("Phase", selection: phaseBinding(settings)) {
+                        ForEach(RehabPhase.allCases) { p in
+                            Text(p.title).tag(p)
                         }
-                        Text(PhaseGuideCopy.summary(for: settings.currentPhase))
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
                     }
+                    Text(PhaseGuideCopy.summary(for: settings.currentPhase))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
 
                 Section("Phase A thresholds") {
@@ -82,13 +70,7 @@ struct SettingsStubView: View {
                         selection: reminderTimeBinding(settings, isAM: false),
                         displayedComponents: .hourAndMinute
                     )
-                    LabeledContent("Stretch") {
-                        Text(NotificationScheduler.stretchReminderTimesLabel)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .multilineTextAlignment(.trailing)
-                    }
-                    Text("Check-in times are adjustable. Stretch reminders fire three times daily from 8:00 AM to 7:00 PM (evenly spaced). Also reminds for overdue 24h pending. Works offline.")
+                    Text("Check-in times are adjustable. Also reminds for overdue 24h pending. Works offline.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
@@ -128,7 +110,7 @@ struct SettingsStubView: View {
                 NavigationLink {
                     PhaseGuideView()
                 } label: {
-                    Label("Rehab templates guide", systemImage: "list.bullet.clipboard")
+                    Label("Phase guide", systemImage: "list.bullet.clipboard")
                 }
                 LabeledContent("Revision", value: PhaseGuideCopy.protocolRevision)
             }
@@ -140,7 +122,7 @@ struct SettingsStubView: View {
             }
 
             Section("Disclaimer") {
-                Text("R3hab supports self-managed rehab logging. It is not a medical device and does not replace professional care.")
+                Text(PhaseGuideCopy.medicalDisclaimer)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Text(PhaseGuideCopy.redFlags)
@@ -234,23 +216,6 @@ struct SettingsStubView: View {
             get: { settings.currentPhase },
             set: { newValue in
                 settings.currentPhase = newValue
-                try? modelContext.save()
-            }
-        )
-    }
-
-    private func trackToggle(_ settings: AppSettings, _ track: RehabTrackID) -> Binding<Bool> {
-        Binding(
-            get: { settings.activeTracks.contains(track) },
-            set: { on in
-                var tracks = settings.activeTracks
-                if on {
-                    if !tracks.contains(track) { tracks.append(track) }
-                } else {
-                    tracks.removeAll { $0 == track }
-                    if tracks.isEmpty { tracks = [.knee] }
-                }
-                settings.activeTracks = tracks
                 try? modelContext.save()
             }
         )
@@ -398,8 +363,6 @@ struct SettingsStubView: View {
             let row = DailyCheckIn(date: day, phase: phase)
             row.restingPainAM = [2, 1, 2, 3, 1, 2, 2][offset]
             row.dailyPainPM = [2, 2, 1, 3, 2, 2, 1][offset]
-            row.lowerBackPainAM = [3, 2, 3, 4, 2, 3, 2][offset]
-            row.lowerBackPainPM = [2, 3, 2, 3, 2, 2, 1][offset]
             row.steps = [4500, 6200, 7100, 3800, 8000, 5500, 6400][offset]
             modelContext.insert(row)
         }
@@ -408,7 +371,7 @@ struct SettingsStubView: View {
                 date: today,
                 phase: phase,
                 sessionType: .isometrics,
-                whatIDid: "Leg extension 3×1 @ 15 lb 30s hold",
+                whatIDid: "Seated knee extension 3×1 @ 15 lbs 30s hold",
                 painDuring: 2,
                 painAfter: 1,
                 sets: 3,

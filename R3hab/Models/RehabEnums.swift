@@ -35,7 +35,7 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .isometrics: return "Isometrics"
-        case .hsrStrength: return "HSR / strength"
+        case .hsrStrength: return "HSR"
         case .energyStorage: return "Energy storage"
         case .tennisSport: return "Tennis / sport"
         case .other: return "Other"
@@ -54,26 +54,19 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
     }
 }
 
-/// Which body-region resistance chart a structured load belongs on.
+/// Which resistance chart a structured load belongs on. Knee-only.
 enum LoadRegion: String, Codable, CaseIterable, Identifiable, Sendable {
     case knee
-    case lowerBack
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .knee: return "Knee"
-        case .lowerBack: return "Lower back"
-        }
-    }
+    var title: String { "Knee" }
 }
 
-/// How SessionEditor opens for a new log (knee machine vs hip thrust vs freeform).
+/// How SessionEditor opens for a new log.
 enum SessionLogFocus: String, Sendable {
     case general
     case kneeResistance
-    case lowerBackResistance
 }
 
 enum Response24h: String, Codable, CaseIterable, Identifiable, Sendable {

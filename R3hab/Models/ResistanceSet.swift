@@ -1,28 +1,61 @@
 import Foundation
 
+enum KneeSide: String, Codable, CaseIterable, Identifiable, Sendable {
+    case left
+    case right
+
+    var id: String { rawValue }
+
+    var shortLabel: String {
+        switch self {
+        case .left: return "L"
+        case .right: return "R"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .left: return "Left"
+        case .right: return "Right"
+        }
+    }
+}
+
+enum LoadCopy {
+    static let unit = "lbs"
+
+    static func labeled(_ lbs: Double) -> String {
+        "\(TrainingSession.formatLoad(lbs)) \(unit)"
+    }
+}
+
 /// One working or warm-up set inside a training session.
 struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
     var id: UUID
     /// Reps (or number of holds for isometrics).
     var reps: Int?
-    /// Load in pounds.
+    /// Load in pounds (stored as lb; UI shows lbs).
     var loadLbs: Double?
     /// Hold seconds (isometrics / warm-up holds).
     var holdSeconds: Int?
     var isWarmup: Bool
+    /// Left or right knee. Nil on legacy rows and warm-ups.
+    var side: KneeSide?
 
     init(
         id: UUID = UUID(),
         reps: Int? = nil,
         loadLbs: Double? = nil,
         holdSeconds: Int? = nil,
-        isWarmup: Bool = false
+        isWarmup: Bool = false,
+        side: KneeSide? = nil
     ) {
         self.id = id
         self.reps = reps
         self.loadLbs = loadLbs
         self.holdSeconds = holdSeconds
         self.isWarmup = isWarmup
+        self.side = side
     }
 
     /// Volume contribution: reps × load (hold sets still count via reps × load).
@@ -44,8 +77,11 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         } else if let reps {
             parts.append("\(reps)r")
         }
+        if let side {
+            parts.append(side.shortLabel)
+        }
         if let loadLbs {
-            parts.append("@ \(TrainingSession.formatLoad(loadLbs)) lb")
+            parts.append("@ \(LoadCopy.labeled(loadLbs))")
         }
         return parts.joined(separator: " ")
     }

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Log or edit a training session (multi-set resistance + dual rehab tracks).
+/// Log or edit a training session (seated knee extension iso/HSR + 24h loop).
 struct SessionEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -12,14 +12,11 @@ struct SessionEditor: View {
     var targetDate: Date = Date()
     var existing: TrainingSession?
     var focus: SessionLogFocus = .general
-    /// When opening a new log for a specific rehab issue.
-    var track: RehabTrackID = .knee
 
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var sessionType: SessionType = .isometrics
     @State private var whatIDid: String = ""
     @State private var selectedPresetId: String?
-    @State private var activeTrack: RehabTrackID = .knee
     @State private var workSets: [ResistanceSet] = []
     @State private var warmupSets: [ResistanceSet] = []
     @State private var usesIsoHolds = false
@@ -45,16 +42,12 @@ struct SessionEditor: View {
     }
 
     private var showsWarmup: Bool {
-        showsResistance && !usesIsoHolds && activeTrack == .knee && sessionType == .hsrStrength
+        showsResistance && !usesIsoHolds && sessionType == .hsrStrength
     }
 
     private var navigationTitleText: String {
         if isEditing { return "Edit session" }
-        switch focus {
-        case .lowerBackResistance: return "Log back session"
-        case .kneeResistance: return "Log knee session"
-        case .general: return "Log session"
-        }
+        return "Log session"
     }
 
     private var volumePreview: Double {
@@ -68,42 +61,19 @@ struct SessionEditor: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if !isEditing {
-                    Picker("Rehab track", selection: $activeTrack) {
-                        if settings?.isKneeTrackActive != false {
-                            Text("Knee").tag(RehabTrackID.knee)
-                        }
-                        if settings?.isBackTrackActive != false {
-                            Text("Low back").tag(RehabTrackID.lowerBack)
-                        }
+                Picker("Phase", selection: $phase) {
+                    ForEach(RehabPhase.allCases) { p in
+                        Text(p.title).tag(p)
                     }
-                    .pickerStyle(.segmented)
-                    .onChange(of: activeTrack) { _, new in
-                        applyTrackDefault(new)
-                    }
-                } else {
-                    LabeledContent("Track", value: activeTrack.title)
-                }
-
-                if activeTrack == .knee {
-                    Picker("Knee phase", selection: $phase) {
-                        ForEach(RehabPhase.allCases) { p in
-                            Text(p.title).tag(p)
-                        }
-                    }
-                } else {
-                    Text(RehabTemplate.lowerBack.objective80_20)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                 }
             } header: {
-                Text(activeTrack == .knee ? "Knee · patellar tendon" : "Low back · trunk")
+                Text("Patellar tendinopathy")
             }
 
             Section("Exercise") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
-                        ForEach(presetsForCurrentTrack) { preset in
+                        ForEach(presetsForPhase) { preset in
                             Button(preset.label) { applyPreset(preset) }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
@@ -128,7 +98,7 @@ struct SessionEditor: View {
                 if showsWarmup {
                     setListSection(
                         title: "Warm-up (isometric holds)",
-                        footer: "Reps = holds · time per hold · load (lb). Same pattern as pure isometrics.",
+                        footer: "Reps = holds · time per hold · load (lbs). Same pattern as pure isometrics.",
                         sets: $warmupSets,
                         isoStyle: true
                     )
@@ -137,17 +107,17 @@ struct SessionEditor: View {
                 setListSection(
                     title: usesIsoHolds ? "Working holds" : "Working sets",
                     footer: usesIsoHolds
-                        ? "Each row is one hold: reps (count), time (sec), load (lb). Add rows as needed."
-                        : "Each row is one set with its own reps and load (lb). Volume = Σ reps × load.",
+                        ? "Each hold is one side. Both knees stay in this session — one 24h resolve tomorrow. Load (lbs)."
+                        : "L and R rows are one session. One 24h resolve. Load (lbs). Volume = Σ reps × load.",
                     sets: $workSets,
                     isoStyle: usesIsoHolds
                 )
 
                 if volumePreview > 0 {
                     Section {
-                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lb·reps")
+                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lbs·reps")
                         if let maxL = ResistanceMath.maxLoad(workSets + warmupSets) {
-                            LabeledContent("Max load", value: "\(TrainingSession.formatLoad(maxL)) lb")
+                            LabeledContent("Max load", value: LoadCopy.labeled(maxL))
                         }
                     } footer: {
                         Text("Progress charts plot daily volume (and max load in the legend).")
@@ -155,9 +125,13 @@ struct SessionEditor: View {
                 }
             }
 
-            Section("Pain") {
+            Section {
                 PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
                 PainScoreControl(title: "After (required)", value: $painAfter, allowsClear: false)
+            } header: {
+                Text("Pain")
+            } footer: {
+                Text("Starts empty. Both sides share this score and one 24h resolve.")
             }
 
             Section("Notes") {
@@ -205,8 +179,8 @@ struct SessionEditor: View {
         return calendar.startOfDay(for: targetDate)
     }
 
-    private var presetsForCurrentTrack: [SessionPreset] {
-        SessionPreset.forTrack(activeTrack, phase: phase)
+    private var presetsForPhase: [SessionPreset] {
+        SessionPreset.forPhase(phase)
     }
 
     @ViewBuilder
@@ -220,9 +194,20 @@ struct SessionEditor: View {
             ForEach(Array(sets.wrappedValue.enumerated()), id: \.element.id) { index, _ in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(isoStyle ? "Hold \(index + 1)" : "Set \(index + 1)")
+                        Text(rowTitle(isoStyle: isoStyle, index: index, set: sets.wrappedValue[index]))
                             .font(.subheadline.weight(.semibold))
                         Spacer()
+                        if !title.lowercased().contains("warm") {
+                            Picker(
+                                "Side",
+                                selection: bindingSide(sets, index: index)
+                            ) {
+                                Text("L").tag(KneeSide.left)
+                                Text("R").tag(KneeSide.right)
+                            }
+                            .pickerStyle(.segmented)
+                            .frame(maxWidth: 96)
+                        }
                         if sets.wrappedValue.count > 1 {
                             Button(role: .destructive) {
                                 sets.wrappedValue.remove(at: index)
@@ -244,30 +229,78 @@ struct SessionEditor: View {
                             )
                         }
                         labeledLoadField(
-                            title: "Load (lb)",
+                            title: "Load (lbs)",
                             value: bindingLoad(sets, index: index)
                         )
                     }
                 }
                 .padding(.vertical, 4)
             }
-            Button {
-                sets.wrappedValue.append(
-                    ResistanceSet(
-                        reps: isoStyle ? 1 : 8,
-                        loadLbs: nil,
-                        holdSeconds: isoStyle ? 30 : nil,
-                        isWarmup: title.lowercased().contains("warm")
+            if title.lowercased().contains("warm") {
+                Button {
+                    sets.wrappedValue.append(
+                        ResistanceSet(
+                            reps: isoStyle ? 1 : 3,
+                            loadLbs: nil,
+                            holdSeconds: isoStyle ? 30 : 30,
+                            isWarmup: true
+                        )
                     )
-                )
-            } label: {
-                Label(isoStyle ? "Add hold" : "Add set", systemImage: "plus.circle")
+                } label: {
+                    Label("Add warm-up", systemImage: "plus.circle")
+                }
+            } else {
+                HStack {
+                    Button {
+                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .left)
+                    } label: {
+                        Label(isoStyle ? "Add L hold" : "Add L set", systemImage: "plus.circle")
+                    }
+                    Button {
+                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .right)
+                    } label: {
+                        Label(isoStyle ? "Add R hold" : "Add R set", systemImage: "plus.circle")
+                    }
+                }
             }
         } header: {
             Text(title)
         } footer: {
             Text(footer)
         }
+    }
+
+    private func rowTitle(isoStyle: Bool, index: Int, set: ResistanceSet) -> String {
+        let kind = isoStyle ? "Hold" : "Set"
+        if let side = set.side {
+            return "\(side.shortLabel) \(kind)"
+        }
+        return "\(kind) \(index + 1)"
+    }
+
+    private func bindingSide(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<KneeSide> {
+        Binding(
+            get: {
+                guard sets.wrappedValue.indices.contains(index) else { return .left }
+                return sets.wrappedValue[index].side ?? .left
+            },
+            set: { new in
+                guard sets.wrappedValue.indices.contains(index) else { return }
+                sets.wrappedValue[index].side = new
+            }
+        )
+    }
+
+    private func appendWorkSet(to sets: Binding<[ResistanceSet]>, isoStyle: Bool, side: KneeSide) {
+        sets.wrappedValue.append(
+            ResistanceSet(
+                reps: isoStyle ? 4 : 8,
+                loadLbs: nil,
+                holdSeconds: isoStyle ? 30 : nil,
+                isWarmup: false,
+                side: side
+            )
+        )
     }
 
     private func bindingReps(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<String> {
@@ -342,7 +375,6 @@ struct SessionEditor: View {
             painDuring = existing.painDuring
             painAfter = existing.painAfter
             notes = existing.notes
-            activeTrack = existing.track
             usesIsoHolds = existing.sessionType == .isometrics
             let all = existing.resistanceSets()
             warmupSets = all.filter(\.isWarmup)
@@ -350,7 +382,7 @@ struct SessionEditor: View {
             if workSets.isEmpty && warmupSets.isEmpty {
                 seedDefaultSets()
             }
-            selectedPresetId = SessionPreset.forTrack(activeTrack, phase: phase)
+            selectedPresetId = SessionPreset.forPhase(phase)
                 .first { $0.sessionType == existing.sessionType && $0.tracksResistance }?.id
             refreshSpacing()
             return
@@ -360,42 +392,26 @@ struct SessionEditor: View {
             phase = settings.currentPhase
         }
         switch focus {
-        case .lowerBackResistance:
-            activeTrack = .lowerBack
-            applyPreset(SessionPreset.hipThrust)
-        case .kneeResistance:
-            activeTrack = .knee
+        case .kneeResistance, .general:
             if let preferred = SessionPreset.resistancePreset(for: phase) {
                 applyPreset(preferred)
             } else {
-                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.legExtensionIsometricId }!)
+                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.seatedExtensionIsometricId }!)
             }
-        case .general:
-            activeTrack = track
-            applyTrackDefault(track)
         }
         refreshSpacing()
-    }
-
-    private func applyTrackDefault(_ track: RehabTrackID) {
-        activeTrack = track
-        switch track {
-        case .knee:
-            if let preferred = SessionPreset.resistancePreset(for: phase) {
-                applyPreset(preferred)
-            }
-        case .lowerBack:
-            applyPreset(SessionPreset.sidePlank)
-        }
     }
 
     private func applyPreset(_ preset: SessionPreset) {
         selectedPresetId = preset.id
         sessionType = preset.sessionType
-        activeTrack = preset.track
         usesIsoHolds = preset.usesIsoHoldLogging || preset.sessionType == .isometrics
         if !preset.whatIDid.isEmpty {
             whatIDid = preset.whatIDid
+        }
+        if !isEditing {
+            workSets = []
+            warmupSets = []
         }
         seedDefaultSets()
         syncWhatIDid()
@@ -407,20 +423,20 @@ struct SessionEditor: View {
             warmupSets = []
             if workSets.isEmpty {
                 workSets = [
-                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false)
+                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .left),
+                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .right)
                 ]
             }
         } else {
-            if activeTrack == .knee && warmupSets.isEmpty {
+            if warmupSets.isEmpty {
                 warmupSets = [
                     ResistanceSet(reps: 3, loadLbs: nil, holdSeconds: 30, isWarmup: true)
                 ]
             }
             if workSets.isEmpty {
                 workSets = [
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false),
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false),
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false)
+                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .left),
+                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .right)
                 ]
             }
         }
@@ -431,7 +447,7 @@ struct SessionEditor: View {
         if let id = selectedPresetId, let p = SessionPreset.all.first(where: { $0.id == id }) {
             name = p.label
         } else {
-            name = activeTrack == .lowerBack ? "Back session" : "Leg extension"
+            name = "Seated knee extension"
         }
         var parts = [name]
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
@@ -446,7 +462,7 @@ struct SessionEditor: View {
         // Don't clobber free-text history on edit unless it looks structured
         if isEditing, !whatIDid.isEmpty {
             let lower = whatIDid.lowercased()
-            let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("×")
+            let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("lbs") || lower.contains("×")
                 || lower.contains("x") || lower.contains("set")
             if !structured { return }
         }
@@ -505,7 +521,6 @@ struct SessionEditor: View {
         }
 
         let allSets = wu + work
-        let region = activeTrack.loadRegion
 
         if let existing {
             existing.phase = phase
@@ -514,8 +529,8 @@ struct SessionEditor: View {
             existing.painDuring = painDuring
             existing.painAfter = painAfter
             existing.notes = notes
-            existing.track = activeTrack
-            existing.loadRegion = region
+            existing.track = .knee
+            existing.loadRegion = .knee
             existing.setResistanceSets(allSets)
             existing.updatedAt = Date()
             do {
@@ -535,8 +550,8 @@ struct SessionEditor: View {
             whatIDid: text,
             painDuring: painDuring,
             painAfter: painAfter,
-            loadRegion: region,
-            track: activeTrack,
+            loadRegion: .knee,
+            track: .knee,
             resistanceSets: allSets,
             calendar: calendar
         )
@@ -563,7 +578,7 @@ struct SessionEditor: View {
 
 #Preview {
     NavigationStack {
-        SessionEditor(focus: .kneeResistance, track: .knee)
+        SessionEditor(focus: .kneeResistance)
     }
     .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
     .preferredColorScheme(.dark)

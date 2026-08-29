@@ -13,13 +13,7 @@ enum AppBootstrap {
                 existing.pmReminderHour = 18
                 existing.pmReminderMinute = 30
             }
-            // Dual-track defaults for installs that predate activeTracksCSV.
-            if existing.activeTracksCSV.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                existing.activeTracksCSV = "knee,lowerBack"
-            }
-            if existing.backTrackStageRaw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                existing.backTrackStageRaw = "iso"
-            }
+            existing.activeTracksCSV = RehabTrackID.knee.rawValue
             try? context.save()
             return existing
         }

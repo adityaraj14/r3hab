@@ -45,6 +45,20 @@ final class PendingQueueTests: XCTestCase {
         XCTAssertTrue(PendingQueue.overdue(sessions: sessions, now: now, calendar: calendar).isEmpty)
     }
 
+    func testSameDayPendingIsNotOverdue() {
+        let now = Date(timeIntervalSince1970: 1_700_100_000)
+        let today = calendar.startOfDay(for: now)
+        let sessions = [
+            TrainingSessionSnapshot(
+                id: UUID(), date: today, createdAt: now,
+                sessionType: .isometrics, response24h: .pending, decision: nil,
+                resolvedAt: nil, snoozedUntil: nil, phase: .bIsometrics
+            )
+        ]
+        XCTAssertTrue(PendingQueue.overdue(sessions: sessions, now: now, calendar: calendar).isEmpty)
+        XCTAssertEqual(PendingQueue.todayPending(sessions: sessions, now: now, calendar: calendar).count, 1)
+    }
+
     func testNotificationFireInPastNotScheduled() {
         let now = Date(timeIntervalSince1970: 1_700_100_000)
         let past = now.addingTimeInterval(-3600)

@@ -17,10 +17,10 @@ final class AppSettings {
     var hasCompletedOnboarding: Bool
     var protocolRevision: String
     var faceIDLockEnabled: Bool
-    /// Comma-separated `RehabTrackID` raw values, e.g. `"knee,lowerBack"`.
-    var activeTracksCSV: String = "knee,lowerBack"
-    /// Back track stage: irritable | iso | dynamic | maintain
-    var backTrackStageRaw: String = "iso"
+    /// Legacy dual-track CSV. Forced to knee-only; kept for SwiftData schema stability.
+    var activeTracksCSV: String = "knee"
+    /// Unused. Kept for SwiftData schema stability.
+    var backTrackStageRaw: String = ""
 
     var currentPhase: RehabPhase {
         get { RehabPhase(rawValue: currentPhaseRaw) ?? .aFlareDeLoad }
@@ -31,19 +31,9 @@ final class AppSettings {
     }
 
     var activeTracks: [RehabTrackID] {
-        get {
-            let parts = activeTracksCSV.split(separator: ",").map(String.init)
-            let parsed = parts.compactMap { RehabTrackID(rawValue: $0) }
-            return parsed.isEmpty ? [.knee, .lowerBack] : parsed
-        }
-        set {
-            let unique = RehabTrackID.allCases.filter { newValue.contains($0) }
-            activeTracksCSV = (unique.isEmpty ? [.knee] : unique).map(\.rawValue).joined(separator: ",")
-        }
+        get { [.knee] }
+        set { activeTracksCSV = RehabTrackID.knee.rawValue }
     }
-
-    var isKneeTrackActive: Bool { activeTracks.contains(.knee) }
-    var isBackTrackActive: Bool { activeTracks.contains(.lowerBack) }
 
     init() {
         self.currentPhaseRaw = RehabPhase.aFlareDeLoad.rawValue
@@ -60,7 +50,7 @@ final class AppSettings {
         self.hasCompletedOnboarding = false
         self.protocolRevision = "v1"
         self.faceIDLockEnabled = false
-        self.activeTracksCSV = "knee,lowerBack"
-        self.backTrackStageRaw = "iso"
+        self.activeTracksCSV = RehabTrackID.knee.rawValue
+        self.backTrackStageRaw = ""
     }
 }
