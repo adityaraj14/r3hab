@@ -103,8 +103,8 @@ export function ChartExplorer({
   const toggle = (key: SeriesKey) => setOn((prev) => ({ ...prev, [key]: !prev[key] }));
 
   return (
-    <div className="fixed inset-0 z-40 flex flex-col bg-bg">
-      <div className="flex items-center justify-between px-4 py-3">
+    <div className="fixed inset-0 z-40 flex flex-col bg-bg pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <div className="flex items-center justify-between px-5 pb-3 pt-2">
         <h2 className="font-display text-lg tracking-wide">Progress</h2>
         <button type="button" className="text-sm text-gold" onClick={onClose}>
           Close

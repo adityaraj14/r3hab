@@ -468,7 +468,7 @@ export function defaultSetsFromPrescription(p: TodayPrescription): ExtensionSet[
         loadKg: load,
         holdSeconds: p.holdSeconds,
         reps: p.reps,
-        painDuring: 2,
+        painDuring: null,
         isWarmup: false,
       });
     }

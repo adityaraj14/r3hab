@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { localCalendar } from "@/domain/calendar";
 import { prescribeToday } from "@/domain/prescription";
-import { DECISION_TITLES, RESPONSE_TITLES, type DailyCheckIn, type TrainingSession } from "@/domain/types";
+import { DECISION_TITLES, RESPONSE_TITLES, SESSION_TYPE_TITLES, type DailyCheckIn, type TrainingSession } from "@/domain/types";
 import { useStore } from "@/data/store";
 import { CheckInSheet } from "./CheckInSheet";
 import { ResolveSheet } from "./ResolveSheet";
@@ -103,7 +103,7 @@ export function LogView() {
                   className="w-full rounded-2xl border border-line bg-surface px-4 py-3 text-left"
                 >
                   <p className="text-xs uppercase tracking-[0.14em] text-muted">
-                    {row.date} · {row.session.sessionType}
+                    {row.date} · {SESSION_TYPE_TITLES[row.session.sessionType]}
                     {row.session.response24h === "pending"
                       ? " · pending"
                       : ` · ${RESPONSE_TITLES[row.session.response24h]}${

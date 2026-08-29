@@ -6,7 +6,7 @@ import {
   priorsForSuggestion,
   suggestDecision,
 } from "@/domain/decisionSuggester";
-import { earlierPhases, previousPhase } from "@/domain/types";
+import { earlierPhases, previousPhase, DECISION_TITLES } from "@/domain/types";
 import type { RehabPhase, Response24h, SessionDecision, TrainingSession } from "@/domain/types";
 import { sessionToSnapshot } from "@/domain/types";
 import { GhostButton, PrimaryButton, Segmented, Sheet } from "./ui";
@@ -172,7 +172,7 @@ export function ResolveSheet({
                 ]}
               />
               {suggested && suggested !== decision ? (
-                <p className="mt-2 text-xs text-gold">Suggested: {suggested}</p>
+                <p className="mt-2 text-xs text-gold">Suggested: {DECISION_TITLES[suggested]}</p>
               ) : null}
               {guidance ? <p className="mt-2 text-sm text-muted">{guidance}</p> : null}
             </div>

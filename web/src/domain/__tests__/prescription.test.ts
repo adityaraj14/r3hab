@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { utcCalendar } from "../calendar";
-import { prescribeToday } from "../prescription";
+import { defaultSetsFromPrescription, prescribeToday } from "../prescription";
 import { defaultSettings, type DailyCheckIn, type TrainingSession } from "../types";
 
 const TODAY = utcCalendar.startOfDay(new Date(1_700_000_000 * 1000));
@@ -70,6 +70,9 @@ describe("prescribeToday", () => {
     expect(p.exerciseId).toBe("seatedExtensionIso");
     expect(p.sets).toBe(5);
     expect(p.holdSeconds).toBe(45);
+    const sets = defaultSetsFromPrescription(p);
+    expect(sets.length).toBeGreaterThan(0);
+    expect(sets.every((s) => s.painDuring === null)).toBe(true);
   });
 });
 

@@ -25,7 +25,7 @@ function newSet(side: "L" | "R", loadKg: number, hold: number | null, reps: numb
     loadKg,
     holdSeconds: hold,
     reps,
-    painDuring: 2,
+    painDuring: null,
     isWarmup: false,
   };
 }
@@ -101,8 +101,11 @@ export function SessionSheet({
     [allSessions, sessionType, existing?.id],
   );
 
-  const maxDuring = Math.max(0, ...sets.filter((s) => visible(s, side)).map((s) => s.painDuring));
-  const duringWarn = maxDuring > 5;
+  const duringScores = sets
+    .filter((s) => visible(s, side))
+    .map((s) => s.painDuring)
+    .filter((n): n is number => n !== null);
+  const duringWarn = duringScores.some((n) => n > 5);
 
   const save = async () => {
     if (painAfter === null) return;
@@ -188,11 +191,16 @@ export function SessionSheet({
               value={side}
               onChange={setSide}
               options={[
+                { value: "both", label: "Both" },
                 { value: "L", label: "Left" },
                 { value: "R", label: "Right" },
-                { value: "both", label: "Both" },
               ]}
             />
+            <p className="text-xs leading-5 text-muted">
+              {side === "both"
+                ? "Both sides in this one session — left and right set rows, one 24h resolve tomorrow."
+                : "One side only. Prefer Both if you trained L and R — that stays one 24h unit, not two sessions."}
+            </p>
             <div className="grid grid-cols-2 gap-3">
               <NumberField label="Knee angle °" value={kneeAngle} onChange={setKneeAngle} min={0} max={90} />
               {exerciseId === "seatedExtensionHsr" ? (
@@ -322,7 +330,8 @@ function describe(
     })
     .slice(0, 4)
     .join(" · ");
-  return `${EXERCISE_TITLES[exerciseId]} · ${side} · ${summary}${iso ? "" : ` · ${tempo}`}`;
+  const sideLabel = side === "both" ? "L+R" : side;
+  return `${EXERCISE_TITLES[exerciseId]} · ${sideLabel} · ${summary}${iso ? "" : ` · ${tempo}`}`;
 }
 
 function SetBlock({
@@ -381,17 +390,11 @@ function SetBlock({
               />
             </div>
             <div className="col-span-5">
-              <NumberField
+              <OptionalPainField
                 label={idx === 0 ? "Pain" : ""}
                 value={row.painDuring}
-                min={0}
-                max={10}
                 onChange={(n) =>
-                  onChange(
-                    rows.map((r) =>
-                      r.id === row.id ? { ...r, painDuring: Math.min(10, Math.max(0, Math.round(n))) } : r,
-                    ),
-                  )
+                  onChange(rows.map((r) => (r.id === row.id ? { ...r, painDuring: n } : r)))
                 }
               />
             </div>
@@ -407,5 +410,40 @@ function SetBlock({
         ))}
       </div>
     </section>
+  );
+}
+
+function OptionalPainField({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number | null;
+  onChange: (n: number | null) => void;
+}) {
+  return (
+    <Field label={label}>
+      <input
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={10}
+        value={value === null ? "" : value}
+        aria-label={label || "Pain during set"}
+        placeholder="—"
+        onChange={(e) => {
+          const raw = e.target.value;
+          if (raw === "") {
+            onChange(null);
+            return;
+          }
+          const n = Number(raw);
+          if (!Number.isFinite(n)) return;
+          onChange(Math.min(10, Math.max(0, Math.round(n))));
+        }}
+        className="h-11 rounded-xl border border-line bg-surface-2 px-3 text-base text-ink outline-none focus:border-gold"
+      />
+    </Field>
   );
 }

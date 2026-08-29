@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { localCalendar } from "@/domain/calendar";
 import { painSeries } from "@/domain/chartAggregates";
-import { overduePending, todayPending } from "@/domain/pendingQueue";
+import { overduePending } from "@/domain/pendingQueue";
 import { evaluatePhaseAExit } from "@/domain/phaseAExit";
 import { prescribeToday } from "@/domain/prescription";
 import { formatLoad } from "@/domain/nextLoadSuggester";
@@ -12,6 +12,8 @@ import {
   checkInToSnapshot,
   sessionToSnapshot,
   settingsToPhaseSnapshot,
+  SESSION_TYPE_TITLES,
+  RESPONSE_TITLES,
   type DailyCheckIn,
   type TrainingSession,
 } from "@/domain/types";
@@ -29,7 +31,19 @@ export function TodayView() {
   const todayCheck = checkIns.find((c) => c.dayKey === todayKey) ?? null;
   const snaps = sessions.map(sessionToSnapshot);
   const overdue = overduePending(snaps, new Date());
-  const early = todayPending(snaps, new Date());
+  const overdueSessions = useMemo(() => {
+    const ids = new Set(overdue.map((s) => s.id));
+    return sessions
+      .filter((s) => ids.has(s.id))
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+  }, [sessions, overdue]);
+  const todaySessions = useMemo(
+    () =>
+      sessions
+        .filter((s) => s.date === todayKey)
+        .sort((a, b) => (a.createdAt < b.createdAt ? -1 : 1)),
+    [sessions, todayKey],
+  );
   const prescription = prescribeToday({ settings, checkIn: todayCheck, sessions });
   const spark = painSeries(checkIns, "restingAM", 7, new Date());
   const phaseA =
@@ -39,15 +53,9 @@ export function TodayView() {
 
   const [checkOpen, setCheckOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
+  const [editSession, setEditSession] = useState<TrainingSession | null>(null);
   const [resolveId, setResolveId] = useState<string | null>(null);
   const resolveTarget = sessions.find((s) => s.id === resolveId) ?? null;
-
-  const pendingSessions = useMemo(() => {
-    const ids = new Set([...overdue, ...early].map((s) => s.id));
-    return sessions
-      .filter((s) => ids.has(s.id))
-      .sort((a, b) => (a.date < b.date ? -1 : 1));
-  }, [sessions, overdue, early]);
 
   const amMissing = todayCheck?.restingPainAM == null;
 
@@ -58,11 +66,11 @@ export function TodayView() {
         <span className="text-xs uppercase tracking-[0.16em] text-muted">{todayKey}</span>
       </div>
 
-      {pendingSessions.length > 0 ? (
+      {overdueSessions.length > 0 ? (
         <section className="rounded-3xl border border-hot/40 bg-hot/10 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.16em] text-hot">24h pending</p>
           <ul className="mt-3 flex flex-col gap-2">
-            {pendingSessions.map((s) => (
+            {overdueSessions.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm text-ink">{s.whatIDid}</p>
@@ -121,6 +129,40 @@ export function TodayView() {
         </div>
       </section>
 
+      {todaySessions.length > 0 ? (
+        <section className="rounded-3xl border border-line bg-surface p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted">Today’s sessions</p>
+          <ul className="mt-3 flex flex-col gap-2">
+            {todaySessions.map((s) => (
+              <li key={s.id} className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 text-left"
+                  onClick={() => setEditSession(s)}
+                >
+                  <p className="truncate text-sm text-ink">{s.whatIDid}</p>
+                  <p className="text-xs text-muted">
+                    {SESSION_TYPE_TITLES[s.sessionType]}
+                    {s.response24h === "pending"
+                      ? " · pending — resolve tomorrow"
+                      : ` · ${RESPONSE_TITLES[s.response24h]}`}
+                  </p>
+                </button>
+                {s.response24h === "pending" ? (
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-full border border-line px-3 py-1.5 text-xs font-semibold text-muted"
+                    onClick={() => setResolveId(s.id)}
+                  >
+                    Resolve early
+                  </button>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {amMissing ? (
         <EmptyState
           title="Log this morning"
@@ -154,15 +196,18 @@ export function TodayView() {
         onSave={upsertCheckIn}
       />
       <SessionSheet
-        open={sessionOpen}
-        onClose={() => setSessionOpen(false)}
+        open={sessionOpen || Boolean(editSession)}
+        onClose={() => {
+          setSessionOpen(false);
+          setEditSession(null);
+        }}
         onSave={saveSession}
-        existing={null}
+        existing={editSession}
         prescription={prescription}
         unit={settings.loadUnit}
         allSessions={sessions}
-        phase={settings.currentPhase}
-        todayKey={todayKey}
+        phase={editSession?.phase ?? settings.currentPhase}
+        todayKey={editSession?.date ?? todayKey}
       />
       <ResolveSheet
         open={Boolean(resolveTarget)}

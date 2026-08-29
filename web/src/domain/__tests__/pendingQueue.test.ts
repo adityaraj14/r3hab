@@ -50,6 +50,15 @@ describe("PendingQueue", () => {
     expect(todayPending([today], NOW, utcCalendar)).toHaveLength(1);
   });
 
+  it("overdue count ignores same-day pending sessions", () => {
+    const yesterday = snap(-1);
+    const todayA = snap(0);
+    const todayB = snap(0);
+    const overdue = overduePending([yesterday, todayA, todayB], NOW, utcCalendar);
+    expect(overdue).toHaveLength(1);
+    expect(overdue[0].id).toBe(yesterday.id);
+  });
+
   it("notification fire in past not scheduled", () => {
     expect(shouldScheduleNotification(new Date(NOW.getTime() - 3600_000), NOW)).toBe(false);
     expect(shouldScheduleNotification(new Date(NOW.getTime() + 3600_000), NOW)).toBe(true);

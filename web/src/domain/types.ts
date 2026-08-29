@@ -95,7 +95,7 @@ export type ExtensionSet = {
   loadKg: number;
   holdSeconds: number | null;
   reps: number | null;
-  painDuring: number;
+  painDuring: number | null;
   isWarmup: boolean;
 };
 
