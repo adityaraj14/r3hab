@@ -31,6 +31,8 @@ Dogfood without setup: [http://localhost:3000/demo](http://localhost:3000/demo) 
 3. Resolve the overdue **24h** card (Better / Same / Worse).
 4. **Progress → Open explorer** → brush/zoom, toggle L/R load vs AM pain, tap a point.
 
+App Store review pages: [`/privacy`](http://localhost:3000/privacy) · [`/support`](http://localhost:3000/support).
+
 ## Stack
 
 Next.js App Router · TypeScript · Tailwind v4 · Dexie (IndexedDB) · Recharts · PWA (manifest + service worker).

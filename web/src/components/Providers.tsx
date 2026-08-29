@@ -21,11 +21,11 @@ function Gate({ children }: { children: ReactNode }) {
     );
   }
   const pending = overduePending(sessions.map(sessionToSnapshot), new Date()).length;
-  const hideChrome = pathname === "/demo";
+  const hideChrome = pathname === "/demo" || pathname === "/privacy" || pathname === "/support";
   return (
     <>
       {hideChrome ? children : <AppShell pendingCount={pending}>{children}</AppShell>}
-      {!settings.hasCompletedOnboarding && pathname !== "/demo" ? (
+      {!settings.hasCompletedOnboarding && !hideChrome ? (
         <Onboarding
           onDone={async ({ phase, unit, skipped }) => {
             if (skipped) {

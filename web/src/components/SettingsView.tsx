@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { DISCLAIMER, PHASE_TITLES, type IsoProtocol, type LoadUnit, type RehabPhase } from "@/domain/types";
 import { REHAB_PHASES } from "@/domain/types";
@@ -162,6 +163,10 @@ export function SettingsView() {
         <p className="mt-3 text-sm leading-6 text-muted">{RED_FLAGS}</p>
         <p className="mt-3 text-xs text-muted">
           This app is knee-only — patellar tendinopathy. No low-back / QL protocol.
+        </p>
+        <p className="mt-3 flex gap-4 text-xs font-semibold uppercase tracking-[0.14em] text-gold">
+          <Link href="/privacy">Privacy</Link>
+          <Link href="/support">Support</Link>
         </p>
         <p className="mt-2 text-xs text-muted">Protocol {settings.protocolRevision}</p>
       </section>

@@ -124,18 +124,27 @@ export function GhostButton({
   children,
   onClick,
   danger,
+  quiet,
+  disabled,
 }: {
   children: ReactNode;
   onClick?: () => void;
   danger?: boolean;
+  quiet?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       type="button"
+      disabled={disabled}
       onClick={onClick}
-      className={`flex h-12 w-full items-center justify-center rounded-2xl border text-[15px] font-semibold ${
-        danger ? "border-danger/40 text-danger" : "border-line text-ink"
-      }`}
+      className={
+        quiet
+          ? "flex h-10 w-full items-center justify-center text-[13px] font-medium text-muted disabled:opacity-40"
+          : `flex h-12 w-full items-center justify-center rounded-2xl border text-[15px] font-semibold disabled:opacity-40 ${
+              danger ? "border-danger/40 text-danger" : "border-line text-ink"
+            }`
+      }
     >
       {children}
     </button>
