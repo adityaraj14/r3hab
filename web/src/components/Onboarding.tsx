@@ -7,16 +7,16 @@ import { BrandMark, GhostButton, PrimaryButton, Segmented, Wordmark } from "./ui
 export function Onboarding({
   onDone,
 }: {
-  onDone: (args: { phase: RehabPhase; unit: LoadUnit }) => Promise<void>;
+  onDone: (args: { phase: RehabPhase; unit: LoadUnit; skipped: boolean }) => Promise<void>;
 }) {
   const [page, setPage] = useState(0);
   const [loading, setLoading] = useState(false);
   const [alreadyLoading, setAlreadyLoading] = useState(true);
   const [unit, setUnit] = useState<LoadUnit>("kg");
 
-  const finish = async () => {
+  const finish = async (skipped: boolean) => {
     setLoading(true);
-    await onDone({ phase: alreadyLoading ? "B" : "A", unit });
+    await onDone({ phase: alreadyLoading ? "B" : "A", unit, skipped });
   };
 
   return (
@@ -86,11 +86,11 @@ export function Onboarding({
             {page === 2 ? "Continue" : "Next"}
           </PrimaryButton>
         ) : (
-          <PrimaryButton disabled={loading} onClick={finish}>
+          <PrimaryButton disabled={loading} onClick={() => finish(false)}>
             Let’s load
           </PrimaryButton>
         )}
-        <GhostButton onClick={finish}>Skip for now</GhostButton>
+        <GhostButton onClick={() => finish(true)}>Skip for now</GhostButton>
       </div>
     </div>
   );

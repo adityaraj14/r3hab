@@ -163,11 +163,21 @@ export function prescribeToday(args: {
   const phase = args.settings.currentPhase;
   const warnings: string[] = [];
 
-  const loads = lastLoadsBySide(args.sessions, (s) =>
-    s.exerciseId === "seatedExtensionIso" || s.exerciseId === "seatedExtensionHsr",
+  const isoLoads = lastLoadsBySide(
+    args.sessions,
+    (s) => s.exerciseId === "seatedExtensionIso",
+  );
+  const hsrLoads = lastLoadsBySide(
+    args.sessions,
+    (s) => s.exerciseId === "seatedExtensionHsr",
   );
 
-  const applyDecision = (load: number | null, hold: number | null, reps: number | null) => {
+  const applyDecision = (
+    load: number | null,
+    hold: number | null,
+    reps: number | null,
+    decision: TrainingSession["decision"],
+  ) => {
     if (load === null) {
       return { loadKg: null as number | null, holdSeconds: hold, reps };
     }
@@ -175,14 +185,16 @@ export function prescribeToday(args: {
       lastLoadKg: load,
       lastReps: reps,
       lastHoldSeconds: hold,
-      decision: loads.lastDecision,
+      decision,
       unit: args.settings.loadUnit,
     });
     return { loadKg: next.loadKg, holdSeconds: next.holdSeconds, reps: next.reps };
   };
 
-  const nextL = applyDecision(loads.L, loads.holdL, loads.repsL);
-  const nextR = applyDecision(loads.R, loads.holdR, loads.repsR);
+  const nextIsoL = applyDecision(isoLoads.L, isoLoads.holdL, isoLoads.repsL, isoLoads.lastDecision);
+  const nextIsoR = applyDecision(isoLoads.R, isoLoads.holdR, isoLoads.repsR, isoLoads.lastDecision);
+  const nextHsrL = applyDecision(hsrLoads.L, null, hsrLoads.repsL, hsrLoads.lastDecision);
+  const nextHsrR = applyDecision(hsrLoads.R, null, hsrLoads.repsR, hsrLoads.lastDecision);
 
   const warn48 = (type: SessionType) => {
     if (shouldWarnUnder48h(snaps, type, now)) {
@@ -222,7 +234,7 @@ export function prescribeToday(args: {
   if (phase === "B") {
     warn48("isometrics");
     const proto = args.settings.isoProtocol;
-    const hold = proto === "holds45" ? (nextL.holdSeconds ?? nextR.holdSeconds ?? DEFAULT_HOLD) : 3;
+    const hold = proto === "holds45" ? (nextIsoL.holdSeconds ?? nextIsoR.holdSeconds ?? DEFAULT_HOLD) : 3;
     const sets = DEFAULT_ISO_SETS;
     const clean = countCleanSessionsSince(snaps, args.settings.phaseChangedAt, "B");
     const rationale =
@@ -240,8 +252,8 @@ export function prescribeToday(args: {
       sessionType: "isometrics",
       side: "both",
       kneeAngle: 60,
-      loadKgL: nextL.loadKg ?? DEFAULT_ISO_LOAD,
-      loadKgR: nextR.loadKg ?? DEFAULT_ISO_LOAD,
+      loadKgL: nextIsoL.loadKg ?? DEFAULT_ISO_LOAD,
+      loadKgR: nextIsoR.loadKg ?? DEFAULT_ISO_LOAD,
       sets,
       holdSeconds: hold,
       reps: proto === "rioPulses" ? 4 : null,
@@ -277,10 +289,10 @@ export function prescribeToday(args: {
         sessionType: "isometrics",
         side: "both",
         kneeAngle: 60,
-        loadKgL: nextL.loadKg ?? DEFAULT_ISO_LOAD,
-        loadKgR: nextR.loadKg ?? DEFAULT_ISO_LOAD,
+        loadKgL: nextIsoL.loadKg ?? DEFAULT_ISO_LOAD,
+        loadKgR: nextIsoR.loadKg ?? DEFAULT_ISO_LOAD,
         sets: 3,
-        holdSeconds: nextL.holdSeconds ?? DEFAULT_HOLD,
+        holdSeconds: nextIsoL.holdSeconds ?? DEFAULT_HOLD,
         reps: null,
         tempo: null,
         restSeconds: 120,
@@ -294,12 +306,6 @@ export function prescribeToday(args: {
     }
 
     warn48("hsrStrength");
-    const hsrLoads = lastLoadsBySide(
-      args.sessions,
-      (s) => s.exerciseId === "seatedExtensionHsr",
-    );
-    const hL = applyDecision(hsrLoads.L, null, hsrLoads.repsL);
-    const hR = applyDecision(hsrLoads.R, null, hsrLoads.repsR);
     return {
       kind: "hsrExtension",
       title: "HSR · seated extension",
@@ -308,11 +314,11 @@ export function prescribeToday(args: {
       sessionType: "hsrStrength",
       side: "both",
       kneeAngle: 60,
-      loadKgL: hL.loadKg ?? DEFAULT_HSR_LOAD,
-      loadKgR: hR.loadKg ?? DEFAULT_HSR_LOAD,
+      loadKgL: nextHsrL.loadKg ?? DEFAULT_HSR_LOAD,
+      loadKgR: nextHsrR.loadKg ?? DEFAULT_HSR_LOAD,
       sets: DEFAULT_HSR_SETS,
       holdSeconds: null,
-      reps: hL.reps ?? hR.reps ?? DEFAULT_HSR_REPS,
+      reps: nextHsrL.reps ?? nextHsrR.reps ?? DEFAULT_HSR_REPS,
       tempo: "3-1-3",
       restSeconds: 120,
       effort: "last 2 reps hard",
@@ -334,12 +340,6 @@ export function prescribeToday(args: {
 
     if (needHsr) {
       warn48("hsrStrength");
-      const hsrLoads = lastLoadsBySide(
-        args.sessions,
-        (s) => s.exerciseId === "seatedExtensionHsr",
-      );
-      const hL = applyDecision(hsrLoads.L, null, hsrLoads.repsL);
-      const hR = applyDecision(hsrLoads.R, null, hsrLoads.repsR);
       return {
         kind: "hsrExtension",
         title: "Keep HSR · seated extension",
@@ -348,11 +348,11 @@ export function prescribeToday(args: {
         sessionType: "hsrStrength",
         side: "both",
         kneeAngle: 60,
-        loadKgL: hL.loadKg ?? DEFAULT_HSR_LOAD,
-        loadKgR: hR.loadKg ?? DEFAULT_HSR_LOAD,
+        loadKgL: nextHsrL.loadKg ?? DEFAULT_HSR_LOAD,
+        loadKgR: nextHsrR.loadKg ?? DEFAULT_HSR_LOAD,
         sets: DEFAULT_HSR_SETS,
         holdSeconds: null,
-        reps: hL.reps ?? DEFAULT_HSR_REPS,
+        reps: nextHsrL.reps ?? DEFAULT_HSR_REPS,
         tempo: "3-1-3",
         restSeconds: 120,
         effort: "last 2 reps hard",
@@ -405,12 +405,6 @@ export function prescribeToday(args: {
 
   if (needHsr) {
     warn48("hsrStrength");
-    const hsrLoads = lastLoadsBySide(
-      args.sessions,
-      (s) => s.exerciseId === "seatedExtensionHsr",
-    );
-    const hL = applyDecision(hsrLoads.L, null, hsrLoads.repsL);
-    const hR = applyDecision(hsrLoads.R, null, hsrLoads.repsR);
     return {
       kind: "hsrExtension",
       title: "Maintenance HSR · seated extension",
@@ -419,11 +413,11 @@ export function prescribeToday(args: {
       sessionType: "hsrStrength",
       side: "both",
       kneeAngle: 60,
-      loadKgL: hL.loadKg ?? DEFAULT_HSR_LOAD,
-      loadKgR: hR.loadKg ?? DEFAULT_HSR_LOAD,
+      loadKgL: nextHsrL.loadKg ?? DEFAULT_HSR_LOAD,
+      loadKgR: nextHsrR.loadKg ?? DEFAULT_HSR_LOAD,
       sets: 3,
       holdSeconds: null,
-      reps: hL.reps ?? DEFAULT_HSR_REPS,
+      reps: nextHsrL.reps ?? DEFAULT_HSR_REPS,
       tempo: "3-1-3",
       restSeconds: 120,
       effort: "last 2 reps hard",

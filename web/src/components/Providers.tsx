@@ -10,7 +10,7 @@ import { Onboarding } from "./Onboarding";
 import { BrandMark, Wordmark } from "./ui";
 
 function Gate({ children }: { children: ReactNode }) {
-  const { ready, settings, sessions, updateSettings } = useStore();
+  const { ready, settings, sessions, checkIns, updateSettings } = useStore();
   const pathname = usePathname();
   if (!ready) {
     return (
@@ -27,7 +27,15 @@ function Gate({ children }: { children: ReactNode }) {
       {hideChrome ? children : <AppShell pendingCount={pending}>{children}</AppShell>}
       {!settings.hasCompletedOnboarding && pathname !== "/demo" ? (
         <Onboarding
-          onDone={async ({ phase, unit }) => {
+          onDone={async ({ phase, unit, skipped }) => {
+            if (skipped) {
+              const empty = sessions.length === 0 && checkIns.length === 0;
+              await updateSettings({
+                hasCompletedOnboarding: true,
+                ...(empty ? { currentPhase: "B", loadUnit: unit } : {}),
+              });
+              return;
+            }
             await updateSettings({
               hasCompletedOnboarding: true,
               currentPhase: phase,
