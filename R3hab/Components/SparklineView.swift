@@ -244,6 +244,5 @@ struct MetricChartCard: View {
 
 enum PainChartColors {
     static let knee = Color.accentColor
-    static let lowerBack = Color.teal
     static let load = Color.orange
 }

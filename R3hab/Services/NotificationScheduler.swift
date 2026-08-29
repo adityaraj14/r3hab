@@ -1,42 +1,13 @@
 import Foundation
 import UserNotifications
 
-/// Local notifications: AM/PM check-ins and pending 24h nags (PR-13).
+/// Local notifications: AM/PM check-ins and pending 24h nags.
 enum NotificationScheduler {
     static let amReminderId = "am-reminder"
     static let pmReminderId = "pm-reminder"
 
-    /// Evenly spaced across 08:00–19:00: 08:00, 13:30, 19:00.
-    static let stretchReminderTimes: [(hour: Int, minute: Int)] = [
-        (8, 0),
-        (13, 30),
-        (19, 0)
-    ]
-
-    static func stretchReminderId(index: Int) -> String {
-        "stretch-\(index)"
-    }
-
-    static var stretchReminderIds: [String] {
-        stretchReminderTimes.indices.map { stretchReminderId(index: $0) }
-    }
-
     static func pendingId(for sessionId: UUID) -> String {
         "pending-\(sessionId.uuidString)"
-    }
-
-    /// Formatted stretch times for Settings copy (e.g. "8:00 AM · 1:30 PM · 7:00 PM").
-    static var stretchReminderTimesLabel: String {
-        let formatter = DateFormatter()
-        formatter.locale = .current
-        formatter.dateFormat = "h:mm a"
-        return stretchReminderTimes.compactMap { time in
-            var comps = DateComponents()
-            comps.hour = time.hour
-            comps.minute = time.minute
-            guard let date = Calendar.current.date(from: comps) else { return nil }
-            return formatter.string(from: date)
-        }.joined(separator: " · ")
     }
 
     @discardableResult
@@ -53,7 +24,7 @@ enum NotificationScheduler {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 
-    /// Full reconcile: daily reminders + stretch + all pending session nags.
+    /// Full reconcile: daily AM/PM reminders + pending session nags.
     static func reconcile(
         notificationsEnabled: Bool,
         amHour: Int,
@@ -65,7 +36,8 @@ enum NotificationScheduler {
         calendar: Calendar = .current
     ) async {
         let center = UNUserNotificationCenter.current()
-        let dailyIds = [amReminderId, pmReminderId] + stretchReminderIds
+        let leftoverStretchIds = (0..<3).map { "stretch-\($0)" }
+        let dailyIds = [amReminderId, pmReminderId] + leftoverStretchIds
 
         if !notificationsEnabled {
             await center.removePendingNotificationRequests(withIdentifiers: dailyIds)
@@ -77,6 +49,8 @@ enum NotificationScheduler {
             updateBadge(count: 0)
             return
         }
+
+        await center.removePendingNotificationRequests(withIdentifiers: leftoverStretchIds)
 
         scheduleDailyReminder(
             id: amReminderId,
@@ -92,16 +66,6 @@ enum NotificationScheduler {
             title: "Evening check-in",
             body: "Log daily pain and steps for today."
         )
-
-        for (index, time) in stretchReminderTimes.enumerated() {
-            scheduleDailyReminder(
-                id: stretchReminderId(index: index),
-                hour: time.hour,
-                minute: time.minute,
-                title: "Time to stretch",
-                body: "Take a few minutes to stretch."
-            )
-        }
 
         // Rebuild pending nags: cancel all pending-* then schedule valid ones
         let existing = await center.pendingNotificationRequests()

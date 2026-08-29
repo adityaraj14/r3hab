@@ -12,61 +12,54 @@ final class ChartAggregatesTests: XCTestCase {
         calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: today))!
     }
 
-    func testLowerBackSeriesFillsGapsAndMapsValues() {
+    func testKneeAMSeriesFillsGapsAndMapsValues() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let rows: [DailyMetricSnapshot] = [
             DailyMetricSnapshot(
                 date: day(-2, from: today),
-                restingPainAM: 2,
-                dailyPainPM: 3,
-                lowerBackPainAM: 4,
-                lowerBackPainPM: 5,
+                restingPainAM: 4,
+                dailyPainPM: 5,
                 steps: 5000
             ),
             DailyMetricSnapshot(
                 date: day(0, from: today),
-                restingPainAM: 1,
-                dailyPainPM: 2,
-                lowerBackPainAM: 3,
-                lowerBackPainPM: nil,
+                restingPainAM: 3,
+                dailyPainPM: nil,
                 steps: 6000
             )
         ]
 
-        let backAM = ChartMetricBuilder.series(
+        let kneeAM = ChartMetricBuilder.series(
             rows: rows,
-            metric: .lowerBackAM,
+            metric: .restingAM,
             dayCount: 3,
             today: today,
             calendar: calendar
         )
-        // dayCount 3 → offsets 2, 1, 0 (oldest → today)
-        XCTAssertEqual(backAM.count, 3)
-        XCTAssertEqual(backAM[0].value, 4)
-        XCTAssertNil(backAM[1].value)
-        XCTAssertEqual(backAM[2].value, 3)
+        XCTAssertEqual(kneeAM.count, 3)
+        XCTAssertEqual(kneeAM[0].value, 4)
+        XCTAssertNil(kneeAM[1].value)
+        XCTAssertEqual(kneeAM[2].value, 3)
 
-        let backPM = ChartMetricBuilder.series(
+        let kneePM = ChartMetricBuilder.series(
             rows: rows,
-            metric: .lowerBackPM,
+            metric: .dailyPM,
             dayCount: 3,
             today: today,
             calendar: calendar
         )
-        XCTAssertEqual(backPM[0].value, 5)
-        XCTAssertNil(backPM[1].value)
-        XCTAssertNil(backPM[2].value)
+        XCTAssertEqual(kneePM[0].value, 5)
+        XCTAssertNil(kneePM[1].value)
+        XCTAssertNil(kneePM[2].value)
     }
 
-    func testKneeSeriesUnchangedAlongsideBack() {
+    func testKneeSeriesReadsRestingAM() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let rows = [
             DailyMetricSnapshot(
                 date: today,
                 restingPainAM: 2,
                 dailyPainPM: 3,
-                lowerBackPainAM: 9,
-                lowerBackPainPM: 8,
                 steps: nil
             )
         ]

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Log or edit a training session (multi-set resistance + dual rehab tracks).
+/// Log or edit a training session (seated knee extension iso/HSR + 24h loop).
 struct SessionEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -12,14 +12,11 @@ struct SessionEditor: View {
     var targetDate: Date = Date()
     var existing: TrainingSession?
     var focus: SessionLogFocus = .general
-    /// When opening a new log for a specific rehab issue.
-    var track: RehabTrackID = .knee
 
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var sessionType: SessionType = .isometrics
     @State private var whatIDid: String = ""
     @State private var selectedPresetId: String?
-    @State private var activeTrack: RehabTrackID = .knee
     @State private var workSets: [ResistanceSet] = []
     @State private var warmupSets: [ResistanceSet] = []
     @State private var usesIsoHolds = false
@@ -45,16 +42,12 @@ struct SessionEditor: View {
     }
 
     private var showsWarmup: Bool {
-        showsResistance && !usesIsoHolds && activeTrack == .knee && sessionType == .hsrStrength
+        showsResistance && !usesIsoHolds && sessionType == .hsrStrength
     }
 
     private var navigationTitleText: String {
         if isEditing { return "Edit session" }
-        switch focus {
-        case .lowerBackResistance: return "Log back session"
-        case .kneeResistance: return "Log knee session"
-        case .general: return "Log session"
-        }
+        return "Log session"
     }
 
     private var volumePreview: Double {
@@ -68,42 +61,19 @@ struct SessionEditor: View {
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
 
-                if !isEditing {
-                    Picker("Rehab track", selection: $activeTrack) {
-                        if settings?.isKneeTrackActive != false {
-                            Text("Knee").tag(RehabTrackID.knee)
-                        }
-                        if settings?.isBackTrackActive != false {
-                            Text("Low back").tag(RehabTrackID.lowerBack)
-                        }
+                Picker("Phase", selection: $phase) {
+                    ForEach(RehabPhase.allCases) { p in
+                        Text(p.title).tag(p)
                     }
-                    .pickerStyle(.segmented)
-                    .onChange(of: activeTrack) { _, new in
-                        applyTrackDefault(new)
-                    }
-                } else {
-                    LabeledContent("Track", value: activeTrack.title)
-                }
-
-                if activeTrack == .knee {
-                    Picker("Knee phase", selection: $phase) {
-                        ForEach(RehabPhase.allCases) { p in
-                            Text(p.title).tag(p)
-                        }
-                    }
-                } else {
-                    Text(RehabTemplate.lowerBack.objective80_20)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
                 }
             } header: {
-                Text(activeTrack == .knee ? "Knee · patellar tendon" : "Low back · trunk")
+                Text("Patellar tendinopathy")
             }
 
             Section("Exercise") {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
-                        ForEach(presetsForCurrentTrack) { preset in
+                        ForEach(presetsForPhase) { preset in
                             Button(preset.label) { applyPreset(preset) }
                                 .buttonStyle(.bordered)
                                 .controlSize(.small)
@@ -205,8 +175,8 @@ struct SessionEditor: View {
         return calendar.startOfDay(for: targetDate)
     }
 
-    private var presetsForCurrentTrack: [SessionPreset] {
-        SessionPreset.forTrack(activeTrack, phase: phase)
+    private var presetsForPhase: [SessionPreset] {
+        SessionPreset.forPhase(phase)
     }
 
     @ViewBuilder
@@ -342,7 +312,6 @@ struct SessionEditor: View {
             painDuring = existing.painDuring
             painAfter = existing.painAfter
             notes = existing.notes
-            activeTrack = existing.track
             usesIsoHolds = existing.sessionType == .isometrics
             let all = existing.resistanceSets()
             warmupSets = all.filter(\.isWarmup)
@@ -350,7 +319,7 @@ struct SessionEditor: View {
             if workSets.isEmpty && warmupSets.isEmpty {
                 seedDefaultSets()
             }
-            selectedPresetId = SessionPreset.forTrack(activeTrack, phase: phase)
+            selectedPresetId = SessionPreset.forPhase(phase)
                 .first { $0.sessionType == existing.sessionType && $0.tracksResistance }?.id
             refreshSpacing()
             return
@@ -360,39 +329,19 @@ struct SessionEditor: View {
             phase = settings.currentPhase
         }
         switch focus {
-        case .lowerBackResistance:
-            activeTrack = .lowerBack
-            applyPreset(SessionPreset.hipThrust)
-        case .kneeResistance:
-            activeTrack = .knee
+        case .kneeResistance, .general:
             if let preferred = SessionPreset.resistancePreset(for: phase) {
                 applyPreset(preferred)
             } else {
-                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.legExtensionIsometricId }!)
+                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.seatedExtensionIsometricId }!)
             }
-        case .general:
-            activeTrack = track
-            applyTrackDefault(track)
         }
         refreshSpacing()
-    }
-
-    private func applyTrackDefault(_ track: RehabTrackID) {
-        activeTrack = track
-        switch track {
-        case .knee:
-            if let preferred = SessionPreset.resistancePreset(for: phase) {
-                applyPreset(preferred)
-            }
-        case .lowerBack:
-            applyPreset(SessionPreset.sidePlank)
-        }
     }
 
     private func applyPreset(_ preset: SessionPreset) {
         selectedPresetId = preset.id
         sessionType = preset.sessionType
-        activeTrack = preset.track
         usesIsoHolds = preset.usesIsoHoldLogging || preset.sessionType == .isometrics
         if !preset.whatIDid.isEmpty {
             whatIDid = preset.whatIDid
@@ -411,7 +360,7 @@ struct SessionEditor: View {
                 ]
             }
         } else {
-            if activeTrack == .knee && warmupSets.isEmpty {
+            if warmupSets.isEmpty {
                 warmupSets = [
                     ResistanceSet(reps: 3, loadLbs: nil, holdSeconds: 30, isWarmup: true)
                 ]
@@ -431,7 +380,7 @@ struct SessionEditor: View {
         if let id = selectedPresetId, let p = SessionPreset.all.first(where: { $0.id == id }) {
             name = p.label
         } else {
-            name = activeTrack == .lowerBack ? "Back session" : "Leg extension"
+            name = "Seated knee extension"
         }
         var parts = [name]
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
@@ -505,7 +454,6 @@ struct SessionEditor: View {
         }
 
         let allSets = wu + work
-        let region = activeTrack.loadRegion
 
         if let existing {
             existing.phase = phase
@@ -514,8 +462,8 @@ struct SessionEditor: View {
             existing.painDuring = painDuring
             existing.painAfter = painAfter
             existing.notes = notes
-            existing.track = activeTrack
-            existing.loadRegion = region
+            existing.track = .knee
+            existing.loadRegion = .knee
             existing.setResistanceSets(allSets)
             existing.updatedAt = Date()
             do {
@@ -535,8 +483,8 @@ struct SessionEditor: View {
             whatIDid: text,
             painDuring: painDuring,
             painAfter: painAfter,
-            loadRegion: region,
-            track: activeTrack,
+            loadRegion: .knee,
+            track: .knee,
             resistanceSets: allSets,
             calendar: calendar
         )
@@ -563,7 +511,7 @@ struct SessionEditor: View {
 
 #Preview {
     NavigationStack {
-        SessionEditor(focus: .kneeResistance, track: .knee)
+        SessionEditor(focus: .kneeResistance)
     }
     .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
     .preferredColorScheme(.dark)

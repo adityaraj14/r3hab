@@ -7,9 +7,9 @@ final class DailyCheckIn {
     var date: Date
     var restingPainAM: Int?
     var dailyPainPM: Int?
-    /// Lower back resting pain (morning), 0–10.
+    /// Unused. Kept so existing SwiftData stores do not need a schema migration.
     var lowerBackPainAM: Int?
-    /// Lower back daily-activities pain (evening), 0–10.
+    /// Unused. Kept so existing SwiftData stores do not need a schema migration.
     var lowerBackPainPM: Int?
     var steps: Int?
     var phaseRaw: String

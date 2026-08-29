@@ -24,8 +24,6 @@ struct RehabProgressView: View {
                 date: $0.date,
                 restingPainAM: $0.restingPainAM,
                 dailyPainPM: $0.dailyPainPM,
-                lowerBackPainAM: $0.lowerBackPainAM,
-                lowerBackPainPM: $0.lowerBackPainPM,
                 steps: $0.steps
             )
         }
@@ -33,32 +31,14 @@ struct RehabProgressView: View {
 
     private var kneeLoadPoints: [DayValue] {
         ChartMetricBuilder.volumeSeries(
-            sessions: sessions
-                .filter { $0.track == .knee || $0.effectiveLoadRegion == .knee }
-                .map {
-                    SessionLoadSnapshot(
-                        date: $0.date,
-                        volume: $0.chartVolume,
-                        maxLoadLbs: $0.chartMaxLoad,
-                        loadLbs: $0.chartLoadLbs
-                    )
-                },
-            dayCount: range.rawValue
-        )
-    }
-
-    private var backLoadPoints: [DayValue] {
-        ChartMetricBuilder.volumeSeries(
-            sessions: sessions
-                .filter { $0.track == .lowerBack || $0.effectiveLoadRegion == .lowerBack }
-                .map {
-                    SessionLoadSnapshot(
-                        date: $0.date,
-                        volume: $0.chartVolume,
-                        maxLoadLbs: $0.chartMaxLoad,
-                        loadLbs: $0.chartLoadLbs
-                    )
-                },
+            sessions: sessions.map {
+                SessionLoadSnapshot(
+                    date: $0.date,
+                    volume: $0.chartVolume,
+                    maxLoadLbs: $0.chartMaxLoad,
+                    loadLbs: $0.chartLoadLbs
+                )
+            },
             dayCount: range.rawValue
         )
     }
@@ -69,14 +49,6 @@ struct RehabProgressView: View {
 
     private var kneePM: [DayValue] {
         ChartMetricBuilder.series(rows: metrics, metric: .dailyPM, dayCount: range.rawValue)
-    }
-
-    private var backAM: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: range.rawValue)
-    }
-
-    private var backPM: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .lowerBackPM, dayCount: range.rawValue)
     }
 
     private var stepsSeries: [DayValue] {
@@ -168,47 +140,24 @@ struct RehabProgressView: View {
                             )
                         }
 
-                        if settingsList.first?.isKneeTrackActive != false {
-                            Text("Knee · tendon")
-                                .font(.title3.weight(.semibold))
-                                .padding(.top, 4)
+                        Text("Patellar tendon")
+                            .font(.title3.weight(.semibold))
+                            .padding(.top, 4)
 
-                            MetricChartCard(
-                                title: "Knee resting pain AM",
-                                points: kneeAM,
-                                yDomain: 0...10,
-                                lineColor: PainChartColors.knee,
-                                loadPoints: kneeLoadPoints
-                            )
-                            MetricChartCard(
-                                title: "Knee daily pain PM",
-                                points: kneePM,
-                                yDomain: 0...10,
-                                lineColor: PainChartColors.knee,
-                                loadPoints: kneeLoadPoints
-                            )
-                        }
-
-                        if settingsList.first?.isBackTrackActive != false {
-                            Text("Low back · trunk")
-                                .font(.title3.weight(.semibold))
-                                .padding(.top, 4)
-
-                            MetricChartCard(
-                                title: "Back resting pain AM",
-                                points: backAM,
-                                yDomain: 0...10,
-                                lineColor: PainChartColors.lowerBack,
-                                loadPoints: backLoadPoints
-                            )
-                            MetricChartCard(
-                                title: "Back daily pain PM",
-                                points: backPM,
-                                yDomain: 0...10,
-                                lineColor: PainChartColors.lowerBack,
-                                loadPoints: backLoadPoints
-                            )
-                        }
+                        MetricChartCard(
+                            title: "Knee resting pain AM",
+                            points: kneeAM,
+                            yDomain: 0...10,
+                            lineColor: PainChartColors.knee,
+                            loadPoints: kneeLoadPoints
+                        )
+                        MetricChartCard(
+                            title: "Knee daily pain PM",
+                            points: kneePM,
+                            yDomain: 0...10,
+                            lineColor: PainChartColors.knee,
+                            loadPoints: kneeLoadPoints
+                        )
 
                         MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
                     }

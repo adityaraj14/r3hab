@@ -32,13 +32,12 @@ struct HistoryView: View {
     }
 
     enum BackdateKind: String, CaseIterable, Identifiable {
-        case daily, session, hipThrust
+        case daily, session
         var id: String { rawValue }
         var title: String {
             switch self {
             case .daily: return "Check-in"
-            case .session: return "Knee session"
-            case .hipThrust: return "Hip thrust"
+            case .session: return "Session"
             }
         }
     }
@@ -110,13 +109,8 @@ struct HistoryView: View {
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
-                        Button("Log past knee session") {
+                        Button("Log past session") {
                             backdateKind = .session
-                            backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                            showBackdate = true
-                        }
-                        Button("Log past hip thrust") {
-                            backdateKind = .hipThrust
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
@@ -194,7 +188,7 @@ struct HistoryView: View {
                                     case .daily:
                                         editDailyKey = DailyCheckIn.dayKey(for: backdateDate)
                                         pendingBackdateDaily = Calendar.current.startOfDay(for: backdateDate)
-                                    case .session, .hipThrust:
+                                    case .session:
                                         pendingBackdateSession = Calendar.current.startOfDay(for: backdateDate)
                                     }
                                 }
@@ -224,7 +218,7 @@ struct HistoryView: View {
                     NavigationStack {
                         SessionEditor(
                             targetDate: d,
-                            focus: backdateKind == .hipThrust ? .lowerBackResistance : .kneeResistance
+                            focus: .kneeResistance
                         )
                     }
                     .preferredColorScheme(.dark)
@@ -313,10 +307,8 @@ struct HistoryView: View {
     private func dailySummary(_ c: DailyCheckIn) -> String {
         let kneeAM = c.restingPainAM.map(String.init) ?? "—"
         let kneePM = c.dailyPainPM.map(String.init) ?? "—"
-        let backAM = c.lowerBackPainAM.map(String.init) ?? "—"
-        let backPM = c.lowerBackPainPM.map(String.init) ?? "—"
         let steps = c.steps.map(String.init) ?? "—"
-        return "Knee \(kneeAM)/\(kneePM) · Back \(backAM)/\(backPM) · steps \(steps)"
+        return "Knee \(kneeAM)/\(kneePM) · steps \(steps)"
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
@@ -332,9 +324,6 @@ struct HistoryView: View {
             }
             HStack(spacing: 6) {
                 sessionTypeTag(s.sessionType)
-                if let region = s.effectiveLoadRegion, s.hasResistanceLog {
-                    regionTag(region)
-                }
             }
             Text(sessionSubtitle(s))
                 .font(.caption)
@@ -370,15 +359,6 @@ struct HistoryView: View {
         case .tennisSport: return .green
         case .other: return .secondary
         }
-    }
-
-    private func regionTag(_ region: LoadRegion) -> some View {
-        Text(region == .lowerBack ? "Back" : "Knee")
-            .font(.caption2.weight(.medium))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(.secondary)
-            .background(Color(.tertiarySystemFill), in: Capsule())
     }
 
     private func sessionSubtitle(_ s: TrainingSession) -> String {

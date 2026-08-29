@@ -12,7 +12,6 @@ struct HomeView: View {
     @State private var showAM = false
     @State private var showPM = false
     @State private var showSession = false
-    @State private var showBackSession = false
     @State private var resolveTargetId: UUID?
     @State private var restConfirmId: UUID?
 
@@ -60,8 +59,6 @@ struct HomeView: View {
                 date: $0.date,
                 restingPainAM: $0.restingPainAM,
                 dailyPainPM: $0.dailyPainPM,
-                lowerBackPainAM: $0.lowerBackPainAM,
-                lowerBackPainPM: $0.lowerBackPainPM,
                 steps: $0.steps
             )
         }
@@ -71,26 +68,18 @@ struct HomeView: View {
         ChartMetricBuilder.series(rows: metrics, metric: .restingAM, dayCount: 7)
     }
 
-    private var backAMSparkline: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .lowerBackAM, dayCount: 7)
-    }
-
     private var hasKneeAMSparkline: Bool {
         kneeAMSparkline.contains { $0.value != nil }
-    }
-
-    private var hasBackAMSparkline: Bool {
-        backAMSparkline.contains { $0.value != nil }
     }
 
     private var pendingBadge: Int { overduePending.count }
 
     private var hasMorningPain: Bool {
-        todayCheckIn?.restingPainAM != nil || todayCheckIn?.lowerBackPainAM != nil
+        todayCheckIn?.restingPainAM != nil
     }
 
     private var hasEveningPain: Bool {
-        todayCheckIn?.dailyPainPM != nil || todayCheckIn?.lowerBackPainPM != nil
+        todayCheckIn?.dailyPainPM != nil
     }
 
     var body: some View {
@@ -109,32 +98,15 @@ struct HomeView: View {
 
                     checklist
 
-                    if hasKneeAMSparkline || hasBackAMSparkline {
+                    if hasKneeAMSparkline {
                         VStack(alignment: .leading, spacing: 14) {
                             Text("AM pain · 7 days")
                                 .font(.subheadline.weight(.semibold))
-
-                            if hasKneeAMSparkline {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    legendDot(color: PainChartColors.knee, label: "Knee")
-                                    SparklineView(
-                                        points: kneeAMSparkline,
-                                        lineColor: PainChartColors.knee,
-                                        height: 40
-                                    )
-                                }
-                            }
-
-                            if hasBackAMSparkline {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    legendDot(color: PainChartColors.lowerBack, label: "Lower back")
-                                    SparklineView(
-                                        points: backAMSparkline,
-                                        lineColor: PainChartColors.lowerBack,
-                                        height: 40
-                                    )
-                                }
-                            }
+                            SparklineView(
+                                points: kneeAMSparkline,
+                                lineColor: PainChartColors.knee,
+                                height: 40
+                            )
                         }
                         .padding()
                         .background(
@@ -172,13 +144,7 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSession) {
                 NavigationStack {
-                    SessionEditor(targetDate: today, focus: .kneeResistance, track: .knee)
-                }
-                .preferredColorScheme(.dark)
-            }
-            .sheet(isPresented: $showBackSession) {
-                NavigationStack {
-                    SessionEditor(targetDate: today, focus: .lowerBackResistance, track: .lowerBack)
+                    SessionEditor(targetDate: today, focus: .kneeResistance)
                 }
                 .preferredColorScheme(.dark)
             }
@@ -323,12 +289,12 @@ struct HomeView: View {
                 .font(.title3.weight(.semibold))
             checkRow(
                 title: "Morning pain",
-                done: c?.restingPainAM != nil || c?.lowerBackPainAM != nil,
+                done: c?.restingPainAM != nil,
                 detail: morningPainDetail(c)
             )
             checkRow(
                 title: "Evening pain",
-                done: c?.dailyPainPM != nil || c?.lowerBackPainPM != nil,
+                done: c?.dailyPainPM != nil,
                 detail: eveningPainDetail(c)
             )
             checkRow(title: "Steps", done: c?.steps != nil, detail: c?.steps.map { "\($0)" })
@@ -336,30 +302,11 @@ struct HomeView: View {
     }
 
     private func morningPainDetail(_ c: DailyCheckIn?) -> String? {
-        guard let c else { return nil }
-        let knee = c.restingPainAM.map { "K\($0)" }
-        let back = c.lowerBackPainAM.map { "B\($0)" }
-        let parts = [knee, back].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        c?.restingPainAM.map(String.init)
     }
 
     private func eveningPainDetail(_ c: DailyCheckIn?) -> String? {
-        guard let c else { return nil }
-        let knee = c.dailyPainPM.map { "K\($0)" }
-        let back = c.lowerBackPainPM.map { "B\($0)" }
-        let parts = [knee, back].compactMap { $0 }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
-    }
-
-    private func legendDot(color: Color, label: String) -> some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-            Text(label)
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        }
+        c?.dailyPainPM.map(String.init)
     }
 
     private func checkRow(title: String, done: Bool, detail: String?) -> some View {
@@ -391,70 +338,36 @@ struct HomeView: View {
             .buttonStyle(.bordered)
             .controlSize(.large)
 
-            if settings?.isKneeTrackActive != false {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Knee · patellar tendon", systemImage: "figure.strengthtraining.traditional")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(PainChartColors.knee)
-                    Text(RehabTemplate.knee.objective80_20)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Button { showSession = true } label: {
-                        Text("Log knee session")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Patellar tendon", systemImage: "figure.strengthtraining.traditional")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(PainChartColors.knee)
+                Text(RehabTemplate.knee.objective80_20)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Button { showSession = true } label: {
+                    Text("Log session")
+                        .frame(maxWidth: .infinity)
                 }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
-                )
+                .buttonStyle(.bordered)
+                .controlSize(.large)
             }
-
-            if settings?.isBackTrackActive != false {
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("Low back · trunk", systemImage: "figure.core.training")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(PainChartColors.lowerBack)
-                    Text(RehabTemplate.lowerBack.objective80_20)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Button { showBackSession = true } label: {
-                        Text("Log back session")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color(.secondarySystemBackground))
-                )
-            }
+            .padding()
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color(.secondarySystemBackground))
+            )
         }
     }
 
     private var guide: some View {
         VStack(alignment: .leading, spacing: 10) {
-            if settings?.isKneeTrackActive != false {
-                Text("Knee phase")
-                    .font(.headline)
-                Text(PhaseGuideCopy.summary(for: settings?.currentPhase ?? .aFlareDeLoad))
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            if settings?.isBackTrackActive != false {
-                Text("Low back program")
-                    .font(.headline)
-                Text(BackProtocolCopy.summary)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
+            Text("Phase")
+                .font(.headline)
+            Text(PhaseGuideCopy.summary(for: settings?.currentPhase ?? .aFlareDeLoad))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
             Text(PhaseGuideCopy.redFlags)
                 .font(.caption2)
                 .foregroundStyle(.tertiary)

@@ -1,15 +1,9 @@
 import SwiftUI
 
-/// Dual-track protocol guide: knee tendon + low back / QL.
+/// Patellar tendinopathy phase guide (A–E).
 struct PhaseGuideView: View {
     var body: some View {
         List {
-            Section {
-                Text("Two active rehab templates. Log daily pain for both; train each track separately. Soft cut when next-day symptoms are worse.")
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-
             Section {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(RehabTemplate.knee.name)
@@ -34,33 +28,11 @@ struct PhaseGuideView: View {
                     .padding(.vertical, 2)
                 }
             } header: {
-                Text("Template 1 · Knee")
-            }
-
-            Section {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(RehabTemplate.lowerBack.name)
-                        .font(.headline)
-                    Text(RehabTemplate.lowerBack.shortDescription)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text(BackProtocolCopy.summary)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Text(BackProtocolCopy.program)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 4)
-            } header: {
-                Text("Template 2 · Low back")
+                Text("Jumper's knee")
             }
 
             Section("Red flags") {
                 Text(PhaseGuideCopy.redFlags)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                Text(BackProtocolCopy.redFlags)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }
@@ -69,7 +41,7 @@ struct PhaseGuideView: View {
                 LabeledContent("Protocol revision", value: PhaseGuideCopy.protocolRevision)
             }
         }
-        .navigationTitle("Rehab templates")
+        .navigationTitle("Phase guide")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
