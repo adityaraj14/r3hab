@@ -135,8 +135,7 @@ struct KneeExploreChart: View {
             .foregroundStyle(PainChartColors.left)
             PointMark(
                 x: .value("Day", point.date),
-                y: .value("Load", left),
-                series: .value("Side", "L")
+                y: .value("Load", left)
             )
             .foregroundStyle(PainChartColors.left)
             .symbolSize(28)
@@ -155,8 +154,7 @@ struct KneeExploreChart: View {
             .foregroundStyle(PainChartColors.right)
             PointMark(
                 x: .value("Day", point.date),
-                y: .value("Load", right),
-                series: .value("Side", "R")
+                y: .value("Load", right)
             )
             .foregroundStyle(PainChartColors.right)
             .symbolSize(28)
