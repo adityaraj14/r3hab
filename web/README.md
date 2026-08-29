@@ -39,7 +39,7 @@ Client-only. No backend, no auth, no analytics. Airplane mode works after the fi
 
 ## Vercel
 
-Set the project **Root Directory** to `web`. `vercel.json` is in this folder.
+This folder is the Vercel root for project `r3hab-web`. Set the project **Root Directory** to `web`. `vercel.json` is in this folder.
 
 ## Install on iPhone
 
