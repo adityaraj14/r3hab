@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #050505;
+  --surface: #121212;
+  --surface-2: #1a1a1a;
+  --line: #2a2a2a;
+  --gold: #f0c14b;
+  --gold-bright: #ffd56a;
+  --ember: #ff6a1a;
+  --hot: #ff4500;
+  --ink: #f4f0e8;
+  --muted: #9a9488;
+  --danger: #ff5c5c;
+  --ok: #3dba7a;
+  --amber: #f5a623;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-gold: var(--gold);
+  --color-gold-bright: var(--gold-bright);
+  --color-ember: var(--ember);
+  --color-hot: var(--hot);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-danger: var(--danger);
+  --color-ok: var(--ok);
+  --color-amber: var(--amber);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-display {
+  font-family: var(--font-display), "Oswald", Impact, "Arial Narrow", sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.ember-gradient {
+  background: linear-gradient(180deg, var(--gold-bright) 0%, var(--ember) 55%, var(--hot) 100%);
+}
+
+.ember-text {
+  background: linear-gradient(180deg, var(--gold-bright), var(--ember));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.hero-ring {
+  box-shadow:
+    0 0 0 1px rgba(240, 193, 75, 0.28),
+    0 18px 50px rgba(255, 69, 0, 0.12);
+}
+
+button,
+a {
+  touch-action: manipulation;
+}
+
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

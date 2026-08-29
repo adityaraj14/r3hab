@@ -1,64 +1,30 @@
 # R3hab
 
-Personal offline-first iOS app for **patellar tendinopathy rehab logging**: daily pain check-ins, training sessions, and a forced 24-hour load–response decision loop.
+Personal patellar-tendinopathy rehab app. Progressive tendon loading + a 24-hour pain loop.
 
 > Not a medical device. Supports self-managed rehab logging; does not replace professional care.
 
-## Design
+## Current product: web
 
-Full requirements and implementation plan:
+The **current product** lives in [`web/`](./web/) — a Next.js App Router PWA you can launch in a browser (and install on a phone) without Xcode.
 
-- [`DESIGN.md`](./DESIGN.md) — tagged REQs, data model, domain rules, PR plan
+```bash
+cd web
+npm install
+npm test
+npm run dev
+```
 
-**Stack:** SwiftUI · **SwiftData** (on-device SQLite) · iOS 17.0+ · local-only v1  
+Open [http://localhost:3000](http://localhost:3000). Reviewer shortcut: [`/demo`](./web/README.md) seeds a week of real-looking data.
 
-No remote backend. Export/import JSON is the backup path (PR-12).
+Details, protocol, and Vercel notes: [`web/README.md`](./web/README.md) · [`web/PROTOCOL.md`](./web/PROTOCOL.md).
 
-**Notion** remains the protocol brain (phases, soft cut / hard drop copy). **R3hab** is the daily diary.
+## iOS (legacy)
 
-## Open in Xcode
+The SwiftUI + SwiftData iPhone app remains in this repo (`R3hab/`, `R3hab.xcodeproj`) and is **not** the primary product. Original diary spec: [`DESIGN.md`](./DESIGN.md) (working name TendonTrack). The web app is the protocol, not a port of the diary UI. Low-back / QL dual-track from later iOS work is **not** in the web app.
 
 ```bash
 open R3hab.xcodeproj
-```
-
-Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
-
-## Features (v1)
-
-- Daily AM/PM check-in + steps
-- Training sessions + **24h resolve** (Better/Same/Worse → Stay/Soft cut/Progress/Hard drop)
-- Phase A exit banner, Progress charts (7/28 day)
-- Settings: phase, thresholds, reminders, **JSON export/import**, **clear all logs**
-- Onboarding + local notifications (AM/PM + pending 24h)
-- Deep link / notification open → resolve sheet
-
-## Deep link
-
-```
-r3hab://resolve?sessionId=<UUID>
-```
-
-## Backup
-
-Settings → **Export JSON backup**. Import supports **Replace** or **Merge**.  
-**Clear all log entries** wipes check-ins and sessions but keeps phase/settings.
-
-## Dogfood checklist (14 days)
-
-1. Log morning pain most days  
-2. Log at least a few training sessions and resolve 24h next day  
-3. Export a backup weekly  
-4. Confirm notifications (if enabled) fire after a session  
-
-## Development
-
-Plan: `DESIGN.md` § PR Plan. Stack: SwiftUI + SwiftData, iOS 17+, dark mode only.
-
-```bash
-# Install on booted sim without launching
-xcodebuild -scheme R3hab -destination 'platform=iOS Simulator,id=<UDID>' build
-xcrun simctl install booted path/to/R3hab.app
 ```
 
 ## License
