@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { displayToKg, formatLoad, kgToDisplay } from "@/domain/nextLoadSuggester";
+import { displayToKg, formatLoad, kgToDisplay, loadUnitLabel } from "@/domain/nextLoadSuggester";
 import { shouldWarnUnder48h } from "@/domain/sessionSpacing";
 import { defaultSetsFromPrescription, type TodayPrescription } from "@/domain/prescription";
 import {
@@ -362,7 +362,7 @@ function SetBlock({
           <div key={row.id} className="grid grid-cols-12 items-end gap-2">
             <div className="col-span-3">
               <NumberField
-                label={idx === 0 ? `Load ${unit}` : ""}
+                label={idx === 0 ? `Load ${loadUnitLabel(unit)}` : ""}
                 value={kgToDisplay(row.loadKg, unit)}
                 step={unit === "kg" ? 2.5 : 5}
                 min={0}

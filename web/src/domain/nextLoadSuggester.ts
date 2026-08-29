@@ -21,10 +21,14 @@ export function displayToKg(value: number, unit: LoadUnit): number {
   return value * KG_PER_LB;
 }
 
+export function loadUnitLabel(unit: LoadUnit): string {
+  return unit === "lb" ? "lbs" : "kg";
+}
+
 export function formatLoad(kg: number, unit: LoadUnit): string {
   const v = kgToDisplay(kg, unit);
   const n = Number.isInteger(v) ? String(v) : v.toFixed(1).replace(/\.0$/, "");
-  return `${n} ${unit}`;
+  return `${n} ${loadUnitLabel(unit)}`;
 }
 
 export type NextLoadSuggestion = {
@@ -55,7 +59,7 @@ export function suggestNextLoad(args: {
         loadKg: roundToIncrement(args.lastLoadKg + incKg, incKg),
         reps: args.lastReps,
         holdSeconds: args.lastHoldSeconds,
-        deltaLabel: args.unit === "lb" ? "+5 lb" : "+2.5 kg",
+        deltaLabel: args.unit === "lb" ? "+5 lbs" : "+2.5 kg",
       };
     case "softCut": {
       const cut = Math.max(incKg, roundToIncrement(args.lastLoadKg * 0.75, incKg));

@@ -20,7 +20,7 @@ import {
   type DayValue,
 } from "@/domain/chartAggregates";
 import { localCalendar } from "@/domain/calendar";
-import { formatLoad } from "@/domain/nextLoadSuggester";
+import { formatLoad, loadUnitLabel } from "@/domain/nextLoadSuggester";
 import type { DailyCheckIn, LoadUnit, TrainingSession } from "@/domain/types";
 
 type Range = "7d" | "28d" | "90d" | "all";
@@ -146,7 +146,7 @@ export function ChartExplorer({
         ))}
       </div>
       <p className="px-4 pb-2 text-xs text-muted">
-        Drag the brush to zoom. Tap a point to open that day. Dual axis: pain 0–10 vs machine load ({unit}).
+        Drag the brush to zoom. Tap a point to open that day. Dual axis: pain 0–10 vs machine load ({loadUnitLabel(unit)}).
       </p>
       <div className="min-h-0 flex-1 px-1 pb-6">
         <ResponsiveContainer width="100%" height="100%">

@@ -52,7 +52,7 @@ export function SettingsView() {
             onChange={(loadUnit) => updateSettings({ loadUnit })}
             options={[
               { value: "kg", label: "kg" },
-              { value: "lb", label: "lb" },
+              { value: "lb", label: "lbs" },
             ]}
           />
         </div>

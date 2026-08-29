@@ -68,7 +68,7 @@ export function Onboarding({
               onChange={setUnit}
               options={[
                 { value: "kg", label: "Kilograms" },
-                { value: "lb", label: "Pounds" },
+                { value: "lb", label: "lbs" },
               ]}
             />
           </>

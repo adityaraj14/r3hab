@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { suggestNextLoad } from "../nextLoadSuggester";
+import { formatLoad, suggestNextLoad } from "../nextLoadSuggester";
 
 describe("nextLoadSuggester", () => {
   it("Stay keeps the same load", () => {
@@ -38,6 +38,22 @@ describe("nextLoadSuggester", () => {
     expect(next.loadKg).toBe(30);
     expect(next.holdSeconds).toBe(34);
     expect(next.deltaLabel).toBe("−25%");
+  });
+
+  it("Progress in lb prints lbs not lb", () => {
+    const next = suggestNextLoad({
+      lastLoadKg: 40,
+      lastReps: 8,
+      lastHoldSeconds: null,
+      decision: "progress",
+      unit: "lb",
+    });
+    expect(next.deltaLabel).toBe("+5 lbs");
+  });
+
+  it("formatLoad uses lbs for imperial", () => {
+    expect(formatLoad(20, "lb")).toMatch(/ lbs$/);
+    expect(formatLoad(20, "kg")).toMatch(/ kg$/);
   });
 
   it("null decision behaves as Stay", () => {
