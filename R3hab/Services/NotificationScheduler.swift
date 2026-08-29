@@ -1,7 +1,7 @@
 import Foundation
 import UserNotifications
 
-/// Local notifications: AM/PM check-ins, stretch reminders, and pending 24h nags (PR-13).
+/// Local notifications: AM/PM check-ins and pending 24h nags (PR-13).
 enum NotificationScheduler {
     static let amReminderId = "am-reminder"
     static let pmReminderId = "pm-reminder"
@@ -25,7 +25,7 @@ enum NotificationScheduler {
         "pending-\(sessionId.uuidString)"
     }
 
-    /// Formatted stretch times for Settings/onboarding copy (e.g. "8:00 AM · 1:30 PM · 7:00 PM").
+    /// Formatted stretch times for Settings copy (e.g. "8:00 AM · 1:30 PM · 7:00 PM").
     static var stretchReminderTimesLabel: String {
         let formatter = DateFormatter()
         formatter.locale = .current
@@ -83,7 +83,7 @@ enum NotificationScheduler {
             hour: amHour,
             minute: amMinute,
             title: "Morning check-in",
-            body: "Log resting knee and back pain when you’re ready."
+            body: "Log resting knee pain when you’re ready."
         )
         scheduleDailyReminder(
             id: pmReminderId,
@@ -99,7 +99,7 @@ enum NotificationScheduler {
                 hour: time.hour,
                 minute: time.minute,
                 title: "Time to stretch",
-                body: "Take a few minutes to stretch — especially your lower back and legs."
+                body: "Take a few minutes to stretch."
             )
         }
 

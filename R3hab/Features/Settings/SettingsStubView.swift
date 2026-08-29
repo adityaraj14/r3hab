@@ -140,7 +140,7 @@ struct SettingsStubView: View {
             }
 
             Section("Disclaimer") {
-                Text("R3hab supports self-managed rehab logging. It is not a medical device and does not replace professional care.")
+                Text(PhaseGuideCopy.medicalDisclaimer)
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 Text(PhaseGuideCopy.redFlags)

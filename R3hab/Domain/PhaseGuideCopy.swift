@@ -18,6 +18,8 @@ enum PhaseGuideCopy {
         }
     }
 
+    static let medicalDisclaimer = "R3hab supports self-managed rehab logging. It is not a medical device and does not replace professional care."
+
     static let redFlags = """
     See a clinician if: resting pain 5+, no improvement after 7–10 days of de-load, swelling, locking, instability, or sharp joint pain (not usual tendon ache).
     """
