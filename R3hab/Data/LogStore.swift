@@ -31,6 +31,10 @@ enum LogStore {
         settings: AppSettings,
         sessions: [TrainingSession]
     ) async {
+        // Import / skip-then-enable can persist the toggle without ever prompting.
+        if settings.notificationsEnabled {
+            _ = await NotificationScheduler.ensureAuthorizedIfNeeded()
+        }
         await NotificationScheduler.reconcile(
             notificationsEnabled: settings.notificationsEnabled,
             amHour: settings.amReminderHour,

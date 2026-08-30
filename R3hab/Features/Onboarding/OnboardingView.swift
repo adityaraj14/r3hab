@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// First-launch onboarding. Four dark screens, patellar tendinopathy only.
+/// First-launch onboarding. Four dark screens; screen 1 is the injury selector.
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [AppSettings]
@@ -10,6 +10,7 @@ struct OnboardingView: View {
 
     @State private var page = 0
     @State private var phase: RehabPhase = OnboardingCompletion.defaultPhase
+    @State private var selectedInjuryID = InjuryCatalog.defaultSelectable.id
     @State private var wantNotifications = false
     @State private var isBusy = false
 
@@ -22,7 +23,7 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
 
             TabView(selection: $page) {
-                injuryLockPage.tag(0)
+                injurySelectPage.tag(0)
                 rule24hPage.tag(1)
                 setupPage.tag(2)
                 disclaimerPage.tag(3)
@@ -37,10 +38,11 @@ struct OnboardingView: View {
                         withAnimation { page += 1 }
                     } else {
                         Task {
-                            await finish(
-                                phase: phase,
-                                enableNotifications: wantNotifications
-                            )
+                        await finish(
+                            phase: phase,
+                            enableNotifications: wantNotifications,
+                            injuryID: selectedInjuryID
+                        )
                         }
                     }
                 } label: {
@@ -56,9 +58,16 @@ struct OnboardingView: View {
 
                 Button("Skip for now") {
                     Task {
+                        let skipped = OnboardingCompletion.result(
+                            skipped: true,
+                            phase: phase,
+                            notificationsEnabled: wantNotifications,
+                            injuryID: selectedInjuryID
+                        )
                         await finish(
-                            phase: OnboardingCompletion.defaultPhase,
-                            enableNotifications: false
+                            phase: skipped.phase,
+                            enableNotifications: skipped.notificationsEnabled,
+                            injuryID: skipped.injuryID
                         )
                     }
                 }
@@ -101,12 +110,35 @@ struct OnboardingView: View {
         .accessibilityLabel("Onboarding step \(page + 1) of 4")
     }
 
-    private var injuryLockPage: some View {
-        onboardingCard(
-            eyebrow: "Injury lock",
-            title: "Patellar tendinopathy. That's the whole app.",
-            body: "This diary is jumper's knee only. Primary load is seated knee extension. No other injuries, no back, no QL. There is NO injury picker."
-        )
+    private var injurySelectPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                screenHeader(
+                    eyebrow: "Injury",
+                    title: "What are you loading?"
+                )
+                Text("All three use the seated-extension diary and the same knee / patellar tendon protocol. More injuries can land here later.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 10) {
+                    ForEach(InjuryCatalog.selectable) { injury in
+                        phaseChoice(
+                            title: injury.title,
+                            subtitle: injury.subtitle,
+                            selected: selectedInjuryID == injury.id
+                        ) {
+                            selectedInjuryID = injury.id
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .scrollIndicators(.hidden)
     }
 
     private var rule24hPage: some View {
@@ -147,7 +179,7 @@ struct OnboardingView: View {
             Toggle(isOn: $wantNotifications) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Local notifications")
-                    Text("AM check-in and pending 24h only. Off anytime in Settings.")
+                    Text("Morning and evening check-ins, plus overdue 24h pending. Off anytime in Settings.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -239,7 +271,11 @@ struct OnboardingView: View {
     }
 
     @MainActor
-    private func finish(phase chosenPhase: RehabPhase, enableNotifications: Bool) async {
+    private func finish(
+        phase chosenPhase: RehabPhase,
+        enableNotifications: Bool,
+        injuryID: String
+    ) async {
         isBusy = true
         defer { isBusy = false }
         let settings = (try? AppBootstrap.ensureSettings(context: modelContext)) ?? settings
@@ -250,12 +286,13 @@ struct OnboardingView: View {
         OnboardingCompletion.apply(
             to: settings,
             phase: chosenPhase,
-            notificationsEnabled: enableNotifications
+            notificationsEnabled: enableNotifications,
+            injuryID: injuryID
         )
         try? modelContext.save()
 
         if enableNotifications {
-            let granted = await NotificationScheduler.requestAuthorization()
+            let granted = await NotificationScheduler.ensureAuthorizedIfNeeded()
             settings.notificationsEnabled = granted
             try? modelContext.save()
             if granted {
@@ -275,20 +312,58 @@ struct OnboardingView: View {
     }
 }
 
-/// Applies first-run choices. Skip uses Phase B + notifications off.
+/// Applies first-run choices. Skip uses Phase B + notifications off + default injury.
 enum OnboardingCompletion {
     static let defaultPhase: RehabPhase = .bIsometrics
+
+    static func result(
+        skipped: Bool,
+        phase: RehabPhase,
+        notificationsEnabled: Bool,
+        injuryID: String
+    ) -> OnboardingChoices {
+        if skipped {
+            return OnboardingChoices(
+                phase: defaultPhase,
+                notificationsEnabled: false,
+                injuryID: InjuryCatalog.defaultSelectable.id,
+                protocolTrack: InjuryCatalog.defaultSelectable.protocolTrack
+            )
+        }
+        let injury = InjuryCatalog.definition(for: injuryID)
+        return OnboardingChoices(
+            phase: phase,
+            notificationsEnabled: notificationsEnabled,
+            injuryID: injury.id,
+            protocolTrack: injury.protocolTrack
+        )
+    }
 
     static func apply(
         to settings: AppSettings,
         phase: RehabPhase,
-        notificationsEnabled: Bool
+        notificationsEnabled: Bool,
+        injuryID: String
     ) {
-        settings.currentPhase = phase
+        let choices = result(
+            skipped: false,
+            phase: phase,
+            notificationsEnabled: notificationsEnabled,
+            injuryID: injuryID
+        )
+        settings.currentPhase = choices.phase
         settings.hasCompletedOnboarding = true
-        settings.notificationsEnabled = notificationsEnabled
-        settings.activeTracks = [.knee]
+        settings.notificationsEnabled = choices.notificationsEnabled
+        settings.activeTracks = [choices.protocolTrack]
+        settings.selectedInjuryID = choices.injuryID
     }
+}
+
+struct OnboardingChoices: Equatable, Sendable {
+    var phase: RehabPhase
+    var notificationsEnabled: Bool
+    var injuryID: String
+    var protocolTrack: RehabTrackID
 }
 
 private enum OnboardingTheme {

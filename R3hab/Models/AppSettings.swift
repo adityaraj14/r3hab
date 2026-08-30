@@ -21,6 +21,8 @@ final class AppSettings {
     var activeTracksCSV: String = "knee"
     /// Unused. Kept for SwiftData schema stability.
     var backTrackStageRaw: String = ""
+    /// Onboarding injury id from `InjuryCatalog`. Default is lightweight-migration safe.
+    var selectedInjuryID: String = "patellar-tendinopathy"
 
     var currentPhase: RehabPhase {
         get { RehabPhase(rawValue: currentPhaseRaw) ?? .aFlareDeLoad }
@@ -33,6 +35,11 @@ final class AppSettings {
     var activeTracks: [RehabTrackID] {
         get { [.knee] }
         set { activeTracksCSV = RehabTrackID.knee.rawValue }
+    }
+
+    var selectedInjury: InjuryDefinition {
+        get { InjuryCatalog.definition(for: selectedInjuryID) }
+        set { selectedInjuryID = newValue.id }
     }
 
     init() {
@@ -52,5 +59,6 @@ final class AppSettings {
         self.faceIDLockEnabled = false
         self.activeTracksCSV = RehabTrackID.knee.rawValue
         self.backTrackStageRaw = ""
+        self.selectedInjuryID = InjuryCatalog.defaultSelectable.id
     }
 }

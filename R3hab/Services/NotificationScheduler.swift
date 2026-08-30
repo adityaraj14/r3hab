@@ -1,13 +1,56 @@
 import Foundation
 import UserNotifications
+import os
 
 /// Local notifications: AM/PM check-ins and pending 24h nags.
 enum NotificationScheduler {
     static let amReminderId = "am-reminder"
     static let pmReminderId = "pm-reminder"
 
+    private static let log = Logger(subsystem: "com.devrising.r3hab", category: "notifications")
+
     static func pendingId(for sessionId: UUID) -> String {
         "pending-\(sessionId.uuidString)"
+    }
+
+    /// Whether iOS will actually deliver scheduled local notifications.
+    static func canDeliver(_ status: UNAuthorizationStatus) -> Bool {
+        switch status {
+        case .authorized, .provisional, .ephemeral:
+            return true
+        default:
+            return false
+        }
+    }
+
+    /// Calendar + time zone must be on the components or `nextTriggerDate()` can be nil
+    /// and the repeating AM/PM request never fires (even after a successful `add`).
+    static func dailyTriggerComponents(
+        hour: Int,
+        minute: Int,
+        calendar: Calendar = .current
+    ) -> DateComponents {
+        var comps = DateComponents()
+        comps.calendar = calendar
+        comps.timeZone = calendar.timeZone
+        comps.hour = hour
+        comps.minute = minute
+        comps.second = 0
+        return comps
+    }
+
+    static func pendingTriggerComponents(
+        fire: Date,
+        calendar: Calendar = .current
+    ) -> DateComponents {
+        var comps = calendar.dateComponents(
+            [.year, .month, .day, .hour, .minute, .second],
+            from: fire
+        )
+        comps.calendar = calendar
+        comps.timeZone = calendar.timeZone
+        comps.second = 0
+        return comps
     }
 
     @discardableResult
@@ -16,12 +59,21 @@ enum NotificationScheduler {
         do {
             return try await center.requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
+            log.error("requestAuthorization failed: \(error.localizedDescription, privacy: .public)")
             return false
         }
     }
 
     static func authorizationStatus() async -> UNAuthorizationStatus {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
+    /// Request only when undetermined; do not prompt again if already denied.
+    static func ensureAuthorizedIfNeeded() async -> Bool {
+        let status = await authorizationStatus()
+        if canDeliver(status) { return true }
+        if status == .denied { return false }
+        return await requestAuthorization()
     }
 
     /// Full reconcile: daily AM/PM reminders + pending session nags.
@@ -38,8 +90,10 @@ enum NotificationScheduler {
         let center = UNUserNotificationCenter.current()
         let leftoverStretchIds = (0..<3).map { "stretch-\($0)" }
         let dailyIds = [amReminderId, pmReminderId] + leftoverStretchIds
+        let status = await authorizationStatus()
+        let shouldSchedule = notificationsEnabled && canDeliver(status)
 
-        if !notificationsEnabled {
+        if !shouldSchedule {
             await center.removePendingNotificationRequests(withIdentifiers: dailyIds)
             let pending = await center.pendingNotificationRequests()
             let ids = pending.map(\.identifier).filter { $0.hasPrefix("pending-") }
@@ -50,21 +104,24 @@ enum NotificationScheduler {
             return
         }
 
-        await center.removePendingNotificationRequests(withIdentifiers: leftoverStretchIds)
+        // Replace leftover stretch ids and stale AM/PM triggers, then add fresh dailies.
+        await center.removePendingNotificationRequests(withIdentifiers: dailyIds)
 
-        scheduleDailyReminder(
+        await scheduleDailyReminder(
             id: amReminderId,
             hour: amHour,
             minute: amMinute,
             title: "Morning check-in",
-            body: "Log resting knee pain when you’re ready."
+            body: "Log resting knee pain when you’re ready.",
+            calendar: calendar
         )
-        scheduleDailyReminder(
+        await scheduleDailyReminder(
             id: pmReminderId,
             hour: pmHour,
             minute: pmMinute,
             title: "Evening check-in",
-            body: "Log daily pain and steps for today."
+            body: "Log daily pain and steps for today.",
+            calendar: calendar
         )
 
         // Rebuild pending nags: cancel all pending-* then schedule valid ones
@@ -75,7 +132,7 @@ enum NotificationScheduler {
         }
 
         for session in pendingSessions {
-            schedulePending(
+            await schedulePendingAsync(
                 sessionId: session.id,
                 sessionDate: session.date,
                 snoozedUntil: session.snoozedUntil,
@@ -92,19 +149,18 @@ enum NotificationScheduler {
         hour: Int,
         minute: Int,
         title: String,
-        body: String
-    ) {
+        body: String,
+        calendar: Calendar = .current
+    ) async {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
 
-        var comps = DateComponents()
-        comps.hour = hour
-        comps.minute = minute
+        let comps = dailyTriggerComponents(hour: hour, minute: minute, calendar: calendar)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: true)
         let request = UNNotificationRequest(identifier: id, content: content, trigger: trigger)
-        UNUserNotificationCenter.current().add(request)
+        await add(request)
     }
 
     /// Fire next morning after session.date at AM time, or at snoozedUntil if set.
@@ -118,6 +174,28 @@ enum NotificationScheduler {
         now: Date = Date(),
         calendar: Calendar = .current
     ) {
+        Task {
+            await schedulePendingAsync(
+                sessionId: sessionId,
+                sessionDate: sessionDate,
+                snoozedUntil: snoozedUntil,
+                amHour: amHour,
+                amMinute: amMinute,
+                now: now,
+                calendar: calendar
+            )
+        }
+    }
+
+    static func schedulePendingAsync(
+        sessionId: UUID,
+        sessionDate: Date,
+        snoozedUntil: Date?,
+        amHour: Int,
+        amMinute: Int,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async {
         let fire: Date
         if let snoozedUntil {
             fire = snoozedUntil
@@ -138,14 +216,14 @@ enum NotificationScheduler {
         content.userInfo = ["sessionId": sessionId.uuidString, "kind": "pending"]
         content.categoryIdentifier = "PENDING_24H"
 
-        let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+        let comps = pendingTriggerComponents(fire: fire, calendar: calendar)
         let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
         let request = UNNotificationRequest(
             identifier: pendingId(for: sessionId),
             content: content,
             trigger: trigger
         )
-        UNUserNotificationCenter.current().add(request)
+        await add(request)
     }
 
     static func cancelPending(sessionId: UUID) {
@@ -168,6 +246,16 @@ enum NotificationScheduler {
     static func updateBadge(count: Int) {
         Task { @MainActor in
             try? await UNUserNotificationCenter.current().setBadgeCount(count)
+        }
+    }
+
+    private static func add(_ request: UNNotificationRequest) async {
+        do {
+            try await UNUserNotificationCenter.current().add(request)
+        } catch {
+            log.error(
+                "Failed to add \(request.identifier, privacy: .public): \(error.localizedDescription, privacy: .public)"
+            )
         }
     }
 }

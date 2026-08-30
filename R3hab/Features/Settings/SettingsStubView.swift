@@ -115,12 +115,6 @@ struct SettingsStubView: View {
                 LabeledContent("Revision", value: PhaseGuideCopy.protocolRevision)
             }
 
-            Section {
-                LabeledContent("App", value: "R3hab")
-                LabeledContent("Data", value: "SwiftData (on-device)")
-                LabeledContent("Bundle", value: "com.devrising.r3hab")
-            }
-
             Section("Disclaimer") {
                 Text(PhaseGuideCopy.medicalDisclaimer)
                     .font(.footnote)
@@ -235,27 +229,31 @@ struct SettingsStubView: View {
         Binding(
             get: { settings.notificationsEnabled },
             set: { newValue in
-                settings.notificationsEnabled = newValue
-                try? modelContext.save()
                 Task {
-                    if newValue {
-                        let granted = await NotificationScheduler.requestAuthorization()
-                        await MainActor.run {
-                            settings.notificationsEnabled = granted
-                            try? modelContext.save()
-                            if !granted {
-                                presentAlert(
-                                    "Notifications off",
-                                    "Permission denied. You can enable them later in iOS Settings → R3hab."
-                                )
-                            }
-                        }
-                    }
-                    await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
-                    await MainActor.run { router.requestNotificationSync() }
+                    await applyNotificationsEnabled(newValue, settings: settings)
                 }
             }
         )
+    }
+
+    @MainActor
+    private func applyNotificationsEnabled(_ enabled: Bool, settings: AppSettings) async {
+        if enabled {
+            let granted = await NotificationScheduler.ensureAuthorizedIfNeeded()
+            settings.notificationsEnabled = granted
+            try? modelContext.save()
+            if !granted {
+                presentAlert(
+                    "Notifications off",
+                    "Permission denied. You can enable them later in iOS Settings → R3hab."
+                )
+            }
+        } else {
+            settings.notificationsEnabled = false
+            try? modelContext.save()
+        }
+        await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
+        router.requestNotificationSync()
     }
 
     private func reminderTimeBinding(_ settings: AppSettings, isAM: Bool) -> Binding<Date> {

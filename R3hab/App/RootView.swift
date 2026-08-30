@@ -56,6 +56,10 @@ struct RootView: View {
             Task { await syncNotifications() }
         }
         .onChange(of: scenePhase) { _, phase in
+            // Re-schedule when returning from iOS Settings after granting permission.
+            if phase == .active {
+                Task { await syncNotifications() }
+            }
             // Finish SwiftData work under a background task before suspension.
             // Holding a SQLite lock across suspend → OS SIGKILL 0xdead10cc
             // ("dead lock"), which users see as “the app crashed” hours later.
