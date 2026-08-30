@@ -53,6 +53,7 @@ struct SettingsDTO: Codable {
     var pmReminderMinute: Int
     var notificationsEnabled: Bool
     var protocolRevision: String
+    var selectedInjuryID: String?
 }
 
 struct DailyDTO: Codable {
@@ -254,7 +255,8 @@ enum ExportImportService {
                 pmReminderHour: settings.pmReminderHour,
                 pmReminderMinute: settings.pmReminderMinute,
                 notificationsEnabled: settings.notificationsEnabled,
-                protocolRevision: settings.protocolRevision
+                protocolRevision: settings.protocolRevision,
+                selectedInjuryID: settings.selectedInjuryID
             ),
             dailyCheckIns: checkIns.map {
                 DailyDTO(
@@ -341,6 +343,9 @@ enum ExportImportService {
         settings.pmReminderMinute = dto.pmReminderMinute
         settings.notificationsEnabled = dto.notificationsEnabled
         settings.protocolRevision = dto.protocolRevision
+        if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
+            settings.selectedInjuryID = InjuryCatalog.normalizedID(injuryID)
+        }
     }
 
     private static func replaceAll(backup: R3habBackupDTO, context: ModelContext) throws {

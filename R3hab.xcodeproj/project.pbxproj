@@ -34,6 +34,7 @@
 		E8011A626D364764ADC7D7E8 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
 		EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistanceSet.swift; sourceTree = "<group>"; };
 		C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTemplate.swift; sourceTree = "<group>"; };
+		C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjuryCatalog.swift; sourceTree = "<group>"; };
 		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
@@ -74,6 +75,7 @@
 		47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8011A626D364764ADC7D7E8 /* TrainingSession.swift */; };
 		B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */; };
 		37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */; };
+		D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */; };
 		D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B121FF0B2974BD1A2491DB9 /* LogStore.swift */; };
 		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
 		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
@@ -218,6 +220,7 @@
 				E8011A626D364764ADC7D7E8 /* TrainingSession.swift */,
 				EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */,
 				C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */,
+				C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -297,6 +300,7 @@
 				47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */,
 				B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */,
 				37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */,
+				D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */,
 				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
 				57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */,
 				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,
@@ -361,7 +365,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
@@ -391,7 +395,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 15;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
