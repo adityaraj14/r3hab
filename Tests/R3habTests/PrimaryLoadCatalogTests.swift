@@ -42,7 +42,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     }
 
     func testBrandCopyHasThreeHabits() {
-        XCTAssertEqual(BrandCopy.habits.map(\.title), ["Record", "Reload", "Resolve"])
+        XCTAssertEqual(BrandCopy.habits.map(\.title), ["Identity", "Process", "Outcome"])
         XCTAssertTrue(BrandCopy.onboardingTitle.contains("3"))
     }
 }

@@ -181,7 +181,7 @@ struct OnboardingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
-                    eyebrow: "Reload",
+                    eyebrow: "Process",
                     title: "Your primary lift"
                 )
                 Text("Seated leg extension is the default — the same machine iso/HSR most patellar-tendon protocols use. Pick another if that’s what you actually have.")
