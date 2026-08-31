@@ -45,12 +45,14 @@ final class InjuryCatalogTests: XCTestCase {
             skipped: true,
             phase: .aFlareDeLoad,
             notificationsEnabled: true,
-            injuryID: InjuryCatalog.jumpersKnee.id
+            injuryID: InjuryCatalog.jumpersKnee.id,
+            primaryLoadID: PrimaryLoadCatalog.wallSit.id
         )
         XCTAssertEqual(skipped.phase, .bIsometrics)
         XCTAssertFalse(skipped.notificationsEnabled)
         XCTAssertEqual(skipped.injuryID, InjuryCatalog.defaultSelectable.id)
         XCTAssertEqual(skipped.protocolTrack, .knee)
+        XCTAssertEqual(skipped.primaryLoadID, PrimaryLoadCatalog.defaultID)
     }
 
     func testCompleteKeepsChosenInjuryAndPhase() {
@@ -58,11 +60,24 @@ final class InjuryCatalogTests: XCTestCase {
             skipped: false,
             phase: .cHeavySlowResistance,
             notificationsEnabled: true,
-            injuryID: InjuryCatalog.patellarTendonitis.id
+            injuryID: InjuryCatalog.patellarTendonitis.id,
+            primaryLoadID: PrimaryLoadCatalog.spanishSquat.id
         )
         XCTAssertEqual(chosen.phase, .cHeavySlowResistance)
         XCTAssertTrue(chosen.notificationsEnabled)
         XCTAssertEqual(chosen.injuryID, "patellar-tendonitis")
         XCTAssertEqual(chosen.protocolTrack, .knee)
+        XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.spanishSquat.id)
+    }
+
+    func testCompleteNormalizesUnknownPrimaryLoadToSeatedExtension() {
+        let chosen = OnboardingCompletion.result(
+            skipped: false,
+            phase: .bIsometrics,
+            notificationsEnabled: false,
+            injuryID: InjuryCatalog.defaultSelectable.id,
+            primaryLoadID: "hack-squat"
+        )
+        XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.defaultID)
     }
 }

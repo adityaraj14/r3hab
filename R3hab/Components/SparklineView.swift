@@ -92,7 +92,7 @@ struct KneeExploreChart: View {
                 ContentUnavailableView(
                     "No knee data yet",
                     systemImage: "chart.xyaxis.line",
-                    description: Text("Log AM pain or a seated-extension session to explore the trend.")
+                    description: Text("Log AM pain or a session to explore the trend.")
                 )
                 .frame(height: 140)
             }

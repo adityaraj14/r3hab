@@ -72,29 +72,44 @@ struct SessionPreset: Identifiable, Hashable {
     static let legExtensionHSRId = seatedExtensionHSRId
 
     static func resistancePreset(for phase: RehabPhase) -> SessionPreset? {
+        preferred(for: phase, primaryLoadID: PrimaryLoadCatalog.defaultID)
+    }
+
+    /// Iso variant in A/B; HSR variant from C onward. Unknown ids fall back to seated extension.
+    static func preferred(for phase: RehabPhase, primaryLoadID: String) -> SessionPreset {
+        let option = PrimaryLoadCatalog.option(for: primaryLoadID)
+        let presetID: String
         switch phase {
-        case .bIsometrics:
-            return all.first { $0.id == seatedExtensionIsometricId }
-        case .cHeavySlowResistance:
-            return all.first { $0.id == seatedExtensionHSRId }
-        default:
-            return nil
+        case .aFlareDeLoad, .bIsometrics:
+            presetID = option.isometricPresetID
+        case .cHeavySlowResistance, .dEnergyStorage, .eReturnToSport:
+            presetID = option.hsrPresetID
         }
+        return all.first { $0.id == presetID }
+            ?? all.first { $0.id == seatedExtensionIsometricId }
+            ?? all[0]
+    }
+
+    func isPreferred(for primaryLoadID: String) -> Bool {
+        PrimaryLoadCatalog.presetIDs(for: primaryLoadID).contains(id)
     }
 
     var isPrimarySeatedExtension: Bool {
-        id == SessionPreset.seatedExtensionIsometricId || id == SessionPreset.seatedExtensionHSRId
+        isPreferred(for: PrimaryLoadCatalog.defaultID)
     }
 
-    static func forPhase(_ phase: RehabPhase) -> [SessionPreset] {
+    static func forPhase(
+        _ phase: RehabPhase,
+        primaryLoadID: String = PrimaryLoadCatalog.defaultID
+    ) -> [SessionPreset] {
         let filtered = all.enumerated().filter { _, preset in
             guard let phases = preset.phases else { return true }
             return phases.contains(phase)
         }
         return filtered
             .sorted { a, b in
-                let ap = a.element.isPrimarySeatedExtension ? 0 : 1
-                let bp = b.element.isPrimarySeatedExtension ? 0 : 1
+                let ap = a.element.isPreferred(for: primaryLoadID) ? 0 : 1
+                let bp = b.element.isPreferred(for: primaryLoadID) ? 0 : 1
                 if ap != bp { return ap < bp }
                 return a.offset < b.offset
             }

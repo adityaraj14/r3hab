@@ -34,7 +34,21 @@ struct SettingsStubView: View {
                             Text(p.title).tag(p)
                         }
                     }
-                    Text(PhaseGuideCopy.summary(for: settings.currentPhase))
+                    Text(PhaseGuideCopy.summary(
+                        for: settings.currentPhase,
+                        primaryLift: settings.primaryLoad.title
+                    ))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section("Primary lift") {
+                    Picker("Primary lift", selection: primaryLoadBinding(settings)) {
+                        ForEach(PrimaryLoadCatalog.all) { option in
+                            Text(option.title).tag(option.id)
+                        }
+                    }
+                    Text(settings.primaryLoad.subtitle)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -113,6 +127,14 @@ struct SettingsStubView: View {
                     Label("Phase guide", systemImage: "list.bullet.clipboard")
                 }
                 LabeledContent("Revision", value: PhaseGuideCopy.protocolRevision)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(BrandCopy.settingsSectionTitle)
+                        .font(.subheadline.weight(.semibold))
+                    Text(BrandCopy.settingsBlurb)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
             }
 
             Section("Disclaimer") {
@@ -210,6 +232,16 @@ struct SettingsStubView: View {
             get: { settings.currentPhase },
             set: { newValue in
                 settings.currentPhase = newValue
+                try? modelContext.save()
+            }
+        )
+    }
+
+    private func primaryLoadBinding(_ settings: AppSettings) -> Binding<String> {
+        Binding(
+            get: { PrimaryLoadCatalog.normalizedID(settings.primaryLoadID) },
+            set: { newValue in
+                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(newValue)
                 try? modelContext.save()
             }
         )

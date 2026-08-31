@@ -73,6 +73,11 @@ struct SessionEditor: View {
             }
 
             Section("Exercise") {
+                if let settings {
+                    Text("Primary: \(settings.primaryLoad.title)")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack {
                         ForEach(presetsForPhase) { preset in
@@ -170,7 +175,11 @@ struct SessionEditor: View {
     }
 
     private var presetsForPhase: [SessionPreset] {
-        SessionPreset.forPhase(phase)
+        SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID)
+    }
+
+    private var primaryLoadID: String {
+        settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID
     }
 
     private var lateralityBinding: Binding<SetLaterality> {
@@ -437,7 +446,7 @@ struct SessionEditor: View {
             } else {
                 laterality = SessionSummary.inferredLaterality(workSets: workSets)
             }
-            selectedPresetId = SessionPreset.forPhase(phase)
+            selectedPresetId = SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID)
                 .first { $0.sessionType == existing.sessionType && $0.tracksResistance }?.id
             refreshSpacing()
             return
@@ -449,11 +458,7 @@ struct SessionEditor: View {
         laterality = SetLaterality(rawValue: storedLateralityRaw) ?? .bilateral
         switch focus {
         case .kneeResistance, .general:
-            if let preferred = SessionPreset.resistancePreset(for: phase) {
-                applyPreset(preferred)
-            } else {
-                applyPreset(SessionPreset.all.first { $0.id == SessionPreset.seatedExtensionIsometricId }!)
-            }
+            applyPreset(SessionPreset.preferred(for: phase, primaryLoadID: primaryLoadID))
         }
         refreshSpacing()
     }
@@ -507,7 +512,7 @@ struct SessionEditor: View {
         if let id = selectedPresetId, let p = SessionPreset.all.first(where: { $0.id == id }) {
             name = p.label
         } else {
-            name = "Seated knee extension"
+            name = PrimaryLoadCatalog.option(for: primaryLoadID).title
         }
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         let work = workSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }

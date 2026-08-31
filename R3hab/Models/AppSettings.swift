@@ -23,6 +23,8 @@ final class AppSettings {
     var backTrackStageRaw: String = ""
     /// Onboarding injury id from `InjuryCatalog`. Default is lightweight-migration safe.
     var selectedInjuryID: String = "patellar-tendinopathy"
+    /// Primary tendon-loading lift from `PrimaryLoadCatalog`. Default is seated leg extension.
+    var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {
         get { RehabPhase(rawValue: currentPhaseRaw) ?? .aFlareDeLoad }
@@ -40,6 +42,11 @@ final class AppSettings {
     var selectedInjury: InjuryDefinition {
         get { InjuryCatalog.definition(for: selectedInjuryID) }
         set { selectedInjuryID = newValue.id }
+    }
+
+    var primaryLoad: PrimaryLoadOption {
+        get { PrimaryLoadCatalog.option(for: primaryLoadID) }
+        set { primaryLoadID = newValue.id }
     }
 
     init() {
@@ -60,5 +67,6 @@ final class AppSettings {
         self.activeTracksCSV = RehabTrackID.knee.rawValue
         self.backTrackStageRaw = ""
         self.selectedInjuryID = InjuryCatalog.defaultSelectable.id
+        self.primaryLoadID = PrimaryLoadCatalog.defaultID
     }
 }

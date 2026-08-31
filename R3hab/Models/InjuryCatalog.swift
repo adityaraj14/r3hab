@@ -16,7 +16,7 @@ enum InjuryCatalog {
     static let jumpersKnee = InjuryDefinition(
         id: "jumpers-knee",
         title: "Jumper's knee",
-        subtitle: "Patellar tendon · seated-extension diary",
+        subtitle: "Patellar tendon · pain-guided loading",
         protocolTrack: .knee,
         isSelectable: true
     )

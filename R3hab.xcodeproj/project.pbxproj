@@ -35,6 +35,8 @@
 		EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistanceSet.swift; sourceTree = "<group>"; };
 		C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTemplate.swift; sourceTree = "<group>"; };
 		C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjuryCatalog.swift; sourceTree = "<group>"; };
+		B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryLoadCatalog.swift; sourceTree = "<group>"; };
+		A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandCopy.swift; sourceTree = "<group>"; };
 		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
@@ -76,6 +78,8 @@
 		B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */; };
 		37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */; };
 		D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */; };
+		C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */; };
+		D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */; };
 		D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B121FF0B2974BD1A2491DB9 /* LogStore.swift */; };
 		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
 		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
@@ -192,6 +196,7 @@
 				C906FBBA88814D529A9B926F /* PendingQueue.swift */,
 				6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */,
 				F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */,
+				A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */,
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 			);
 			path = Domain;
@@ -221,6 +226,7 @@
 				EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */,
 				C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */,
 				C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */,
+				B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -301,6 +307,8 @@
 				B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */,
 				37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */,
 				D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */,
+				C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */,
+				D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */,
 				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
 				57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */,
 				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,
@@ -365,7 +373,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
@@ -395,7 +403,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 16;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
