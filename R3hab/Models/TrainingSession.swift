@@ -232,22 +232,14 @@ final class TrainingSession {
         chartMaxLoad
     }
 
+    /// Exercise name only (drops the auto-filled set list).
+    var displayTitle: String {
+        SessionSummary.displayTitle(whatIDid: whatIDid)
+    }
+
+    /// Compact resistance line for cards — not every L/R row.
     var resistanceSummary: String? {
-        let all = resistanceSets()
-        guard !all.isEmpty else { return nil }
-        let wu = all.filter(\.isWarmup)
-        let work = all.filter { !$0.isWarmup }
-        var parts: [String] = []
-        if !wu.isEmpty {
-            parts.append("WU " + wu.map(\.summary).joined(separator: ", "))
-        }
-        if !work.isEmpty {
-            parts.append(work.map(\.summary).joined(separator: ", "))
-        }
-        if let vol = chartVolume, vol > 0 {
-            parts.append("vol \(TrainingSession.formatLoad(vol))")
-        }
-        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+        SessionSummary.compactResistance(resistanceSets())
     }
 
     static func formatLoad(_ lbs: Double) -> String {

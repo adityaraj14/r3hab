@@ -142,14 +142,11 @@ struct RehabProgressView: View {
                             .padding(.top, 4)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("AM pain + L/R load")
+                            Text("AM pain + load")
                                 .font(.headline)
-                            Text("Tap a point. Scroll to move the window.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             KneeExploreChart(
                                 points: explorePoints,
-                                height: 160,
+                                height: 140,
                                 visibleDays: min(7, range.rawValue)
                             )
                         }

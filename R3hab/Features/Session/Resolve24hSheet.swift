@@ -22,13 +22,15 @@ struct Resolve24hSheet: View {
         NavigationStack {
             Form {
                 Section("Session") {
-                    Text(session.whatIDid)
-                        .font(.body)
+                    Text(session.displayTitle)
+                        .font(.body.weight(.semibold))
+                    if let resistance = session.resistanceSummary {
+                        Text(resistance)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                     LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
                     LabeledContent("During / after", value: "\(session.painDuring) → \(session.painAfter)")
-                    if let resistance = session.resistanceSummary {
-                        LabeledContent("Resistance", value: resistance)
-                    }
                 }
 
                 Section("How is the tendon next day?") {

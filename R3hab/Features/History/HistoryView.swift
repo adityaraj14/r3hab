@@ -314,7 +314,7 @@ struct HistoryView: View {
     private func sessionRow(_ s: TrainingSession) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .top, spacing: 8) {
-                Text(s.whatIDid)
+                Text(s.displayTitle)
                     .font(.headline)
                     .lineLimit(2)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -325,9 +325,15 @@ struct HistoryView: View {
             HStack(spacing: 6) {
                 sessionTypeTag(s.sessionType)
             }
+            if let resistance = s.resistanceSummary {
+                Text(resistance)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
             Text(sessionSubtitle(s))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
         }
     }
 
@@ -364,11 +370,8 @@ struct HistoryView: View {
     private func sessionSubtitle(_ s: TrainingSession) -> String {
         var parts = [
             s.date.formatted(date: .abbreviated, time: .omitted),
-            "\(s.painDuring)/\(s.painAfter)"
+            "pain \(s.painDuring)/\(s.painAfter)"
         ]
-        if let resistance = s.resistanceSummary {
-            parts.append(resistance)
-        }
         if let decision = s.decision {
             parts.append(decision.title)
         }

@@ -225,6 +225,7 @@ enum ChartMetricBuilder {
             }
             if session.leftMaxLbs == nil, session.rightMaxLbs == nil, let load = session.unspecifiedMaxLbs {
                 leftByDay[key] = max(leftByDay[key] ?? 0, load)
+                rightByDay[key] = max(rightByDay[key] ?? 0, load)
             }
         }
 
