@@ -8,7 +8,7 @@ struct HistoryView: View {
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
 
     @State private var filter: Filter = .all
-    @State private var editDailyKey: String?
+    @State private var editDailyDate: Date?
     @State private var editSessionId: UUID?
     @State private var resolveSessionId: UUID?
     @State private var showBackdate = false
@@ -19,6 +19,8 @@ struct HistoryView: View {
     @State private var pendingBackdateDaily: Date?
     @State private var pendingBackdateSession: Date?
 
+    private var calendar: Calendar { .current }
+
     enum Filter: String, CaseIterable, Identifiable {
         case all, daily, sessions
         var id: String { rawValue }
@@ -26,7 +28,7 @@ struct HistoryView: View {
             switch self {
             case .all: return "All"
             case .daily: return "Daily"
-            case .sessions: return "Sessions"
+            case .sessions: return "Workouts"
             }
         }
     }
@@ -37,7 +39,7 @@ struct HistoryView: View {
         var title: String {
             switch self {
             case .daily: return "Check-in"
-            case .session: return "Session"
+            case .session: return "Workout"
             }
         }
     }
@@ -45,33 +47,41 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             List {
-                // Entries only — filter lives outside the list so the first/last
-                // rows get matching inset-grouped corner radius.
-                ForEach(rows, id: \.id) { row in
-                    switch row {
-                    case .daily(let c):
+                switch filter {
+                case .all:
+                    ForEach(dayEntries) { day in
                         Button {
-                            editDailyKey = c.dayKey
+                            editDailyDate = day.date
                         } label: {
-                            dailyRow(c)
+                            daySummaryRow(day)
+                        }
+                    }
+                case .daily:
+                    ForEach(checkIns, id: \.dayKey) { checkIn in
+                        Button {
+                            editDailyDate = checkIn.date
+                        } label: {
+                            dailyRow(checkIn)
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                deleteDailyKey = c.dayKey
+                                deleteDailyKey = checkIn.dayKey
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
                         }
-                    case .session(let s):
+                    }
+                case .sessions:
+                    ForEach(sessionRows, id: \.id) { session in
                         Button {
-                            editSessionId = s.id
+                            editSessionId = session.id
                         } label: {
-                            sessionRow(s)
+                            sessionRow(session)
                         }
                         .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            if s.response24h == .pending {
+                            if session.response24h == .pending {
                                 Button {
-                                    resolveSessionId = s.id
+                                    resolveSessionId = session.id
                                 } label: {
                                     Label("Resolve", systemImage: "checkmark.circle")
                                 }
@@ -80,7 +90,7 @@ struct HistoryView: View {
                         }
                         .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
-                                deleteSessionId = s.id
+                                deleteSessionId = session.id
                             } label: {
                                 Label("Delete", systemImage: "trash")
                             }
@@ -109,7 +119,7 @@ struct HistoryView: View {
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
-                        Button("Log past session") {
+                        Button("Log past workout") {
                             backdateKind = .session
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
@@ -120,21 +130,21 @@ struct HistoryView: View {
                 }
             }
             .overlay {
-                if rows.isEmpty {
+                if isEmpty {
                     ContentUnavailableView(
-                        "No entries yet",
+                        emptyTitle,
                         systemImage: "calendar",
-                        description: Text("Check-ins and sessions will show here. Use + to backdate.")
+                        description: Text(emptyDescription)
                     )
                 }
             }
             .sheet(isPresented: Binding(
-                get: { editDailyKey != nil },
-                set: { if !$0 { editDailyKey = nil } }
+                get: { editDailyDate != nil },
+                set: { if !$0 { editDailyDate = nil } }
             )) {
-                if let key = editDailyKey, let c = checkIns.first(where: { $0.dayKey == key }) {
+                if let date = editDailyDate {
                     NavigationStack {
-                        DailyCheckInEditor(targetDate: c.date)
+                        DailyCheckInEditor(targetDate: date)
                     }
                     .preferredColorScheme(.dark)
                 }
@@ -186,10 +196,9 @@ struct HistoryView: View {
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
                                     switch backdateKind {
                                     case .daily:
-                                        editDailyKey = DailyCheckIn.dayKey(for: backdateDate)
-                                        pendingBackdateDaily = Calendar.current.startOfDay(for: backdateDate)
+                                        pendingBackdateDaily = calendar.startOfDay(for: backdateDate)
                                     case .session:
-                                        pendingBackdateSession = Calendar.current.startOfDay(for: backdateDate)
+                                        pendingBackdateSession = calendar.startOfDay(for: backdateDate)
                                     }
                                 }
                             }
@@ -244,7 +253,7 @@ struct HistoryView: View {
                 Button("Cancel", role: .cancel) { deleteDailyKey = nil }
             }
             .confirmationDialog(
-                "Delete this session?",
+                "Delete this workout?",
                 isPresented: Binding(
                     get: { deleteSessionId != nil },
                     set: { if !$0 { deleteSessionId = nil } }
@@ -266,75 +275,173 @@ struct HistoryView: View {
         }
     }
 
-    private enum Row {
-        case daily(DailyCheckIn)
-        case session(TrainingSession)
-        var id: String {
-            switch self {
-            case .daily(let c): return "d-\(c.dayKey)"
-            case .session(let s): return "s-\(s.id.uuidString)"
-            }
-        }
-        var sortDate: Date {
-            switch self {
-            case .daily(let c): return c.date
-            case .session(let s): return max(s.date, s.createdAt)
-            }
+    private struct DayLogEntry: Identifiable {
+        var dayKey: String
+        var date: Date
+        var checkIn: DailyCheckIn?
+        var sessions: [TrainingSession]
+        var id: String { dayKey }
+
+        var hasPendingWorkout: Bool {
+            sessions.contains { $0.response24h == .pending }
         }
     }
 
-    private var rows: [Row] {
-        var items: [Row] = []
-        if filter != .sessions {
-            items += checkIns.map { .daily($0) }
+    private var dayEntries: [DayLogEntry] {
+        var checkByKey: [String: DailyCheckIn] = [:]
+        for checkIn in checkIns {
+            checkByKey[checkIn.dayKey] = checkIn
         }
-        if filter != .daily {
-            items += sessions.map { .session($0) }
+        var sessionsByKey: [String: [TrainingSession]] = [:]
+        for session in sessions {
+            let key = DailyCheckIn.dayKey(for: session.date, calendar: calendar)
+            sessionsByKey[key, default: []].append(session)
         }
-        return items.sorted { $0.sortDate > $1.sortDate }
+        let keys = Set(checkByKey.keys).union(sessionsByKey.keys)
+        return keys.compactMap { key -> DayLogEntry? in
+            let checkIn = checkByKey[key]
+            let daySessions = (sessionsByKey[key] ?? []).sorted { $0.createdAt < $1.createdAt }
+            let date = checkIn?.date ?? daySessions.first.map { calendar.startOfDay(for: $0.date) }
+            guard let date else { return nil }
+            return DayLogEntry(dayKey: key, date: date, checkIn: checkIn, sessions: daySessions)
+        }
+        .sorted { $0.date > $1.date }
+    }
+
+    private var sessionRows: [TrainingSession] {
+        sessions.sorted { a, b in
+            if a.date != b.date { return a.date > b.date }
+            return a.createdAt > b.createdAt
+        }
+    }
+
+    private var isEmpty: Bool {
+        switch filter {
+        case .all: return dayEntries.isEmpty
+        case .daily: return checkIns.isEmpty
+        case .sessions: return sessions.isEmpty
+        }
+    }
+
+    private var emptyTitle: String {
+        switch filter {
+        case .all: return "No days yet"
+        case .daily: return "No check-ins yet"
+        case .sessions: return "No workouts yet"
+        }
+    }
+
+    private var emptyDescription: String {
+        switch filter {
+        case .all: return "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate."
+        case .daily: return "Morning and evening pain plus steps will show here."
+        case .sessions: return "Logged workouts will show here. Use + to backdate."
+        }
+    }
+
+    private func daySummaryRow(_ day: DayLogEntry) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(day.date.formatted(date: .abbreviated, time: .omitted))
+                    .font(.headline)
+                Spacer()
+                if day.hasPendingWorkout {
+                    Text("24h pending")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
+            }
+            metricRow("Morning pain", day.checkIn?.restingPainAM.map(String.init) ?? "—")
+            metricRow("Evening pain", day.checkIn?.dailyPainPM.map(String.init) ?? "—")
+            metricRow("Steps", day.checkIn?.steps.map { $0.formatted() } ?? "—")
+            workoutMetric(day.sessions)
+        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(dayAccessibility(day))
     }
 
     private func dailyRow(_ c: DailyCheckIn) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 10) {
             Text(c.date.formatted(date: .abbreviated, time: .omitted))
                 .font(.headline)
-            Text(dailySummary(c))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            metricRow("Morning pain", c.restingPainAM.map(String.init) ?? "—")
+            metricRow("Evening pain", c.dailyPainPM.map(String.init) ?? "—")
+            metricRow("Steps", c.steps.map { $0.formatted() } ?? "—")
         }
-    }
-
-    private func dailySummary(_ c: DailyCheckIn) -> String {
-        let kneeAM = c.restingPainAM.map(String.init) ?? "—"
-        let kneePM = c.dailyPainPM.map(String.init) ?? "—"
-        let steps = c.steps.map(String.init) ?? "—"
-        return "Knee \(kneeAM)/\(kneePM) · steps \(steps)"
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "\(c.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(c.restingPainAM.map(String.init) ?? "missing"). Evening pain \(c.dailyPainPM.map(String.init) ?? "missing"). Steps \(c.steps.map { $0.formatted() } ?? "missing")."
+        )
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 8) {
-                Text(s.displayTitle)
-                    .font(.headline)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 6) {
+                Text("Workout")
+                    .font(.caption2.weight(.semibold))
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 3)
+                    .foregroundStyle(Color.accentColor)
+                    .background(Color.accentColor.opacity(0.22), in: Capsule())
+                    .accessibilityHidden(true)
+                sessionTypeTag(s.sessionType)
+                Spacer()
                 Text(s.response24h.title)
                     .font(.caption.weight(.semibold))
                     .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
             }
-            HStack(spacing: 6) {
-                sessionTypeTag(s.sessionType)
-            }
+            Text(s.displayTitle)
+                .font(.headline)
+                .lineLimit(1)
             if let resistance = s.resistanceSummary {
                 Text(resistance)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
             }
-            Text(sessionSubtitle(s))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+            metricRow("Date", s.date.formatted(date: .abbreviated, time: .omitted))
+            metricRow("Pain during", String(s.painDuring))
+            metricRow("Pain after", String(s.painAfter))
         }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Workout, \(s.displayTitle). \(s.date.formatted(date: .abbreviated, time: .omitted)). Pain during \(s.painDuring), after \(s.painAfter). \(s.response24h.title)."
+        )
+    }
+
+    private func workoutMetric(_ daySessions: [TrainingSession]) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Workout")
+                    .foregroundStyle(.secondary)
+                Spacer()
+                Text(daySessions.isEmpty ? "None" : (daySessions.count == 1 ? "Yes" : "Yes · \(daySessions.count)"))
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(daySessions.isEmpty ? Color.secondary : Color.primary)
+            }
+            if !daySessions.isEmpty {
+                Text(daySessions.map(\.displayTitle).joined(separator: " · "))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }
+        .font(.subheadline)
+    }
+
+    private func metricRow(_ title: String, _ value: String) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(title)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Text(value)
+                .font(.subheadline.monospacedDigit().weight(.semibold))
+        }
+        .font(.subheadline)
     }
 
     private func sessionTypeTag(_ type: SessionType) -> some View {
@@ -367,15 +474,17 @@ struct HistoryView: View {
         }
     }
 
-    private func sessionSubtitle(_ s: TrainingSession) -> String {
-        var parts = [
-            s.date.formatted(date: .abbreviated, time: .omitted),
-            "pain \(s.painDuring)/\(s.painAfter)"
-        ]
-        if let decision = s.decision {
-            parts.append(decision.title)
+    private func dayAccessibility(_ day: DayLogEntry) -> String {
+        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "missing"
+        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "missing"
+        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "missing"
+        let workout: String
+        if day.sessions.isEmpty {
+            workout = "no workout"
+        } else {
+            workout = "workout \(day.sessions.map(\.displayTitle).joined(separator: ", "))"
         }
-        return parts.joined(separator: " · ")
+        return "\(day.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(morning). Evening pain \(evening). Steps \(steps). \(workout)."
     }
 }
 
