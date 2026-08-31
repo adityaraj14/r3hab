@@ -147,7 +147,8 @@ struct RehabProgressView: View {
                             KneeExploreChart(
                                 points: explorePoints,
                                 height: 140,
-                                visibleDays: min(7, range.rawValue)
+                                visibleDays: min(7, range.rawValue),
+                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
                             )
                         }
                         .padding()

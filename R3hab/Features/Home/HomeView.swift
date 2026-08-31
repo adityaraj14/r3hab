@@ -109,7 +109,12 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Last 7 days")
                                 .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(points: explorePoints, height: 110, visibleDays: 7)
+                            KneeExploreChart(
+                                points: explorePoints,
+                                height: 110,
+                                visibleDays: 7,
+                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
+                            )
                         }
                         .padding()
                         .background(

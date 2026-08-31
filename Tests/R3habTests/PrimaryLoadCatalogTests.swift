@@ -41,6 +41,13 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(chips.first?.id, "wall")
     }
 
+    func testChartLoadTitleKeepsSeatedExtensionLabel() {
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartLoadTitle, "Seated extension load")
+        XCTAssertEqual(PrimaryLoadCatalog.spanishSquat.chartLoadTitle, "Spanish squat load")
+        XCTAssertEqual(PrimaryLoadCatalog.wallSit.chartLoadTitle, "Wall sit load")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.chartLoadTitle, "Leg press load")
+    }
+
     func testBrandCopyHasThreeHabits() {
         XCTAssertEqual(BrandCopy.habits.map(\.title), ["Identity", "Process", "Outcome"])
         XCTAssertTrue(BrandCopy.onboardingTitle.contains("3"))

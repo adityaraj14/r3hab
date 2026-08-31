@@ -11,6 +11,10 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var hsrPresetID: String
     var logCTA: String
     var homeObjective: String
+    /// Labeled load chart heading (lbs). Seated default matches the Today chart copy.
+    var chartLoadTitle: String {
+        id == "seated-extension" ? "Seated extension load" : "\(title) load"
+    }
 }
 
 enum PrimaryLoadCatalog {
