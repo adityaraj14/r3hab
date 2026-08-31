@@ -115,3 +115,152 @@ final class DecisionSuggesterTests: XCTestCase {
         XCTAssertTrue(priors.isEmpty)
     }
 }
+
+final class LoadNudgeEvaluatorTests: XCTestCase {
+    private var calendar: Calendar {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(secondsFromGMT: 0)!
+        return c
+    }
+
+    private func day(_ offset: Int, from today: Date) -> Date {
+        calendar.date(byAdding: .day, value: offset, to: calendar.startOfDay(for: today))!
+    }
+
+    private func checkIn(dayOffset: Int, from today: Date, am: Int?) -> DailyCheckInSnapshot {
+        DailyCheckInSnapshot(date: day(dayOffset, from: today), restingPainAM: am, steps: nil)
+    }
+
+    private func workout(
+        id: UUID = UUID(),
+        dayOffset: Int,
+        from today: Date,
+        response: Response24h,
+        decision: SessionDecision? = .stay,
+        createdOffset: TimeInterval = 0
+    ) -> TrainingSessionSnapshot {
+        let date = day(dayOffset, from: today)
+        return TrainingSessionSnapshot(
+            id: id,
+            date: date,
+            createdAt: date.addingTimeInterval(createdOffset),
+            sessionType: .hsrStrength,
+            response24h: response,
+            decision: decision,
+            resolvedAt: date.addingTimeInterval(86400),
+            snoozedUntil: nil,
+            phase: .cHeavySlowResistance
+        )
+    }
+
+    func testMorningPainUpAfterYesterdayWorkoutNudgesEaseOff() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let nudge = LoadNudgeEvaluator.afterMorningPain(
+            todayAM: 4,
+            checkInDate: today,
+            checkIns: [
+                checkIn(dayOffset: -1, from: today, am: 2),
+                checkIn(dayOffset: 0, from: today, am: 4)
+            ],
+            sessions: [workout(dayOffset: -1, from: today, response: .pending, decision: nil)],
+            calendar: calendar
+        )
+        XCTAssertEqual(nudge, .easeOffMorning(previous: 2, current: 4))
+    }
+
+    func testMorningPainSameAsWorkoutMorningDoesNotNudge() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let nudge = LoadNudgeEvaluator.afterMorningPain(
+            todayAM: 2,
+            checkInDate: today,
+            checkIns: [checkIn(dayOffset: -1, from: today, am: 2)],
+            sessions: [workout(dayOffset: -1, from: today, response: .pending, decision: nil)],
+            calendar: calendar
+        )
+        XCTAssertNil(nudge)
+    }
+
+    func testMorningPainIgnoresWorkoutTwoDaysAgo() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let nudge = LoadNudgeEvaluator.afterMorningPain(
+            todayAM: 5,
+            checkInDate: today,
+            checkIns: [checkIn(dayOffset: -2, from: today, am: 2)],
+            sessions: [workout(dayOffset: -2, from: today, response: .same)],
+            calendar: calendar
+        )
+        XCTAssertNil(nudge)
+    }
+
+    func testWorseResolveNudgesEaseOff() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let current = workout(dayOffset: -1, from: today, response: .pending, decision: nil)
+        XCTAssertEqual(
+            LoadNudgeEvaluator.afterResolve(response: .worse, current: current, all: [current]),
+            .easeOffWorse
+        )
+    }
+
+    func testFifthCleanResolveNudgesProgress() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let priors = (-4...(-1)).map { offset in
+            workout(dayOffset: offset, from: today, response: .same)
+        }
+        let current = workout(dayOffset: 0, from: today, response: .pending, decision: nil)
+        XCTAssertEqual(
+            LoadNudgeEvaluator.afterResolve(
+                response: .better,
+                current: current,
+                all: priors + [current]
+            ),
+            .progress(cleanCount: 5)
+        )
+    }
+
+    func testFourthCleanResolveDoesNotNudgeProgress() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let priors = (-3...(-1)).map { offset in
+            workout(dayOffset: offset, from: today, response: .same)
+        }
+        let current = workout(dayOffset: 0, from: today, response: .pending, decision: nil)
+        XCTAssertNil(
+            LoadNudgeEvaluator.afterResolve(
+                response: .same,
+                current: current,
+                all: priors + [current]
+            )
+        )
+    }
+
+    func testWorseBreaksCleanStreak() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let priors = [
+            workout(dayOffset: -2, from: today, response: .worse, decision: .softCut),
+            workout(dayOffset: -1, from: today, response: .same)
+        ]
+        let current = workout(dayOffset: 0, from: today, response: .pending, decision: nil)
+        XCTAssertNil(
+            LoadNudgeEvaluator.afterResolve(
+                response: .better,
+                current: current,
+                all: priors + [current]
+            )
+        )
+    }
+
+    func testTenthCleanResolveNudgesAgain() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let priors = (-9...(-1)).map { offset in
+            workout(dayOffset: offset, from: today, response: .same)
+        }
+        let current = workout(dayOffset: 0, from: today, response: .pending, decision: nil)
+        XCTAssertEqual(
+            LoadNudgeEvaluator.afterResolve(
+                response: .same,
+                current: current,
+                all: priors + [current]
+            ),
+            .progress(cleanCount: 10)
+        )
+    }
+}

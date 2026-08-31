@@ -11,6 +11,8 @@ enum DailyCheckInFocus: Equatable, Sendable {
 struct DailyCheckInEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
+    @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
 
     /// Calendar day to edit (start-of-day). Defaults to today.
     var targetDate: Date = Date()
@@ -28,6 +30,7 @@ struct DailyCheckInEditor: View {
     @State private var didLoad = false
     @State private var isLoadingSteps = false
     @State private var stepsSourceNote: String?
+    @State private var loadNudge: LoadNudge?
 
     private var calendar: Calendar { .current }
     private var showsMorning: Bool { focus != .evening }
@@ -125,6 +128,10 @@ struct DailyCheckInEditor: View {
             }
         }
         .onAppear(perform: loadIfNeeded)
+        .loadNudgeAlert($loadNudge) {
+            loadNudge = nil
+            dismiss()
+        }
         .task {
             guard showsEvening else { return }
             // Auto-fill steps from Health when empty (today or backdated day).
@@ -243,6 +250,7 @@ struct DailyCheckInEditor: View {
         }
 
         let day = calendar.startOfDay(for: targetDate)
+        let previousMorningPain = existing?.restingPainAM
         let row: DailyCheckIn
         if let existing {
             row = existing
@@ -267,10 +275,24 @@ struct DailyCheckInEditor: View {
         do {
             try modelContext.save()
             Haptics.success()
-            dismiss()
+            if showsMorning, previousMorningPain != restingPainAM, let nudge = morningNudge() {
+                loadNudge = nudge
+            } else {
+                dismiss()
+            }
         } catch {
             errorMessage = "Could not save: \(error.localizedDescription)"
         }
+    }
+
+    private func morningNudge() -> LoadNudge? {
+        LoadNudgeEvaluator.afterMorningPain(
+            todayAM: restingPainAM,
+            checkInDate: targetDate,
+            checkIns: checkIns.map(\.snapshot),
+            sessions: sessions.map(\.snapshot),
+            calendar: calendar
+        )
     }
 }
 
