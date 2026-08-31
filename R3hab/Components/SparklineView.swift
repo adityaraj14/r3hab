@@ -24,27 +24,69 @@ struct KneeExploreChart: View {
 
     @State private var selectedDate: Date?
 
+    private var calendar: Calendar { .current }
+
     private var selected: DayExplorePoint? {
-        guard let selectedDate else { return nil }
+        let target = selectedDate ?? defaultSelectedDate
+        guard let target else { return nil }
         return points.min { a, b in
-            abs(a.date.timeIntervalSince(selectedDate)) < abs(b.date.timeIntervalSince(selectedDate))
+            abs(a.date.timeIntervalSince(target)) < abs(b.date.timeIntervalSince(target))
         }
+    }
+
+    private var defaultSelectedDate: Date? {
+        points.last(where: \.hasValues)?.date
     }
 
     private var hasData: Bool {
         points.contains(where: \.hasValues)
     }
 
+    private var allowsScroll: Bool {
+        points.count > visibleDays
+    }
+
+    private var xDomain: ClosedRange<Date> {
+        guard let first = points.first?.date, let last = points.last?.date else {
+            let now = Date()
+            return now...now
+        }
+        let start = calendar.date(byAdding: .hour, value: -10, to: first) ?? first
+        let end = calendar.date(byAdding: .hour, value: 22, to: last) ?? last
+        return start...end
+    }
+
     private var loadDomainMax: Double {
         let loads = points.flatMap { [$0.leftLoadLbs, $0.rightLoadLbs] }.compactMap { $0 }
-        return max(loads.max() ?? 20, 20)
+        let maxLoad = loads.max() ?? 20
+        return max(maxLoad * 1.1, 20)
+    }
+
+    private var sidesDiverge: Bool {
+        points.contains { point in
+            guard let left = point.leftLoadLbs, let right = point.rightLoadLbs else { return false }
+            return left != right
+        }
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 14) {
             if hasData {
-                painChart
-                loadChart
+                chartBlock(
+                    title: "Morning pain",
+                    unit: "0–10",
+                    accessibility: "Morning pain, 0 to 10. Tap a day for details."
+                ) {
+                    painChart
+                }
+                chartBlock(
+                    title: "Seated extension load",
+                    unit: "lbs",
+                    accessibility: "Seated extension load in pounds. Tap a day for details."
+                ) {
+                    loadChart
+                }
+                loadLegend
                 selectionCard
             } else {
                 ContentUnavailableView(
@@ -54,6 +96,31 @@ struct KneeExploreChart: View {
                 )
                 .frame(height: 140)
             }
+        }
+        .onAppear {
+            if selectedDate == nil {
+                selectedDate = defaultSelectedDate
+            }
+        }
+    }
+
+    private func chartBlock<Content: View>(
+        title: String,
+        unit: String,
+        accessibility: String,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text(unit)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            content()
+                .accessibilityLabel(accessibility)
         }
     }
 
@@ -72,73 +139,63 @@ struct KneeExploreChart: View {
                         y: .value("AM pain", am)
                     )
                     .foregroundStyle(PainChartColors.knee)
-                    .symbolSize(30)
+                    .symbolSize(40)
                 }
             }
-            if let selected {
-                RuleMark(x: .value("Selected", selected.date))
-                    .foregroundStyle(PainChartColors.left.opacity(0.55))
-                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-            }
+            selectionRule
         }
-        .chartXSelection(value: $selectedDate)
-        .chartScrollableAxes(.horizontal)
-        .chartXVisibleDomain(length: TimeInterval(visibleDays * 24 * 60 * 60))
+        .chartXScale(domain: xDomain)
         .chartYScale(domain: 0...10)
         .chartYAxis {
-            AxisMarks(position: .leading, values: [0, 5, 10])
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: max(1, visibleDays / 3))) { _ in
+            AxisMarks(position: .leading, values: [0, 5, 10]) {
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                AxisValueLabel()
             }
         }
+        .sharedExploreAxes(visibleDays: visibleDays, allowsScroll: allowsScroll)
         .frame(height: height)
-        .accessibilityLabel("AM pain chart. Tap a point for date, load, and pain.")
+        .chartDayPicker(points: points, selectedDate: $selectedDate, enableScrub: !allowsScroll)
     }
 
     private var loadChart: some View {
         Chart {
             ForEach(points) { point in
                 leftMarks(for: point)
-                rightMarks(for: point)
+                if sidesDiverge {
+                    rightMarks(for: point)
+                }
             }
             selectionRule
         }
-        .chartXSelection(value: $selectedDate)
-        .chartScrollableAxes(.horizontal)
-        .chartXVisibleDomain(length: TimeInterval(visibleDays * 24 * 60 * 60))
+        .chartXScale(domain: xDomain)
         .chartYScale(domain: 0...loadDomainMax)
         .chartYAxis {
-            AxisMarks(position: .leading)
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: max(1, visibleDays / 3))) { _ in
+            AxisMarks(position: .leading) {
                 AxisGridLine()
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                AxisValueLabel()
             }
         }
+        .sharedExploreAxes(visibleDays: visibleDays, allowsScroll: allowsScroll)
         .frame(height: height)
-        .accessibilityLabel("L and R load in lbs. Scroll to zoom the date window.")
+        .chartDayPicker(points: points, selectedDate: $selectedDate, enableScrub: !allowsScroll)
     }
 
     @ChartContentBuilder
     private func leftMarks(for point: DayExplorePoint) -> some ChartContent {
-        if let left = point.leftLoadLbs {
+        if let load = sidesDiverge ? point.leftLoadLbs : (point.leftLoadLbs ?? point.rightLoadLbs) {
             LineMark(
                 x: .value("Day", point.date),
-                y: .value("Load", left),
-                series: .value("Side", "L")
+                y: .value("Load", load),
+                series: .value("Side", sidesDiverge ? "L" : "Load")
             )
             .interpolationMethod(.linear)
-            .foregroundStyle(PainChartColors.left)
+            .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
             PointMark(
                 x: .value("Day", point.date),
-                y: .value("Load", left)
+                y: .value("Load", load)
             )
-            .foregroundStyle(PainChartColors.left)
-            .symbolSize(28)
+            .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
+            .symbolSize(40)
         }
     }
 
@@ -157,7 +214,7 @@ struct KneeExploreChart: View {
                 y: .value("Load", right)
             )
             .foregroundStyle(PainChartColors.right)
-            .symbolSize(28)
+            .symbolSize(40)
         }
     }
 
@@ -165,8 +222,29 @@ struct KneeExploreChart: View {
     private var selectionRule: some ChartContent {
         if let selected {
             RuleMark(x: .value("Selected", selected.date))
-                .foregroundStyle(PainChartColors.left.opacity(0.55))
+                .foregroundStyle(Color.primary.opacity(0.35))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+        }
+    }
+
+    @ViewBuilder
+    private var loadLegend: some View {
+        if sidesDiverge {
+            HStack(spacing: 14) {
+                legendDot(PainChartColors.left, "Left load")
+                legendDot(PainChartColors.right, "Right load")
+            }
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+        }
+    }
+
+    private func legendDot(_ color: Color, _ label: String) -> some View {
+        HStack(spacing: 5) {
+            Circle()
+                .fill(color)
+                .frame(width: 7, height: 7)
+            Text(label)
         }
     }
 
@@ -177,9 +255,16 @@ struct KneeExploreChart: View {
                 Text(selected.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 16) {
-                    labeledValue("AM pain", selected.amPain.map { String(Int($0)) } ?? "—")
-                    labeledValue("L load", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
-                    labeledValue("R load", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
+                    labeledValue("Morning pain", selected.amPain.map { String(Int($0)) } ?? "—")
+                    if sidesDiverge {
+                        labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
+                        labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
+                    } else {
+                        labeledValue(
+                            "Load",
+                            (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
+                        )
+                    }
                 }
             }
             .padding(12)
@@ -189,11 +274,12 @@ struct KneeExploreChart: View {
                     .fill(Color.white.opacity(0.06))
             )
             .accessibilityElement(children: .combine)
-        } else {
-            Text("Tap a point for date, L/R load, and AM pain. Scroll sideways to move the window.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
+        Text(allowsScroll
+             ? "Tap a day for details. Scroll sideways to move the window."
+             : "Tap a day for morning pain and load.")
+            .font(.caption)
+            .foregroundStyle(.secondary)
     }
 
     private func labeledValue(_ title: String, _ value: String) -> some View {
@@ -204,6 +290,81 @@ struct KneeExploreChart: View {
             Text(value)
                 .font(.subheadline.monospacedDigit().weight(.semibold))
         }
+    }
+}
+
+private extension View {
+    func sharedExploreAxes(visibleDays: Int, allowsScroll: Bool) -> some View {
+        self
+            .chartPlotStyle { plot in
+                plot.padding(.horizontal, 10)
+            }
+            .chartXAxis {
+                AxisMarks(values: .stride(by: .day, count: max(1, visibleDays / 3))) { _ in
+                    AxisGridLine()
+                    AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+                }
+            }
+            .modifier(ExploreScrollModifier(visibleDays: visibleDays, enabled: allowsScroll))
+    }
+
+    func chartDayPicker(points: [DayExplorePoint], selectedDate: Binding<Date?>, enableScrub: Bool) -> some View {
+        modifier(ChartDayPickerModifier(points: points, selectedDate: selectedDate, enableScrub: enableScrub))
+    }
+}
+
+private struct ExploreScrollModifier: ViewModifier {
+    var visibleDays: Int
+    var enabled: Bool
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .chartScrollableAxes(.horizontal)
+                .chartXVisibleDomain(length: TimeInterval(visibleDays * 24 * 60 * 60) + 12 * 60 * 60)
+        } else {
+            content
+        }
+    }
+}
+
+/// Tap/scrub overlay so day selection works even when Charts' built-in selection does not.
+private struct ChartDayPickerModifier: ViewModifier {
+    let points: [DayExplorePoint]
+    @Binding var selectedDate: Date?
+    var enableScrub: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .chartOverlay { _ in
+                GeometryReader { geo in
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .simultaneousGesture(
+                            SpatialTapGesture()
+                                .onEnded { event in
+                                    select(atX: event.location.x, width: geo.size.width)
+                                }
+                        )
+                        .simultaneousGesture(
+                            DragGesture(minimumDistance: enableScrub ? 8 : 10_000)
+                                .onChanged { value in
+                                    select(atX: value.location.x, width: geo.size.width)
+                                }
+                        )
+                }
+            }
+    }
+
+    private func select(atX x: CGFloat, width: CGFloat) {
+        guard width > 0, points.count > 1 else {
+            selectedDate = points.first?.date
+            return
+        }
+        let t = max(0, min(1, x / width))
+        let index = Int((t * CGFloat(points.count - 1)).rounded())
+        let clamped = max(0, min(points.count - 1, index))
+        selectedDate = points[clamped].date
     }
 }
 

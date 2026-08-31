@@ -66,3 +66,155 @@ enum DecisionSuggester {
         }
     }
 }
+
+/// Gentle, non-blocking load hint after a morning log or 24h resolve.
+enum LoadNudge: Equatable, Identifiable {
+    case easeOffMorning(previous: Int, current: Int)
+    case easeOffWorse
+    case progress(cleanCount: Int)
+
+    var id: String {
+        switch self {
+        case .easeOffMorning(let previous, let current):
+            return "ease-morning-\(previous)-\(current)"
+        case .easeOffWorse:
+            return "ease-worse"
+        case .progress(let count):
+            return "progress-\(count)"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .easeOffMorning, .easeOffWorse:
+            return "Take the next session easier"
+        case .progress:
+            return "Looks like you could progress"
+        }
+    }
+
+    var message: String {
+        switch self {
+        case .easeOffMorning(let previous, let current):
+            return "This morning’s pain is \(current), up from \(previous) the morning of your last workout. Next time, try a bit less — lower the load, do fewer reps, or shorten the holds. One change is enough."
+        case .easeOffWorse:
+            return "Pain was worse after that session. Next time, try a bit less — about 20–30% less load, fewer sets, or shorter holds. One change is enough."
+        case .progress(let count):
+            return "You’ve had \(count) workouts in a row without pain going up. Next time you could try a little more — a bit more load, a couple extra reps, or a longer hold. Change only one of those."
+        }
+    }
+}
+
+enum LoadNudgeEvaluator {
+    static let progressStreakLength = 5
+
+    /// Next-morning AM higher than the AM on (or just before) yesterday’s workout.
+    static func afterMorningPain(
+        todayAM: Int?,
+        checkInDate: Date,
+        checkIns: [DailyCheckInSnapshot],
+        sessions: [TrainingSessionSnapshot],
+        calendar: Calendar = .current
+    ) -> LoadNudge? {
+        guard let todayAM else { return nil }
+        let today = calendar.startOfDay(for: checkInDate)
+        guard let session = mostRecentWorkout(before: today, sessions: sessions, calendar: calendar) else {
+            return nil
+        }
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today),
+              calendar.isDate(session.date, inSameDayAs: yesterday) else {
+            return nil
+        }
+        guard let baseline = baselineMorningPain(
+            onOrBefore: calendar.startOfDay(for: session.date),
+            checkIns: checkIns,
+            calendar: calendar
+        ) else {
+            return nil
+        }
+        guard todayAM > baseline else { return nil }
+        return .easeOffMorning(previous: baseline, current: todayAM)
+    }
+
+    /// Worse resolve → ease off. Five (or 10, 15, …) clean Better/Same resolves → progress.
+    static func afterResolve(
+        response: Response24h,
+        current: TrainingSessionSnapshot,
+        all: [TrainingSessionSnapshot]
+    ) -> LoadNudge? {
+        switch response {
+        case .worse:
+            return .easeOffWorse
+        case .better, .same:
+            let streak = cleanStreak(including: response, current: current, all: all)
+            guard streak >= progressStreakLength, streak.isMultiple(of: progressStreakLength) else {
+                return nil
+            }
+            return .progress(cleanCount: streak)
+        case .pending, .notApplicable:
+            return nil
+        }
+    }
+
+    static func mostRecentWorkout(
+        before day: Date,
+        sessions: [TrainingSessionSnapshot],
+        calendar: Calendar
+    ) -> TrainingSessionSnapshot? {
+        let start = calendar.startOfDay(for: day)
+        return sessions
+            .filter { session in
+                guard session.decision != .rest else { return false }
+                if session.response24h == .notApplicable { return false }
+                return calendar.startOfDay(for: session.date) < start
+            }
+            .sorted { a, b in
+                if a.date != b.date { return a.date > b.date }
+                return a.createdAt > b.createdAt
+            }
+            .first
+    }
+
+    static func baselineMorningPain(
+        onOrBefore day: Date,
+        checkIns: [DailyCheckInSnapshot],
+        calendar: Calendar
+    ) -> Int? {
+        let start = calendar.startOfDay(for: day)
+        return checkIns
+            .filter { calendar.startOfDay(for: $0.date) <= start && $0.restingPainAM != nil }
+            .sorted { $0.date > $1.date }
+            .first?
+            .restingPainAM
+    }
+
+    static func cleanStreak(
+        including response: Response24h,
+        current: TrainingSessionSnapshot,
+        all: [TrainingSessionSnapshot]
+    ) -> Int {
+        guard response == .better || response == .same else { return 0 }
+        var count = 1
+        let priors = all
+            .filter { $0.id != current.id }
+            .sorted { a, b in
+                if a.date != b.date { return a.date > b.date }
+                return a.createdAt > b.createdAt
+            }
+        for session in priors {
+            if session.decision == .rest || session.response24h == .notApplicable {
+                break
+            }
+            if session.response24h == .pending {
+                continue
+            }
+            if session.response24h == .worse {
+                break
+            }
+            if session.response24h == .better || session.response24h == .same {
+                count += 1
+            }
+        }
+        return count
+    }
+}

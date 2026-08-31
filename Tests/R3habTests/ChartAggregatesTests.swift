@@ -135,4 +135,24 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(points[0].leftLoadLbs, 45)
         XCTAssertEqual(points[0].rightLoadLbs, 40)
     }
+
+    func testExplorePointsMapsUnspecifiedLoadOntoBothSides() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sideLoads: [
+                SessionSideLoadSnapshot(
+                    date: today,
+                    leftMaxLbs: nil,
+                    rightMaxLbs: nil,
+                    unspecifiedMaxLbs: 30
+                )
+            ],
+            dayCount: 1,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points[0].leftLoadLbs, 30)
+        XCTAssertEqual(points[0].rightLoadLbs, 30)
+    }
 }

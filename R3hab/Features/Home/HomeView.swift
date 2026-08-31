@@ -107,9 +107,9 @@ struct HomeView: View {
 
                     if explorePoints.contains(where: \.hasValues) {
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Knee · 7 days")
+                            Text("Last 7 days")
                                 .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(points: explorePoints, height: 120, visibleDays: 7)
+                            KneeExploreChart(points: explorePoints, height: 110, visibleDays: 7)
                         }
                         .padding()
                         .background(
@@ -138,11 +138,11 @@ struct HomeView: View {
                 }
             }
             .sheet(isPresented: $showAM) {
-                NavigationStack { DailyCheckInEditor(targetDate: today, focusPM: false) }
+                NavigationStack { DailyCheckInEditor(targetDate: today, focus: .morning) }
                     .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showPM) {
-                NavigationStack { DailyCheckInEditor(targetDate: today, focusPM: true) }
+                NavigationStack { DailyCheckInEditor(targetDate: today, focus: .evening) }
                     .preferredColorScheme(.dark)
             }
             .sheet(isPresented: $showSession) {
@@ -222,11 +222,18 @@ struct HomeView: View {
 
     private func pendingCard(_ session: TrainingSession, early: Bool) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(session.whatIDid)
+            Text(session.displayTitle)
                 .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+            if let resistance = session.resistanceSummary {
+                Text(resistance)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
             Text(pendingSubtitle(session))
                 .font(.caption)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(.tertiary)
 
             HStack {
                 Button(early ? "Resolve early" : "Resolve") {
@@ -256,14 +263,7 @@ struct HomeView: View {
     }
 
     private func pendingSubtitle(_ session: TrainingSession) -> String {
-        var parts = [
-            session.date.formatted(date: .abbreviated, time: .omitted),
-            "during \(session.painDuring) / after \(session.painAfter)"
-        ]
-        if let resistance = session.resistanceSummary {
-            parts.append(resistance)
-        }
-        return parts.joined(separator: " · ")
+        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.painAfter) after"
     }
 
     private func phaseABanner(_ status: PhaseAExitStatus) -> some View {

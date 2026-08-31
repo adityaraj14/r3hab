@@ -20,6 +20,8 @@ struct SessionEditor: View {
     @State private var workSets: [ResistanceSet] = []
     @State private var warmupSets: [ResistanceSet] = []
     @State private var usesIsoHolds = false
+    @AppStorage("sessionLaterality") private var storedLateralityRaw: String = SetLaterality.bilateral.rawValue
+    @State private var laterality: SetLaterality = .bilateral
     @State private var painDuring: Int? = nil
     @State private var painAfter: Int? = nil
     @State private var notes: String = ""
@@ -96,22 +98,10 @@ struct SessionEditor: View {
 
             if showsResistance {
                 if showsWarmup {
-                    setListSection(
-                        title: "Warm-up (isometric holds)",
-                        footer: "Reps = holds · time per hold · load (lbs). Same pattern as pure isometrics.",
-                        sets: $warmupSets,
-                        isoStyle: true
-                    )
+                    warmupSection
                 }
 
-                setListSection(
-                    title: usesIsoHolds ? "Working holds" : "Working sets",
-                    footer: usesIsoHolds
-                        ? "Each hold is one side. Both knees stay in this session — one 24h resolve tomorrow. Load (lbs)."
-                        : "L and R rows are one session. One 24h resolve. Load (lbs). Volume = Σ reps × load.",
-                    sets: $workSets,
-                    isoStyle: usesIsoHolds
-                )
+                workSetsSection
 
                 if volumePreview > 0 {
                     Section {
@@ -183,34 +173,40 @@ struct SessionEditor: View {
         SessionPreset.forPhase(phase)
     }
 
-    @ViewBuilder
-    private func setListSection(
-        title: String,
-        footer: String,
-        sets: Binding<[ResistanceSet]>,
-        isoStyle: Bool
-    ) -> some View {
+    private var lateralityBinding: Binding<SetLaterality> {
+        Binding(
+            get: { laterality },
+            set: { newValue in
+                guard newValue != laterality else { return }
+                laterality = newValue
+                storedLateralityRaw = newValue.rawValue
+                workSets = SessionSummary.applyLaterality(newValue, to: workSets)
+            }
+        )
+    }
+
+    private var workPairs: [WorkSetPair] {
+        SessionSummary.groupWorkSets(workSets)
+    }
+
+    private var workSetsSection: some View {
         Section {
-            ForEach(Array(sets.wrappedValue.enumerated()), id: \.element.id) { index, _ in
+            Picker("Legs", selection: lateralityBinding) {
+                ForEach(SetLaterality.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            ForEach(Array(workPairs.enumerated()), id: \.element.id) { index, pair in
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
-                        Text(rowTitle(isoStyle: isoStyle, index: index, set: sets.wrappedValue[index]))
+                        Text(usesIsoHolds ? "Hold \(index + 1)" : "Set \(index + 1)")
                             .font(.subheadline.weight(.semibold))
                         Spacer()
-                        if !title.lowercased().contains("warm") {
-                            Picker(
-                                "Side",
-                                selection: bindingSide(sets, index: index)
-                            ) {
-                                Text("L").tag(KneeSide.left)
-                                Text("R").tag(KneeSide.right)
-                            }
-                            .pickerStyle(.segmented)
-                            .frame(maxWidth: 96)
-                        }
-                        if sets.wrappedValue.count > 1 {
+                        if workPairs.count > 1 {
                             Button(role: .destructive) {
-                                sets.wrappedValue.remove(at: index)
+                                removePair(pair)
                             } label: {
                                 Image(systemName: "trash")
                             }
@@ -218,130 +214,187 @@ struct SessionEditor: View {
                         }
                     }
                     HStack {
-                        labeledIntField(
-                            title: isoStyle ? "Reps" : "Reps",
-                            value: bindingReps(sets, index: index)
-                        )
-                        if isoStyle {
-                            labeledIntField(
-                                title: "Time (s)",
-                                value: bindingHold(sets, index: index)
-                            )
+                        labeledIntField(title: "Reps", value: bindingPairReps(pair))
+                        if usesIsoHolds {
+                            labeledIntField(title: "Time (s)", value: bindingPairHold(pair))
                         }
-                        labeledLoadField(
-                            title: "Load (lbs)",
-                            value: bindingLoad(sets, index: index)
-                        )
+                        if laterality == .bilateral {
+                            labeledLoadField(title: "Load (lbs)", value: bindingPairLoad(pair, side: nil))
+                        } else {
+                            labeledLoadField(title: "L lbs", value: bindingPairLoad(pair, side: .left))
+                            labeledLoadField(title: "R lbs", value: bindingPairLoad(pair, side: .right))
+                        }
                     }
                 }
                 .padding(.vertical, 4)
             }
-            if title.lowercased().contains("warm") {
-                Button {
-                    sets.wrappedValue.append(
-                        ResistanceSet(
-                            reps: isoStyle ? 1 : 3,
-                            loadLbs: nil,
-                            holdSeconds: isoStyle ? 30 : 30,
-                            isWarmup: true
-                        )
-                    )
-                } label: {
-                    Label("Add warm-up", systemImage: "plus.circle")
-                }
-            } else {
-                HStack {
-                    Button {
-                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .left)
-                    } label: {
-                        Label(isoStyle ? "Add L hold" : "Add L set", systemImage: "plus.circle")
-                    }
-                    Button {
-                        appendWorkSet(to: sets, isoStyle: isoStyle, side: .right)
-                    } label: {
-                        Label(isoStyle ? "Add R hold" : "Add R set", systemImage: "plus.circle")
-                    }
-                }
+
+            Button {
+                appendWorkPair()
+            } label: {
+                Label(usesIsoHolds ? "Add hold" : "Add set", systemImage: "plus.circle")
             }
         } header: {
-            Text(title)
+            Text(usesIsoHolds ? "Working holds" : "Working sets")
         } footer: {
-            Text(footer)
+            Text(laterality == .bilateral
+                 ? "One load for both knees. Switch to Each leg if left and right use different loads. One 24h resolve for the session."
+                 : "Each set logs left and right separately so loads can differ. One 24h resolve for the session.")
         }
     }
 
-    private func rowTitle(isoStyle: Bool, index: Int, set: ResistanceSet) -> String {
-        let kind = isoStyle ? "Hold" : "Set"
-        if let side = set.side {
-            return "\(side.shortLabel) \(kind)"
+    private var warmupSection: some View {
+        Section {
+            ForEach(Array(warmupSets.enumerated()), id: \.element.id) { index, _ in
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Warm-up \(index + 1)")
+                            .font(.subheadline.weight(.semibold))
+                        Spacer()
+                        if warmupSets.count > 1 {
+                            Button(role: .destructive) {
+                                warmupSets.remove(at: index)
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                    HStack {
+                        labeledIntField(title: "Reps", value: bindingWarmupReps(index))
+                        labeledIntField(title: "Time (s)", value: bindingWarmupHold(index))
+                        labeledLoadField(title: "Load (lbs)", value: bindingWarmupLoad(index))
+                    }
+                }
+                .padding(.vertical, 4)
+            }
+            Button {
+                warmupSets.append(
+                    ResistanceSet(reps: 2, loadLbs: nil, holdSeconds: 30, isWarmup: true)
+                )
+            } label: {
+                Label("Add warm-up", systemImage: "plus.circle")
+            }
+        } header: {
+            Text("Warm-up (isometric holds)")
+        } footer: {
+            Text("Reps = holds · time per hold · load (lbs). Same load for both knees.")
         }
-        return "\(kind) \(index + 1)"
     }
 
-    private func bindingSide(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<KneeSide> {
+    private func appendWorkPair() {
+        let last = workPairs.last
+        let reps = last?.reps ?? (usesIsoHolds ? 4 : 8)
+        let hold = last?.holdSeconds ?? (usesIsoHolds ? 30 : nil)
+        workSets.append(contentsOf: SessionSummary.makePair(
+            reps: reps,
+            loadLbs: last?.leftLoad,
+            holdSeconds: hold,
+            isWarmup: false,
+            rightLoadLbs: laterality == .unilateral ? last?.rightLoad : last?.leftLoad
+        ))
+    }
+
+    private func removePair(_ pair: WorkSetPair) {
+        let ids = Set([pair.left.id, pair.right?.id].compactMap { $0 })
+        workSets.removeAll { ids.contains($0.id) }
+    }
+
+    private func updateSets(matching ids: [UUID], mutate: (inout ResistanceSet) -> Void) {
+        for id in ids {
+            guard let index = workSets.firstIndex(where: { $0.id == id }) else { continue }
+            mutate(&workSets[index])
+        }
+    }
+
+    private func bindingPairReps(_ pair: WorkSetPair) -> Binding<String> {
         Binding(
-            get: {
-                guard sets.wrappedValue.indices.contains(index) else { return .left }
-                return sets.wrappedValue[index].side ?? .left
-            },
+            get: { pair.reps.map(String.init) ?? "" },
             set: { new in
-                guard sets.wrappedValue.indices.contains(index) else { return }
-                sets.wrappedValue[index].side = new
+                let value = Int(new)
+                updateSets(matching: [pair.left.id, pair.right?.id].compactMap { $0 }) { set in
+                    set.reps = value
+                }
             }
         )
     }
 
-    private func appendWorkSet(to sets: Binding<[ResistanceSet]>, isoStyle: Bool, side: KneeSide) {
-        sets.wrappedValue.append(
-            ResistanceSet(
-                reps: isoStyle ? 4 : 8,
-                loadLbs: nil,
-                holdSeconds: isoStyle ? 30 : nil,
-                isWarmup: false,
-                side: side
-            )
+    private func bindingPairHold(_ pair: WorkSetPair) -> Binding<String> {
+        Binding(
+            get: { pair.holdSeconds.map(String.init) ?? "" },
+            set: { new in
+                let value = Int(new)
+                updateSets(matching: [pair.left.id, pair.right?.id].compactMap { $0 }) { set in
+                    set.holdSeconds = value
+                }
+            }
         )
     }
 
-    private func bindingReps(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<String> {
+    private func bindingPairLoad(_ pair: WorkSetPair, side: KneeSide?) -> Binding<String> {
         Binding(
             get: {
-                guard sets.wrappedValue.indices.contains(index),
-                      let r = sets.wrappedValue[index].reps else { return "" }
+                let lbs: Double?
+                switch side {
+                case .left: lbs = pair.leftLoad
+                case .right: lbs = pair.rightLoad
+                case nil: lbs = pair.leftLoad ?? pair.rightLoad
+                }
+                return lbs.map(TrainingSession.formatLoad) ?? ""
+            },
+            set: { new in
+                let trimmed = new.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
+                let value = trimmed.isEmpty ? nil : Double(trimmed)
+                switch side {
+                case .left:
+                    updateSets(matching: [pair.left.id]) { $0.loadLbs = value }
+                case .right:
+                    if let rightId = pair.right?.id {
+                        updateSets(matching: [rightId]) { $0.loadLbs = value }
+                    }
+                case nil:
+                    updateSets(matching: [pair.left.id, pair.right?.id].compactMap { $0 }) { $0.loadLbs = value }
+                }
+            }
+        )
+    }
+
+    private func bindingWarmupReps(_ index: Int) -> Binding<String> {
+        Binding(
+            get: {
+                guard warmupSets.indices.contains(index), let r = warmupSets[index].reps else { return "" }
                 return String(r)
             },
             set: { new in
-                guard sets.wrappedValue.indices.contains(index) else { return }
-                sets.wrappedValue[index].reps = Int(new)
+                guard warmupSets.indices.contains(index) else { return }
+                warmupSets[index].reps = Int(new)
             }
         )
     }
 
-    private func bindingHold(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<String> {
+    private func bindingWarmupHold(_ index: Int) -> Binding<String> {
         Binding(
             get: {
-                guard sets.wrappedValue.indices.contains(index),
-                      let h = sets.wrappedValue[index].holdSeconds else { return "" }
+                guard warmupSets.indices.contains(index), let h = warmupSets[index].holdSeconds else { return "" }
                 return String(h)
             },
             set: { new in
-                guard sets.wrappedValue.indices.contains(index) else { return }
-                sets.wrappedValue[index].holdSeconds = Int(new)
+                guard warmupSets.indices.contains(index) else { return }
+                warmupSets[index].holdSeconds = Int(new)
             }
         )
     }
 
-    private func bindingLoad(_ sets: Binding<[ResistanceSet]>, index: Int) -> Binding<String> {
+    private func bindingWarmupLoad(_ index: Int) -> Binding<String> {
         Binding(
             get: {
-                guard sets.wrappedValue.indices.contains(index),
-                      let l = sets.wrappedValue[index].loadLbs else { return "" }
+                guard warmupSets.indices.contains(index), let l = warmupSets[index].loadLbs else { return "" }
                 return TrainingSession.formatLoad(l)
             },
             set: { new in
-                guard sets.wrappedValue.indices.contains(index) else { return }
+                guard warmupSets.indices.contains(index) else { return }
                 let trimmed = new.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: ",", with: ".")
-                sets.wrappedValue[index].loadLbs = trimmed.isEmpty ? nil : Double(trimmed)
+                warmupSets[index].loadLbs = trimmed.isEmpty ? nil : Double(trimmed)
             }
         )
     }
@@ -381,6 +434,8 @@ struct SessionEditor: View {
             workSets = all.filter { !$0.isWarmup }
             if workSets.isEmpty && warmupSets.isEmpty {
                 seedDefaultSets()
+            } else {
+                laterality = SessionSummary.inferredLaterality(workSets: workSets)
             }
             selectedPresetId = SessionPreset.forPhase(phase)
                 .first { $0.sessionType == existing.sessionType && $0.tracksResistance }?.id
@@ -391,6 +446,7 @@ struct SessionEditor: View {
         if let settings = try? AppBootstrap.ensureSettings(context: modelContext) {
             phase = settings.currentPhase
         }
+        laterality = SetLaterality(rawValue: storedLateralityRaw) ?? .bilateral
         switch focus {
         case .kneeResistance, .general:
             if let preferred = SessionPreset.resistancePreset(for: phase) {
@@ -422,22 +478,26 @@ struct SessionEditor: View {
         if usesIsoHolds {
             warmupSets = []
             if workSets.isEmpty {
-                workSets = [
-                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .left),
-                    ResistanceSet(reps: 4, loadLbs: nil, holdSeconds: 30, isWarmup: false, side: .right)
-                ]
+                workSets = SessionSummary.makePair(
+                    reps: 4,
+                    loadLbs: nil,
+                    holdSeconds: 30,
+                    isWarmup: false
+                )
             }
         } else {
             if warmupSets.isEmpty {
                 warmupSets = [
-                    ResistanceSet(reps: 3, loadLbs: nil, holdSeconds: 30, isWarmup: true)
+                    ResistanceSet(reps: 2, loadLbs: nil, holdSeconds: 30, isWarmup: true)
                 ]
             }
             if workSets.isEmpty {
-                workSets = [
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .left),
-                    ResistanceSet(reps: 8, loadLbs: nil, holdSeconds: nil, isWarmup: false, side: .right)
-                ]
+                workSets = SessionSummary.makePair(
+                    reps: 8,
+                    loadLbs: nil,
+                    holdSeconds: nil,
+                    isWarmup: false
+                )
             }
         }
     }
@@ -449,22 +509,19 @@ struct SessionEditor: View {
         } else {
             name = "Seated knee extension"
         }
-        var parts = [name]
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         let work = workSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
-        if !wu.isEmpty {
-            parts.append("WU " + wu.map(\.summary).joined(separator: ", "))
-        }
-        if !work.isEmpty {
-            parts.append(work.map(\.summary).joined(separator: ", "))
-        }
         if work.isEmpty && wu.isEmpty { return }
         // Don't clobber free-text history on edit unless it looks structured
         if isEditing, !whatIDid.isEmpty {
             let lower = whatIDid.lowercased()
             let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("lbs") || lower.contains("×")
-                || lower.contains("x") || lower.contains("set")
+                || lower.contains("x") || lower.contains("set") || lower.contains("both")
             if !structured { return }
+        }
+        var parts = [name]
+        if let compact = SessionSummary.compactResistance(wu + work) {
+            parts.append(compact)
         }
         whatIDid = parts.joined(separator: " · ")
     }

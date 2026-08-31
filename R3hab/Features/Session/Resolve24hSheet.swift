@@ -15,6 +15,7 @@ struct Resolve24hSheet: View {
     @State private var showHardDropPhase = false
     @State private var guidance: String?
     @State private var errorMessage: String?
+    @State private var loadNudge: LoadNudge?
 
     private var settings: AppSettings? { settingsList.first }
 
@@ -22,13 +23,15 @@ struct Resolve24hSheet: View {
         NavigationStack {
             Form {
                 Section("Session") {
-                    Text(session.whatIDid)
-                        .font(.body)
+                    Text(session.displayTitle)
+                        .font(.body.weight(.semibold))
+                    if let resistance = session.resistanceSummary {
+                        Text(resistance)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                     LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
                     LabeledContent("During / after", value: "\(session.painDuring) → \(session.painAfter)")
-                    if let resistance = session.resistanceSummary {
-                        LabeledContent("Resistance", value: resistance)
-                    }
                 }
 
                 Section("How is the tendon next day?") {
@@ -94,6 +97,10 @@ struct Resolve24hSheet: View {
                     guidance = DecisionSuggester.guidance(for: decision)
                 }
             }
+            .loadNudgeAlert($loadNudge) {
+                loadNudge = nil
+                dismiss()
+            }
             .sheet(isPresented: $showHardDropPhase) {
                 HardDropPhaseSheet(current: settings?.currentPhase ?? .aFlareDeLoad) { chosen in
                     if let chosen, let settings {
@@ -134,6 +141,7 @@ struct Resolve24hSheet: View {
     }
 
     private func finalizeSave() {
+        let previousResponse = session.response24h
         session.response24h = response
         session.decision = decision
         session.resolvedAt = Date()
@@ -143,7 +151,17 @@ struct Resolve24hSheet: View {
             try modelContext.save()
             NotificationScheduler.cancelPending(sessionId: session.id)
             Haptics.success()
-            dismiss()
+            let shouldNudge = previousResponse == .pending || previousResponse != response
+            if shouldNudge,
+               let nudge = LoadNudgeEvaluator.afterResolve(
+                    response: response,
+                    current: session.snapshot,
+                    all: allSessions.map(\.snapshot)
+               ) {
+                loadNudge = nudge
+            } else {
+                dismiss()
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -208,5 +226,28 @@ struct HardDropPhaseSheet: View {
             }
         }
         .preferredColorScheme(.dark)
+    }
+}
+
+extension View {
+    func loadNudgeAlert(
+        _ nudge: Binding<LoadNudge?>,
+        onAcknowledge: @escaping () -> Void
+    ) -> some View {
+        alert(
+            nudge.wrappedValue?.title ?? "Reminder",
+            isPresented: Binding(
+                get: { nudge.wrappedValue != nil },
+                set: { shown in
+                    if !shown {
+                        onAcknowledge()
+                    }
+                }
+            )
+        ) {
+            Button("Got it") { onAcknowledge() }
+        } message: {
+            Text(nudge.wrappedValue?.message ?? "")
+        }
     }
 }
