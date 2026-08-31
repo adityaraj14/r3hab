@@ -21,6 +21,7 @@ struct KneeExploreChart: View {
     let points: [DayExplorePoint]
     var height: CGFloat = 168
     var visibleDays: Int = 7
+    var loadTitle: String = "Seated extension load"
 
     @State private var selectedDate: Date?
 
@@ -80,9 +81,9 @@ struct KneeExploreChart: View {
                     painChart
                 }
                 chartBlock(
-                    title: "Seated extension load",
+                    title: loadTitle,
                     unit: "lbs",
-                    accessibility: "Seated extension load in pounds. Tap a day for details."
+                    accessibility: "\(loadTitle) in pounds. Tap a day for details."
                 ) {
                     loadChart
                 }
@@ -92,7 +93,7 @@ struct KneeExploreChart: View {
                 ContentUnavailableView(
                     "No knee data yet",
                     systemImage: "chart.xyaxis.line",
-                    description: Text("Log AM pain or a seated-extension session to explore the trend.")
+                    description: Text("Log AM pain or a session to explore the trend.")
                 )
                 .frame(height: 140)
             }

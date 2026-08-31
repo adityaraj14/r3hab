@@ -1,7 +1,14 @@
 import SwiftUI
+import SwiftData
 
 /// Patellar tendinopathy phase guide (A–E).
 struct PhaseGuideView: View {
+    @Query private var settingsList: [AppSettings]
+
+    private var primaryLift: String {
+        settingsList.first?.primaryLoad.title ?? PrimaryLoadCatalog.defaultSelectable.title
+    }
+
     var body: some View {
         List {
             Section {
@@ -11,7 +18,7 @@ struct PhaseGuideView: View {
                     Text(RehabTemplate.knee.shortDescription)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
-                    Text(RehabTemplate.knee.objective80_20)
+                    Text(RehabTemplate.knee.objective(for: settingsList.first?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable))
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -21,7 +28,7 @@ struct PhaseGuideView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(phase.title)
                             .font(.subheadline.weight(.semibold))
-                        Text(PhaseGuideCopy.summary(for: phase))
+                        Text(PhaseGuideCopy.summary(for: phase, primaryLift: primaryLift))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
@@ -50,5 +57,6 @@ struct PhaseGuideView: View {
     NavigationStack {
         PhaseGuideView()
     }
+    .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
     .preferredColorScheme(.dark)
 }

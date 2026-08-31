@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// First-launch onboarding. Four dark screens; screen 1 is the injury selector.
+/// First-launch onboarding. Five dark screens: name, injury, primary lift, setup, disclaimer.
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [AppSettings]
@@ -11,9 +11,11 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var phase: RehabPhase = OnboardingCompletion.defaultPhase
     @State private var selectedInjuryID = InjuryCatalog.defaultSelectable.id
+    @State private var selectedPrimaryLoadID = PrimaryLoadCatalog.defaultID
     @State private var wantNotifications = false
     @State private var isBusy = false
 
+    private let pageCount = 5
     private var settings: AppSettings? { settingsList.first }
 
     var body: some View {
@@ -23,10 +25,11 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
 
             TabView(selection: $page) {
-                injurySelectPage.tag(0)
-                rule24hPage.tag(1)
-                setupPage.tag(2)
-                disclaimerPage.tag(3)
+                nameStoryPage.tag(0)
+                injurySelectPage.tag(1)
+                primaryLiftPage.tag(2)
+                setupPage.tag(3)
+                disclaimerPage.tag(4)
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .animation(.easeInOut(duration: 0.25), value: page)
@@ -34,15 +37,16 @@ struct OnboardingView: View {
 
             VStack(spacing: 12) {
                 Button {
-                    if page < 3 {
+                    if page < pageCount - 1 {
                         withAnimation { page += 1 }
                     } else {
                         Task {
-                        await finish(
-                            phase: phase,
-                            enableNotifications: wantNotifications,
-                            injuryID: selectedInjuryID
-                        )
+                            await finish(
+                                phase: phase,
+                                enableNotifications: wantNotifications,
+                                injuryID: selectedInjuryID,
+                                primaryLoadID: selectedPrimaryLoadID
+                            )
                         }
                     }
                 } label: {
@@ -62,12 +66,14 @@ struct OnboardingView: View {
                             skipped: true,
                             phase: phase,
                             notificationsEnabled: wantNotifications,
-                            injuryID: selectedInjuryID
+                            injuryID: selectedInjuryID,
+                            primaryLoadID: selectedPrimaryLoadID
                         )
                         await finish(
                             phase: skipped.phase,
                             enableNotifications: skipped.notificationsEnabled,
-                            injuryID: skipped.injuryID
+                            injuryID: skipped.injuryID,
+                            primaryLoadID: skipped.primaryLoadID
                         )
                     }
                 }
@@ -90,15 +96,16 @@ struct OnboardingView: View {
     private var primaryCTATitle: String {
         if isBusy { return "Saving…" }
         switch page {
-        case 0: return "That's my injury"
-        case 3: return "Let's load"
+        case 1: return "That's my injury"
+        case 2: return "That's my lift"
+        case 4: return "Let's load"
         default: return "Continue"
         }
     }
 
     private var pageDots: some View {
         HStack(spacing: 8) {
-            ForEach(0..<4, id: \.self) { index in
+            ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
                     .fill(index == page ? OnboardingTheme.gold : OnboardingTheme.gold.opacity(0.22))
                     .frame(width: index == page ? 22 : 7, height: 7)
@@ -107,7 +114,36 @@ struct OnboardingView: View {
             Spacer()
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Onboarding step \(page + 1) of 4")
+        .accessibilityLabel("Onboarding step \(page + 1) of \(pageCount)")
+    }
+
+    private var nameStoryPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                screenHeader(
+                    eyebrow: BrandCopy.onboardingEyebrow,
+                    title: BrandCopy.onboardingTitle
+                )
+                Text(BrandCopy.onboardingLead)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 10) {
+                    ForEach(BrandCopy.habits) { habit in
+                        habitCard(habit)
+                    }
+                }
+
+                Text(BrandCopy.onboardingFootnote)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .scrollIndicators(.hidden)
     }
 
     private var injurySelectPage: some View {
@@ -117,7 +153,7 @@ struct OnboardingView: View {
                     eyebrow: "Injury",
                     title: "What are you loading?"
                 )
-                Text("All three use the seated-extension diary and the same knee / patellar tendon protocol. More injuries can land here later.")
+                Text("All three use the same knee / patellar tendon protocol. Your primary lift is next. More injuries can land here later.")
                     .font(.body)
                     .foregroundStyle(.secondary)
 
@@ -141,12 +177,35 @@ struct OnboardingView: View {
         .scrollIndicators(.hidden)
     }
 
-    private var rule24hPage: some View {
-        onboardingCard(
-            eyebrow: "24h rule",
-            title: "Train today. Judge tomorrow.",
-            body: "Seated-extension isometrics and HSR. Mild pain during load is OK if the next morning is not worse. Sessions start Pending. Better / Same / Worse drives Stay / Soft cut / Progress."
-        )
+    private var primaryLiftPage: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                screenHeader(
+                    eyebrow: "Process",
+                    title: "Your primary lift"
+                )
+                Text("Seated leg extension is the default — the same machine iso/HSR most patellar-tendon protocols use. Pick another if that’s what you actually have.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+
+                VStack(spacing: 10) {
+                    ForEach(PrimaryLoadCatalog.all) { option in
+                        phaseChoice(
+                            title: option.title,
+                            subtitle: option.subtitle,
+                            selected: selectedPrimaryLoadID == option.id
+                        ) {
+                            selectedPrimaryLoadID = option.id
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+        .scrollIndicators(.hidden)
     }
 
     private var setupPage: some View {
@@ -155,7 +214,7 @@ struct OnboardingView: View {
                 eyebrow: "Setup",
                 title: "Where are you?"
             )
-            Text("Two starting points. You can change phase later in Settings.")
+            Text("Two starting points. You can change phase and lift later in Settings.")
                 .font(.body)
                 .foregroundStyle(.secondary)
 
@@ -230,6 +289,29 @@ struct OnboardingView: View {
         }
     }
 
+    private func habitCard(_ habit: BrandHabit) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(habit.title)
+                .font(.headline)
+                .foregroundStyle(OnboardingTheme.gold)
+            Text(habit.body)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+    }
+
     private func phaseChoice(
         title: String,
         subtitle: String,
@@ -274,7 +356,8 @@ struct OnboardingView: View {
     private func finish(
         phase chosenPhase: RehabPhase,
         enableNotifications: Bool,
-        injuryID: String
+        injuryID: String,
+        primaryLoadID: String
     ) async {
         isBusy = true
         defer { isBusy = false }
@@ -287,7 +370,8 @@ struct OnboardingView: View {
             to: settings,
             phase: chosenPhase,
             notificationsEnabled: enableNotifications,
-            injuryID: injuryID
+            injuryID: injuryID,
+            primaryLoadID: primaryLoadID
         )
         try? modelContext.save()
 
@@ -312,7 +396,7 @@ struct OnboardingView: View {
     }
 }
 
-/// Applies first-run choices. Skip uses Phase B + notifications off + default injury.
+/// Applies first-run choices. Skip uses Phase B + notifications off + default injury + seated extension.
 enum OnboardingCompletion {
     static let defaultPhase: RehabPhase = .bIsometrics
 
@@ -320,14 +404,16 @@ enum OnboardingCompletion {
         skipped: Bool,
         phase: RehabPhase,
         notificationsEnabled: Bool,
-        injuryID: String
+        injuryID: String,
+        primaryLoadID: String
     ) -> OnboardingChoices {
         if skipped {
             return OnboardingChoices(
                 phase: defaultPhase,
                 notificationsEnabled: false,
                 injuryID: InjuryCatalog.defaultSelectable.id,
-                protocolTrack: InjuryCatalog.defaultSelectable.protocolTrack
+                protocolTrack: InjuryCatalog.defaultSelectable.protocolTrack,
+                primaryLoadID: PrimaryLoadCatalog.defaultID
             )
         }
         let injury = InjuryCatalog.definition(for: injuryID)
@@ -335,7 +421,8 @@ enum OnboardingCompletion {
             phase: phase,
             notificationsEnabled: notificationsEnabled,
             injuryID: injury.id,
-            protocolTrack: injury.protocolTrack
+            protocolTrack: injury.protocolTrack,
+            primaryLoadID: PrimaryLoadCatalog.normalizedID(primaryLoadID)
         )
     }
 
@@ -343,19 +430,22 @@ enum OnboardingCompletion {
         to settings: AppSettings,
         phase: RehabPhase,
         notificationsEnabled: Bool,
-        injuryID: String
+        injuryID: String,
+        primaryLoadID: String
     ) {
         let choices = result(
             skipped: false,
             phase: phase,
             notificationsEnabled: notificationsEnabled,
-            injuryID: injuryID
+            injuryID: injuryID,
+            primaryLoadID: primaryLoadID
         )
         settings.currentPhase = choices.phase
         settings.hasCompletedOnboarding = true
         settings.notificationsEnabled = choices.notificationsEnabled
         settings.activeTracks = [choices.protocolTrack]
         settings.selectedInjuryID = choices.injuryID
+        settings.primaryLoadID = choices.primaryLoadID
     }
 }
 
@@ -364,6 +454,7 @@ struct OnboardingChoices: Equatable, Sendable {
     var notificationsEnabled: Bool
     var injuryID: String
     var protocolTrack: RehabTrackID
+    var primaryLoadID: String
 }
 
 private enum OnboardingTheme {

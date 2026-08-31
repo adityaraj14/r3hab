@@ -54,6 +54,7 @@ struct SettingsDTO: Codable {
     var notificationsEnabled: Bool
     var protocolRevision: String
     var selectedInjuryID: String?
+    var primaryLoadID: String?
 }
 
 struct DailyDTO: Codable {
@@ -256,7 +257,8 @@ enum ExportImportService {
                 pmReminderMinute: settings.pmReminderMinute,
                 notificationsEnabled: settings.notificationsEnabled,
                 protocolRevision: settings.protocolRevision,
-                selectedInjuryID: settings.selectedInjuryID
+                selectedInjuryID: settings.selectedInjuryID,
+                primaryLoadID: settings.primaryLoadID
             ),
             dailyCheckIns: checkIns.map {
                 DailyDTO(
@@ -345,6 +347,9 @@ enum ExportImportService {
         settings.protocolRevision = dto.protocolRevision
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
             settings.selectedInjuryID = InjuryCatalog.normalizedID(injuryID)
+        }
+        if let loadID = dto.primaryLoadID, !loadID.isEmpty {
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
         }
     }
 

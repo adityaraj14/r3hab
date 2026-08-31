@@ -109,7 +109,12 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Last 7 days")
                                 .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(points: explorePoints, height: 110, visibleDays: 7)
+                            KneeExploreChart(
+                                points: explorePoints,
+                                height: 110,
+                                visibleDays: 7,
+                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
+                            )
                         }
                         .padding()
                         .background(
@@ -345,11 +350,11 @@ struct HomeView: View {
                 Label("Patellar tendon", systemImage: "figure.strengthtraining.traditional")
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PainChartColors.knee)
-                Text(RehabTemplate.knee.objective80_20)
+                Text(RehabTemplate.knee.objective(for: settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button { showSession = true } label: {
-                    Text("Log seated extension")
+                    Text(settings?.primaryLoad.logCTA ?? PrimaryLoadCatalog.defaultSelectable.logCTA)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -368,7 +373,10 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Phase")
                 .font(.headline)
-            Text(PhaseGuideCopy.summary(for: settings?.currentPhase ?? .aFlareDeLoad))
+            Text(PhaseGuideCopy.summary(
+                for: settings?.currentPhase ?? .aFlareDeLoad,
+                primaryLift: settings?.primaryLoad.title ?? PrimaryLoadCatalog.defaultSelectable.title
+            ))
                 .font(.footnote)
                 .foregroundStyle(.secondary)
             Text(PhaseGuideCopy.redFlags)

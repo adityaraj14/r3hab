@@ -26,9 +26,13 @@ struct RehabTemplate: Identifiable, Hashable, Sendable {
     static let knee = RehabTemplate(
         id: .knee,
         name: "Patellar tendinopathy",
-        shortDescription: "Progressive loading A→E, pain-guided 24h decisions, seated knee extension iso/HSR.",
-        objective80_20: "Primary load is seated knee extension. Build tendon capacity without next-morning flares."
+        shortDescription: "Progressive loading A→E, pain-guided 24h decisions, one primary lift (default seated leg extension).",
+        objective80_20: PrimaryLoadCatalog.defaultSelectable.homeObjective
     )
+
+    func objective(for primaryLoad: PrimaryLoadOption) -> String {
+        primaryLoad.homeObjective
+    }
 
     static let all: [RehabTemplate] = [.knee]
 
