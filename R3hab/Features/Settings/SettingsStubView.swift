@@ -284,7 +284,8 @@ struct SettingsStubView: View {
             settings.notificationsEnabled = false
             try? modelContext.save()
         }
-        await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
+        let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: sessions)
+        await LogStore.reconcileNotifications(snapshot)
         router.requestNotificationSync()
     }
 
@@ -308,8 +309,9 @@ struct SettingsStubView: View {
                     settings.pmReminderMinute = minute
                 }
                 try? modelContext.save()
+                let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: sessions)
                 Task {
-                    await LogStore.reconcileNotifications(settings: settings, sessions: sessions)
+                    await LogStore.reconcileNotifications(snapshot)
                 }
             }
         )
@@ -341,9 +343,10 @@ struct SettingsStubView: View {
             let dailyN = (try? modelContext.fetchCount(FetchDescriptor<DailyCheckIn>())) ?? checkIns.count
             let sessN = (try? modelContext.fetchCount(FetchDescriptor<TrainingSession>())) ?? sessions.count
             if let settings {
+                let latest = (try? modelContext.fetch(FetchDescriptor<TrainingSession>())) ?? sessions
+                let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: latest)
                 Task {
-                    let latest = (try? modelContext.fetch(FetchDescriptor<TrainingSession>())) ?? sessions
-                    await LogStore.reconcileNotifications(settings: settings, sessions: latest)
+                    await LogStore.reconcileNotifications(snapshot)
                 }
             }
             presentAlert(
