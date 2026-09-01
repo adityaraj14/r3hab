@@ -9,6 +9,7 @@
 		E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PainScoreControl.swift; sourceTree = "<group>"; };
 		99066D8CD9C34E9081E6E951 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
 		B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
+		F3A1B2C4D5E6478901234567 /* LogRewardViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogRewardViews.swift; sourceTree = "<group>"; };
 		47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
 		ED9AA8F2B526430384E46937 /* ExportImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImport.swift; sourceTree = "<group>"; };
 		4670AE5C99794407900C0055 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
@@ -37,6 +38,7 @@
 		C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjuryCatalog.swift; sourceTree = "<group>"; };
 		B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryLoadCatalog.swift; sourceTree = "<group>"; };
 		A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandCopy.swift; sourceTree = "<group>"; };
+		E8F9A0B1C2D3456789012345 /* LoggingStreakEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoggingStreakEvaluator.swift; sourceTree = "<group>"; };
 		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		C2769BEBD6404120850663B2 /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
 		BCFFB573D1074550BF3320CB /* AppRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRouter.swift; sourceTree = "<group>"; };
@@ -52,6 +54,7 @@
 		95ADBE611FF1403CA45A5AE4 /* PainScoreControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */; };
 		79E27029191247DC802802AF /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99066D8CD9C34E9081E6E951 /* PhaseChip.swift */; };
 		1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */; };
+		A1B2C3D4E5F6789012345678 /* LogRewardViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3A1B2C4D5E6478901234567 /* LogRewardViews.swift */; };
 		FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */; };
 		C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9AA8F2B526430384E46937 /* ExportImport.swift */; };
 		1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670AE5C99794407900C0055 /* ModelMapping.swift */; };
@@ -80,6 +83,7 @@
 		D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */; };
 		C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */; };
 		D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */; };
+		B2C3D4E5F6A7890123456789 /* LoggingStreakEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8F9A0B1C2D3456789012345 /* LoggingStreakEvaluator.swift */; };
 		D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B121FF0B2974BD1A2491DB9 /* LogStore.swift */; };
 		57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2769BEBD6404120850663B2 /* OnboardingView.swift */; };
 		3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCFFB573D1074550BF3320CB /* AppRouter.swift */; };
@@ -172,6 +176,7 @@
 				E84D4A8E3E584015A0F141F1 /* PainScoreControl.swift */,
 				99066D8CD9C34E9081E6E951 /* PhaseChip.swift */,
 				B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */,
+				F3A1B2C4D5E6478901234567 /* LogRewardViews.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -197,6 +202,7 @@
 				6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */,
 				F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */,
 				A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */,
+				E8F9A0B1C2D3456789012345 /* LoggingStreakEvaluator.swift */,
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 			);
 			path = Domain;
@@ -281,6 +287,7 @@
 				95ADBE611FF1403CA45A5AE4 /* PainScoreControl.swift in Sources */,
 				79E27029191247DC802802AF /* PhaseChip.swift in Sources */,
 				1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */,
+				A1B2C3D4E5F6789012345678 /* LogRewardViews.swift in Sources */,
 				FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */,
 				C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */,
 				1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */,
@@ -309,6 +316,7 @@
 				D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */,
 				C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */,
 				D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */,
+				B2C3D4E5F6A7890123456789 /* LoggingStreakEvaluator.swift in Sources */,
 				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
 				57A8E960976B4FED81EDEBD6 /* OnboardingView.swift in Sources */,
 				3891BD7AD45A44CCB0567083 /* AppRouter.swift in Sources */,

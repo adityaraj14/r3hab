@@ -4,6 +4,7 @@ import Foundation
 struct DailyCheckInSnapshot: Equatable, Sendable {
     var date: Date
     var restingPainAM: Int?
+    var dailyPainPM: Int?
     var steps: Int?
 }
 

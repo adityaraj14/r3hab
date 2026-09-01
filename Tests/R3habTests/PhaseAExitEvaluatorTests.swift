@@ -21,7 +21,7 @@ final class PhaseAExitEvaluatorTests: XCTestCase {
     }
 
     private func snap(dayOffset: Int, from today: Date, am: Int?, steps: Int?) -> DailyCheckInSnapshot {
-        DailyCheckInSnapshot(date: day(dayOffset, from: today), restingPainAM: am, steps: steps)
+        DailyCheckInSnapshot(date: day(dayOffset, from: today), restingPainAM: am, dailyPainPM: nil, steps: steps)
     }
 
     func testF1_empty() {

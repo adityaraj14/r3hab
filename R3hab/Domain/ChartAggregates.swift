@@ -63,17 +63,27 @@ struct SessionSideLoadSnapshot: Equatable, Sendable {
     var unspecifiedMaxLbs: Double?
 }
 
-/// One calendar day for the explorable knee chart.
+/// One calendar day for trend charts (pain, steps, load).
 struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
     var dayKey: String
     var date: Date
     var amPain: Double?
+    var pmPain: Double?
+    var steps: Double?
     var leftLoadLbs: Double?
     var rightLoadLbs: Double?
 
+    var hasPainValues: Bool {
+        amPain != nil || pmPain != nil
+    }
+
+    var hasActivityValues: Bool {
+        steps != nil || leftLoadLbs != nil || rightLoadLbs != nil
+    }
+
     var hasValues: Bool {
-        amPain != nil || leftLoadLbs != nil || rightLoadLbs != nil
+        hasPainValues || hasActivityValues
     }
 }
 
@@ -238,6 +248,8 @@ enum ChartMetricBuilder {
                     dayKey: key,
                     date: day,
                     amPain: painByDay[key]?.restingPainAM.map(Double.init),
+                    pmPain: painByDay[key]?.dailyPainPM.map(Double.init),
+                    steps: painByDay[key]?.steps.map(Double.init),
                     leftLoadLbs: leftByDay[key],
                     rightLoadLbs: rightByDay[key]
                 )

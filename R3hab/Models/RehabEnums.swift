@@ -108,3 +108,9 @@ enum SessionDecision: String, Codable, CaseIterable, Identifiable, Sendable {
         }
     }
 }
+
+enum DailyCheckInFocus: Equatable, Sendable {
+    case morning
+    case evening
+    case full
+}

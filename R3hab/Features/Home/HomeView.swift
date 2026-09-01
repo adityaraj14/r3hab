@@ -89,10 +89,20 @@ struct HomeView: View {
         todayCheckIn?.dailyPainPM != nil
     }
 
+    private var streakDisplay: (count: Int, loggedToday: Bool) {
+        LoggingStreakEvaluator.displayStreak(
+            checkIns: checkIns.map(\.snapshot),
+            today: today,
+            calendar: calendar
+        )
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
+                    streakHero
+
                     header
 
                     if !overduePending.isEmpty {
@@ -109,7 +119,12 @@ struct HomeView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Last 7 days")
                                 .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(
+                            PainDualChart(
+                                points: explorePoints,
+                                height: 110,
+                                visibleDays: 7
+                            )
+                            StepsLoadChart(
                                 points: explorePoints,
                                 height: 110,
                                 visibleDays: 7,
@@ -184,6 +199,18 @@ struct HomeView: View {
                 _ = try? AppBootstrap.ensureSettings(context: modelContext)
             }
         }
+    }
+
+    private var streakHero: some View {
+        StreakHeroView(
+            streak: streakDisplay.count,
+            loggedToday: streakDisplay.loggedToday
+        )
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 
     private var header: some View {

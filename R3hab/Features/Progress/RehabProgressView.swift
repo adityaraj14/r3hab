@@ -44,14 +44,6 @@ struct RehabProgressView: View {
         )
     }
 
-    private var kneePM: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .dailyPM, dayCount: range.rawValue)
-    }
-
-    private var stepsSeries: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .steps, dayCount: range.rawValue)
-    }
-
     private var cleanSessions: Int {
         sessions.filter {
             $0.response24h == .better || $0.response24h == .same
@@ -142,9 +134,24 @@ struct RehabProgressView: View {
                             .padding(.top, 4)
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("AM pain + load")
+                            Text("Pain")
                                 .font(.headline)
-                            KneeExploreChart(
+                            PainDualChart(
+                                points: explorePoints,
+                                height: 140,
+                                visibleDays: min(7, range.rawValue)
+                            )
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .fill(Color(.secondarySystemBackground))
+                        )
+
+                        VStack(alignment: .leading, spacing: 10) {
+                            Text("Activity")
+                                .font(.headline)
+                            StepsLoadChart(
                                 points: explorePoints,
                                 height: 140,
                                 visibleDays: min(7, range.rawValue),
@@ -156,26 +163,12 @@ struct RehabProgressView: View {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(Color(.secondarySystemBackground))
                         )
-
-                        MetricChartCard(
-                            title: "Knee daily pain PM",
-                            points: kneePM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.knee
-                        )
-
-                        MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
                     }
                 }
                 .padding()
             }
             .navigationTitle("Progress")
         }
-    }
-
-    private var maxStepsDomain: Double {
-        let maxVal = stepsSeries.compactMap(\.value).max() ?? 10000
-        return max(10000, maxVal * 1.1)
     }
 
     private var statsRow: some View {

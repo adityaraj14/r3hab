@@ -1,12 +1,6 @@
 import SwiftUI
 import SwiftData
 
-enum DailyCheckInFocus: Equatable, Sendable {
-    case morning
-    case evening
-    case full
-}
-
 /// Create/edit one daily check-in (partial AM/PM save OK).
 struct DailyCheckInEditor: View {
     @Environment(\.modelContext) private var modelContext
@@ -31,6 +25,8 @@ struct DailyCheckInEditor: View {
     @State private var isLoadingSteps = false
     @State private var stepsSourceNote: String?
     @State private var loadNudge: LoadNudge?
+    @State private var logReward: LogReward?
+    @State private var pendingNudgeAfterReward: LoadNudge?
 
     private var calendar: Calendar { .current }
     private var showsMorning: Bool { focus != .evening }
@@ -131,6 +127,15 @@ struct DailyCheckInEditor: View {
         .loadNudgeAlert($loadNudge) {
             loadNudge = nil
             dismiss()
+        }
+        .logRewardSheet($logReward) {
+            logReward = nil
+            if let pendingNudgeAfterReward {
+                loadNudge = pendingNudgeAfterReward
+                self.pendingNudgeAfterReward = nil
+            } else {
+                dismiss()
+            }
         }
         .task {
             guard showsEvening else { return }
@@ -251,6 +256,7 @@ struct DailyCheckInEditor: View {
 
         let day = calendar.startOfDay(for: targetDate)
         let previousMorningPain = existing?.restingPainAM
+        let wasAlreadyLoggedToday = existing?.snapshot.hasLogged ?? false
         let row: DailyCheckIn
         if let existing {
             row = existing
@@ -275,14 +281,28 @@ struct DailyCheckInEditor: View {
         do {
             try modelContext.save()
             Haptics.success()
+            logReward = LoggingStreakEvaluator.reward(
+                savedDay: day,
+                focus: focus,
+                checkIns: snapshotsIncludingSaved(row),
+                wasAlreadyLoggedToday: wasAlreadyLoggedToday,
+                calendar: calendar
+            )
             if showsMorning, previousMorningPain != restingPainAM, let nudge = morningNudge() {
-                loadNudge = nudge
+                pendingNudgeAfterReward = nudge
             } else {
-                dismiss()
+                pendingNudgeAfterReward = nil
             }
         } catch {
             errorMessage = "Could not save: \(error.localizedDescription)"
         }
+    }
+
+    private func snapshotsIncludingSaved(_ saved: DailyCheckIn) -> [DailyCheckInSnapshot] {
+        let key = saved.dayKey
+        var snaps = checkIns.filter { $0.dayKey != key }.map(\.snapshot)
+        snaps.append(saved.snapshot)
+        return snaps
     }
 
     private func morningNudge() -> LoadNudge? {

@@ -128,7 +128,7 @@ final class LoadNudgeEvaluatorTests: XCTestCase {
     }
 
     private func checkIn(dayOffset: Int, from today: Date, am: Int?) -> DailyCheckInSnapshot {
-        DailyCheckInSnapshot(date: day(dayOffset, from: today), restingPainAM: am, steps: nil)
+        DailyCheckInSnapshot(date: day(dayOffset, from: today), restingPainAM: am, dailyPainPM: nil, steps: nil)
     }
 
     private func workout(
