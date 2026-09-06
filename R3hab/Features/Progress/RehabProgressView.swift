@@ -147,9 +147,11 @@ struct RehabProgressView: View {
                             KneeExploreChart(
                                 points: explorePoints,
                                 height: 140,
-                                visibleDays: min(7, range.rawValue),
+                                // Must match the picker. Capping at 7 kept 28-day on a 7-day domain.
+                                visibleDays: range.rawValue,
                                 loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
                             )
+                            .id(range.rawValue)
                         }
                         .padding()
                         .background(

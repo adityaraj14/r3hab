@@ -77,6 +77,29 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     }
 }
 
+/// Maps a plot-x tap onto the nearest day. Used by KneeExploreChart so 7- and 28-day
+/// ranges share the same selection math (and so tests can lock the 28-day path).
+enum ChartDaySelection {
+    static func nearestPoint(to date: Date, in points: [DayExplorePoint]) -> DayExplorePoint? {
+        points.min { lhs, rhs in
+            abs(lhs.date.timeIntervalSince(date)) < abs(rhs.date.timeIntervalSince(date))
+        }
+    }
+
+    /// Linear map of `x` in a plot of `width` onto the date span of `points`.
+    static func point(atPlotX x: Double, width: Double, points: [DayExplorePoint]) -> DayExplorePoint? {
+        guard !points.isEmpty else { return nil }
+        guard width > 0, points.count > 1 else { return points[0] }
+        let first = points[0].date.timeIntervalSinceReferenceDate
+        let last = points[points.count - 1].date.timeIntervalSinceReferenceDate
+        let span = last - first
+        guard span > 0 else { return points[0] }
+        let t = max(0, min(1, x / width))
+        let target = Date(timeIntervalSinceReferenceDate: first + t * span)
+        return nearestPoint(to: target, in: points)
+    }
+}
+
 /// Session load point for resistance trend charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
