@@ -3,6 +3,19 @@ import SwiftData
 
 /// Shared destructive data helpers (clear-all, notification-aware deletes).
 enum LogStore {
+    /// Value-type copy of everything notification reconcile needs.
+    /// Built on the main actor *before* any `await` so later work never
+    /// touches SwiftData models that may have been invalidated after suspend.
+    struct NotificationSnapshot: Sendable {
+        var notificationsEnabled: Bool
+        var amHour: Int
+        var amMinute: Int
+        var pmHour: Int
+        var pmMinute: Int
+        var pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)]
+        var overdueCount: Int
+    }
+
     /// Deletes every daily check-in and training session. Keeps AppSettings.
     @MainActor
     static func clearAllLogs(context: ModelContext) throws -> (daily: Int, sessions: Int) {
@@ -27,23 +40,34 @@ enum LogStore {
     }
 
     @MainActor
-    static func reconcileNotifications(
+    static func notificationSnapshot(
         settings: AppSettings,
-        sessions: [TrainingSession]
-    ) async {
-        // Import / skip-then-enable can persist the toggle without ever prompting.
-        if settings.notificationsEnabled {
-            _ = await NotificationScheduler.ensureAuthorizedIfNeeded()
-        }
-        await NotificationScheduler.reconcile(
+        sessions: [TrainingSession],
+        now: Date = Date()
+    ) -> NotificationSnapshot {
+        NotificationSnapshot(
             notificationsEnabled: settings.notificationsEnabled,
             amHour: settings.amReminderHour,
             amMinute: settings.amReminderMinute,
             pmHour: settings.pmReminderHour,
             pmMinute: settings.pmReminderMinute,
-            pendingSessions: pendingSessionTuples(from: sessions)
+            pendingSessions: pendingSessionTuples(from: sessions),
+            overdueCount: PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: now).count
         )
-        let overdue = PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: Date()).count
-        NotificationScheduler.updateBadge(count: overdue)
+    }
+
+    static func reconcileNotifications(_ snapshot: NotificationSnapshot) async {
+        if snapshot.notificationsEnabled {
+            _ = await NotificationScheduler.ensureAuthorizedIfNeeded()
+        }
+        await NotificationScheduler.reconcile(
+            notificationsEnabled: snapshot.notificationsEnabled,
+            amHour: snapshot.amHour,
+            amMinute: snapshot.amMinute,
+            pmHour: snapshot.pmHour,
+            pmMinute: snapshot.pmMinute,
+            pendingSessions: snapshot.pendingSessions
+        )
+        NotificationScheduler.updateBadge(count: snapshot.overdueCount)
     }
 }
