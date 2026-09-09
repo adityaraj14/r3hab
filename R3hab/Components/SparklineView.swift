@@ -314,6 +314,18 @@ private extension View {
     }
 }
 
+private struct MetricChartXScaleModifier: ViewModifier {
+    var domain: ClosedRange<Date>?
+
+    func body(content: Content) -> some View {
+        if let domain {
+            content.chartXScale(domain: domain)
+        } else {
+            content
+        }
+    }
+}
+
 private struct ExploreScrollModifier: ViewModifier {
     var visibleDays: Int
     var enabled: Bool
@@ -330,6 +342,8 @@ private struct ExploreScrollModifier: ViewModifier {
 }
 
 /// Tap/scrub overlay so day selection works even when Charts' built-in selection does not.
+/// Maps through the chart proxy's date scale so 28-day (and scrolled) windows hit the
+/// visible day, not an index stretched across the full series.
 private struct ChartDayPickerModifier: ViewModifier {
     let points: [DayExplorePoint]
     @Binding var selectedDate: Date?
@@ -337,35 +351,42 @@ private struct ChartDayPickerModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .chartOverlay { _ in
+            .chartOverlay { proxy in
                 GeometryReader { geo in
                     Color.clear
                         .contentShape(Rectangle())
                         .simultaneousGesture(
                             SpatialTapGesture()
                                 .onEnded { event in
-                                    select(atX: event.location.x, width: geo.size.width)
+                                    select(at: event.location, proxy: proxy, geo: geo)
                                 }
                         )
                         .simultaneousGesture(
                             DragGesture(minimumDistance: enableScrub ? 8 : 10_000)
                                 .onChanged { value in
-                                    select(atX: value.location.x, width: geo.size.width)
+                                    select(at: value.location, proxy: proxy, geo: geo)
                                 }
                         )
                 }
             }
     }
 
-    private func select(atX x: CGFloat, width: CGFloat) {
-        guard width > 0, points.count > 1 else {
-            selectedDate = points.first?.date
+    private func select(at location: CGPoint, proxy: ChartProxy, geo: GeometryProxy) {
+        let plotX: CGFloat
+        if let plotFrame = proxy.plotFrame {
+            plotX = location.x - geo[plotFrame].origin.x
+        } else {
+            plotX = location.x
+        }
+        if let date = proxy.value(atX: plotX, as: Date.self) {
+            selectedDate = ChartDaySelection.nearestPoint(to: date, in: points)?.date
             return
         }
-        let t = max(0, min(1, x / width))
-        let index = Int((t * CGFloat(points.count - 1)).rounded())
-        let clamped = max(0, min(points.count - 1, index))
-        selectedDate = points[clamped].date
+        selectedDate = ChartDaySelection.point(
+            atPlotX: Double(plotX),
+            width: Double(geo.size.width),
+            points: points
+        )?.date
     }
 }
 
@@ -390,6 +411,18 @@ struct MetricChartCard: View {
 
     private var hasData: Bool {
         series.contains { line in line.points.contains { $0.value != nil } }
+    }
+
+    private var xDomain: ClosedRange<Date>? {
+        let dates = series.flatMap { line in line.points.map(\.date) }
+        guard let first = dates.min(), let last = dates.max() else { return nil }
+        return first...last
+    }
+
+    private var xStrideDays: Int {
+        guard let xDomain else { return 4 }
+        let days = Calendar.current.dateComponents([.day], from: xDomain.lowerBound, to: xDomain.upperBound).day ?? 7
+        return max(1, days / 3)
     }
 
     var body: some View {
@@ -417,8 +450,9 @@ struct MetricChartCard: View {
                     }
                 }
                 .chartYScale(domain: yDomain)
+                .modifier(MetricChartXScaleModifier(domain: xDomain))
                 .chartXAxis {
-                    AxisMarks(values: .stride(by: .day, count: 4)) { _ in
+                    AxisMarks(values: .stride(by: .day, count: xStrideDays)) { _ in
                         AxisGridLine()
                         AxisValueLabel(format: .dateTime.month(.abbreviated).day())
                     }
