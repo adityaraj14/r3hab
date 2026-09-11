@@ -14,6 +14,7 @@ enum LogStore {
         var pmMinute: Int
         var pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)]
         var painAfterSessions: [(id: UUID, createdAt: Date)]
+        var lastHardCreatedAt: Date?
         var overdueCount: Int
     }
 
@@ -29,6 +30,7 @@ enum LogStore {
         for id in sessionIds {
             NotificationScheduler.cancelSessionNotifications(sessionId: id)
         }
+        NotificationScheduler.cancelHardOverdue()
         NotificationScheduler.updateBadge(count: 0)
         return (dailies.count, sessions.count)
     }
@@ -61,8 +63,17 @@ enum LogStore {
             pmMinute: settings.pmReminderMinute,
             pendingSessions: pendingSessionTuples(from: sessions),
             painAfterSessions: painAfterSessionTuples(from: sessions),
+            lastHardCreatedAt: lastHardCreatedAt(from: sessions),
             overdueCount: PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: now).count
         )
+    }
+
+    @MainActor
+    static func lastHardCreatedAt(from sessions: [TrainingSession]) -> Date? {
+        sessions
+            .filter { SessionSpacing.isHard($0.sessionType) }
+            .map(\.createdAt)
+            .max()
     }
 
     static func reconcileNotifications(_ snapshot: NotificationSnapshot) async {
@@ -76,7 +87,8 @@ enum LogStore {
             pmHour: snapshot.pmHour,
             pmMinute: snapshot.pmMinute,
             pendingSessions: snapshot.pendingSessions,
-            painAfterSessions: snapshot.painAfterSessions
+            painAfterSessions: snapshot.painAfterSessions,
+            lastHardCreatedAt: snapshot.lastHardCreatedAt
         )
         NotificationScheduler.updateBadge(count: snapshot.overdueCount)
     }

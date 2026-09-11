@@ -20,6 +20,10 @@ final class AppRouter {
         afterPainSessionId = sessionId
     }
 
+    func openToday() {
+        selectedTab = 0
+    }
+
     func requestNotificationSync() {
         notificationSyncToken &+= 1
     }

@@ -93,4 +93,32 @@ final class NotificationSchedulerTests: XCTestCase {
         let now = created.addingTimeInterval(13 * 60 * 60)
         XCTAssertNil(NotificationScheduler.painAfterFireDate(createdAt: created, now: now))
     }
+
+    func testHardOverdueIdentifierIsStable() {
+        XCTAssertEqual(NotificationScheduler.hardOverdueId, "hard-session-overdue")
+    }
+
+    func testHardOverdueFiresAt48HoursWhenUpcoming() {
+        let last = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = last.addingTimeInterval(10 * 3600)
+        XCTAssertEqual(
+            NotificationScheduler.hardOverdueFireDate(lastHardAt: last, now: now),
+            last.addingTimeInterval(48 * 3600)
+        )
+    }
+
+    func testHardOverdueCatchUpInsideSecondWindow() {
+        let last = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = last.addingTimeInterval(50 * 3600)
+        XCTAssertEqual(
+            NotificationScheduler.hardOverdueFireDate(lastHardAt: last, now: now),
+            now.addingTimeInterval(60)
+        )
+    }
+
+    func testHardOverdueStopsAfterTwoWindows() {
+        let last = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = last.addingTimeInterval(97 * 3600)
+        XCTAssertNil(NotificationScheduler.hardOverdueFireDate(lastHardAt: last, now: now))
+    }
 }

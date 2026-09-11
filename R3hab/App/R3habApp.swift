@@ -36,9 +36,11 @@ struct R3habApp: App {
                     AppServices.shared.notificationDelegate.onOpenNotification = { [router] id, kind in
                         switch kind {
                         case .painAfter:
-                            router.openAfterPain(sessionId: id)
+                            if let id { router.openAfterPain(sessionId: id) }
                         case .pending:
-                            router.openResolve(sessionId: id)
+                            if let id { router.openResolve(sessionId: id) }
+                        case .hardOverdue:
+                            router.openToday()
                         }
                     }
                 }

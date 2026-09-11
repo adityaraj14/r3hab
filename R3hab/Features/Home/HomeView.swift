@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    @AppStorage("quoteTapOffset") private var quoteTapOffset = 0
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -62,6 +63,17 @@ struct HomeView: View {
 
     private var pendingBadge: Int { overduePending.count }
 
+    private var streak: WorkoutStreak.Snapshot {
+        WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date())
+    }
+
+    private var todayQuote: MotivationalQuote {
+        MotivationalQuotes.quote(
+            dayIndex: MotivationalQuotes.dailyIndex(on: today, calendar: calendar),
+            tapOffset: quoteTapOffset
+        )
+    }
+
     private var hasMorningPain: Bool {
         todayCheckIn?.restingPainAM != nil
     }
@@ -75,6 +87,11 @@ struct HomeView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                    streakAndQuote
+
+                    if let miss = WorkoutStreak.copy(for: streak.miss, lastChain: streak.lastChain) {
+                        missCue(miss)
+                    }
 
                     if !overduePending.isEmpty {
                         pendingSection
@@ -176,6 +193,86 @@ struct HomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private var streakAndQuote: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
+                    .font(.title)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WorkoutStreak.sessionWord(streak.current))
+                        .font(.title.monospacedDigit().weight(.bold))
+                        .foregroundStyle(Color.accentColor)
+                    Text(streakSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            Button {
+                quoteTapOffset += 1
+                Haptics.light()
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(todayQuote.text)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                    if let attribution = todayQuote.attribution {
+                        Text(attribution)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Tap for another line")
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Hard session streak \(WorkoutStreak.sessionWord(streak.current)). \(streakSubtitle). \(todayQuote.text)"
+        )
+    }
+
+    private var streakSubtitle: String {
+        if streak.best == 0 {
+            return "Hard rehab chain · tap the line for another"
+        }
+        if streak.current == 0, streak.lastChain > 0 {
+            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
+        }
+        if streak.best > streak.current {
+            return "Best \(WorkoutStreak.sessionWord(streak.best))"
+        }
+        return "Keep the chain · 48 hours"
+    }
+
+    private func missCue(_ copy: (title: String, body: String)) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(copy.title, systemImage: streak.miss == .twoMiss ? "exclamationmark.triangle.fill" : "link")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.accentColor)
+            Text(copy.body)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(streak.miss == .twoMiss ? Color.orange.opacity(0.12) : Color.accentColor.opacity(0.10))
+        )
+        .accessibilityElement(children: .combine)
     }
 
     private var pendingSection: some View {

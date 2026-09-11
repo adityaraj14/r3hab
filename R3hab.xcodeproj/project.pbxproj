@@ -19,6 +19,7 @@
 		6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseAExitEvaluator.swift; sourceTree = "<group>"; };
 		F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
 		33852A11DB0D407691655972 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
+		C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStreak.swift; sourceTree = "<group>"; };
 		180612735F20428098D5B5BE /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
 		6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -63,6 +64,7 @@
 		5432E0016D0A4C24B47DCAD1 /* PhaseAExitEvaluator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EECAAF7FD1344CC972CD33A /* PhaseAExitEvaluator.swift */; };
 		15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */; };
 		D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33852A11DB0D407691655972 /* SessionSpacing.swift */; };
+		D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */; };
 		61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180612735F20428098D5B5BE /* DailyCheckInEditor.swift */; };
 		EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */; };
 		0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */; };
@@ -201,6 +203,7 @@
 				F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */,
 				A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */,
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
+				C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -294,6 +297,7 @@
 				5432E0016D0A4C24B47DCAD1 /* PhaseAExitEvaluator.swift in Sources */,
 				15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */,
 				D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */,
+				D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */,
 				61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */,
 				EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */,
 				0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */,

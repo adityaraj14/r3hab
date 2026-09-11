@@ -1,6 +1,10 @@
 import Foundation
 
 enum SessionSpacing {
+    /// Hard sessions should land inside this window to keep the chain.
+    static let hardGapHours: Double = 48
+    static var hardGap: TimeInterval { hardGapHours * 3600 }
+
     static func isHard(_ type: SessionType) -> Bool {
         switch type {
         case .isometrics, .hsrStrength, .energyStorage, .tennisSport:
@@ -36,6 +40,6 @@ enum SessionSpacing {
         guard let hours = hoursSinceLastHard(sessions: sessions, now: now, excluding: id) else {
             return false
         }
-        return hours < 48
+        return hours < hardGapHours
     }
 }

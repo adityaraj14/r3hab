@@ -7,6 +7,7 @@ enum NotificationScheduler {
     static let amReminderId = "am-reminder"
     static let pmReminderId = "pm-reminder"
     static let leftoverStretchIds = (0..<3).map { "stretch-\($0)" }
+    static let hardOverdueId = "hard-session-overdue"
 
     /// Remind after the session has settled — not mid-cooldown, not next morning
     /// (that's the 24h resolve). 30 minutes is enough to shower and still remember.
@@ -116,6 +117,7 @@ enum NotificationScheduler {
         pmMinute: Int,
         pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)],
         painAfterSessions: [(id: UUID, createdAt: Date)] = [],
+        lastHardCreatedAt: Date? = nil,
         now: Date = Date(),
         calendar: Calendar = .current
     ) async {
@@ -128,11 +130,12 @@ enum NotificationScheduler {
             await center.removePendingNotificationRequests(withIdentifiers: dailyIds)
             let pending = await center.pendingNotificationRequests()
             let ids = pending.map(\.identifier).filter {
-                $0.hasPrefix("pending-") || $0.hasPrefix("pain-after-")
+                $0.hasPrefix("pending-") || $0.hasPrefix("pain-after-") || $0 == hardOverdueId
             }
             if !ids.isEmpty {
                 await center.removePendingNotificationRequests(withIdentifiers: ids)
             }
+            cancelHardOverdue()
             updateBadge(count: 0)
             return
         }
@@ -188,6 +191,11 @@ enum NotificationScheduler {
                 now: now,
                 calendar: calendar
             )
+        }
+
+        await center.removePendingNotificationRequests(withIdentifiers: [hardOverdueId])
+        if let lastHardCreatedAt {
+            await scheduleHardOverdueAsync(lastHardAt: lastHardCreatedAt, now: now, calendar: calendar)
         }
     }
 
@@ -327,6 +335,49 @@ enum NotificationScheduler {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
     }
 
+    static func hardOverdueFireDate(lastHardAt: Date, now: Date) -> Date? {
+        let intended = lastHardAt.addingTimeInterval(SessionSpacing.hardGap)
+        if intended > now { return intended }
+        if now.timeIntervalSince(lastHardAt) <= SessionSpacing.hardGap * 2 {
+            return now.addingTimeInterval(painAfterCatchUpDelay)
+        }
+        return nil
+    }
+
+    static func scheduleHardOverdueAsync(
+        lastHardAt: Date,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async {
+        guard let fire = hardOverdueFireDate(lastHardAt: lastHardAt, now: now) else { return }
+        guard PendingQueue.shouldScheduleNotification(fireAt: fire, now: now) else { return }
+
+        let content = UNMutableNotificationContent()
+        content.title = "Keep the chain"
+        content.body = "One miss is alright. Don’t miss twice — a hard session still counts. Inspired by Atomic Habits."
+        content.sound = .default
+        content.userInfo = ["kind": NotificationOpenKind.hardOverdue.rawValue]
+        content.categoryIdentifier = "HARD_OVERDUE"
+
+        let comps = pendingTriggerComponents(fire: fire, calendar: calendar)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        let request = UNNotificationRequest(
+            identifier: hardOverdueId,
+            content: content,
+            trigger: trigger
+        )
+        await add(request)
+    }
+
+    static func cancelHardOverdue() {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(
+            withIdentifiers: [hardOverdueId]
+        )
+        UNUserNotificationCenter.current().removeDeliveredNotifications(
+            withIdentifiers: [hardOverdueId]
+        )
+    }
+
     static func cancelSessionNotifications(sessionId: UUID) {
         let ids = [pendingId(for: sessionId), painAfterId(for: sessionId)]
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
@@ -361,11 +412,12 @@ enum NotificationScheduler {
 enum NotificationOpenKind: String, Sendable {
     case pending
     case painAfter
+    case hardOverdue
 }
 
 /// Handles notification taps → deep resolve or after-pain sheet.
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    var onOpenNotification: ((UUID, NotificationOpenKind) -> Void)?
+    var onOpenNotification: ((UUID?, NotificationOpenKind) -> Void)?
     /// Legacy alias used by older call sites; treated as a 24h resolve.
     var onOpenSession: ((UUID) -> Void)?
 
@@ -381,34 +433,27 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         didReceive response: UNNotificationResponse
     ) async {
         let info = response.notification.request.content.userInfo
+        let nid = response.notification.request.identifier
+        let sessionId = (info["sessionId"] as? String).flatMap(UUID.init(uuidString))
         let kind: NotificationOpenKind
-        if let rawKind = info["kind"] as? String, rawKind == NotificationOpenKind.painAfter.rawValue {
+        if let rawKind = info["kind"] as? String, let parsed = NotificationOpenKind(rawValue: rawKind) {
+            kind = parsed
+        } else if nid == NotificationScheduler.hardOverdueId {
+            kind = .hardOverdue
+        } else if nid.hasPrefix("pain-after-") {
             kind = .painAfter
         } else {
             kind = .pending
         }
 
-        if let raw = info["sessionId"] as? String, let id = UUID(uuidString: raw) {
-            await MainActor.run {
-                onOpenNotification?(id, kind)
-                if kind == .pending {
-                    onOpenSession?(id)
-                }
-            }
-            return
-        }
+        let resolvedId = sessionId
+            ?? NotificationScheduler.sessionId(fromPainAfterId: nid)
+            ?? NotificationScheduler.sessionId(fromPendingId: nid)
 
-        let nid = response.notification.request.identifier
-        if let id = NotificationScheduler.sessionId(fromPainAfterId: nid) {
-            await MainActor.run {
-                onOpenNotification?(id, .painAfter)
-            }
-            return
-        }
-        if let id = NotificationScheduler.sessionId(fromPendingId: nid) {
-            await MainActor.run {
-                onOpenNotification?(id, .pending)
-                onOpenSession?(id)
+        await MainActor.run {
+            onOpenNotification?(resolvedId, kind)
+            if kind == .pending, let resolvedId {
+                onOpenSession?(resolvedId)
             }
         }
     }
