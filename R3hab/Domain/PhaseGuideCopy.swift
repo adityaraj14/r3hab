@@ -1,13 +1,26 @@
 import Foundation
 
 enum PhaseGuideCopy {
-    static let protocolRevision = "v1.1 · 2026-08-10"
+    static let protocolRevision = "v1.2 · 2026-09-11"
 
     static func summary(
         for phase: RehabPhase,
-        primaryLift: String = PrimaryLoadCatalog.defaultSelectable.title
+        primaryLift: String = PrimaryLoadCatalog.defaultSelectable.title,
+        track: RehabTrackID = .knee
     ) -> String {
         let lift = primaryLift.lowercased()
+        if track == .ql {
+            switch phase {
+            case .aFlareDeLoad:
+                return "Ease the spasm. Walk if mornings stay calm. Skip loaded side bends and heavy hip thrusts until resting pain settles."
+            case .bIsometrics:
+                return "Primary work is \(lift). Hip thrusts and standing side bends are the loaded votes; walking does not count toward the 48h chain. Judge by tomorrow morning."
+            case .cHeavySlowResistance:
+                return "Load \(lift) slowly. Keep walking easy. Don’t jump hip-thrust load and long walks the same week."
+            case .dEnergyStorage, .eReturnToSport:
+                return "Same three movements. Return to sport or longer walks only if the next morning stays calm."
+            }
+        }
         switch phase {
         case .aFlareDeLoad:
             return "Relative rest. No heavy knee loading, impact, or tennis. Optional easy bike if pain-free. Aim for 3 stable mornings ≤2 with a ~6k+ step day before Phase B."

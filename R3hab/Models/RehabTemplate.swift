@@ -1,26 +1,51 @@
 import Foundation
 
-/// The single rehab issue this app manages: patellar tendinopathy.
 enum RehabTrackID: String, Codable, CaseIterable, Identifiable, Sendable {
     case knee
+    case ql
 
     var id: String { rawValue }
 
-    var title: String { "Knee" }
+    var title: String {
+        switch self {
+        case .knee: return "Knee"
+        case .ql: return "QL"
+        }
+    }
 
-    var subtitle: String { "Patellar tendon" }
+    var subtitle: String {
+        switch self {
+        case .knee: return "Patellar tendon"
+        case .ql: return "Quadratus lumborum"
+        }
+    }
 
-    var loadRegion: LoadRegion { .knee }
+    var loadRegion: LoadRegion {
+        switch self {
+        case .knee: return .knee
+        case .ql: return .ql
+        }
+    }
 
-    var systemImage: String { "figure.strengthtraining.traditional" }
+    var systemImage: String {
+        switch self {
+        case .knee: return "figure.strengthtraining.traditional"
+        case .ql: return "figure.strengthtraining.functional"
+        }
+    }
+
+    var lateralityNoun: String {
+        switch self {
+        case .knee: return "knees"
+        case .ql: return "sides"
+        }
+    }
 }
 
-/// Static template for jumper's knee (phases A–E).
 struct RehabTemplate: Identifiable, Hashable, Sendable {
     var id: RehabTrackID
     var name: String
     var shortDescription: String
-    /// One-line objective for Home.
     var objective80_20: String
 
     static let knee = RehabTemplate(
@@ -30,11 +55,18 @@ struct RehabTemplate: Identifiable, Hashable, Sendable {
         objective80_20: PrimaryLoadCatalog.defaultSelectable.homeObjective
     )
 
+    static let ql = RehabTemplate(
+        id: .ql,
+        name: "QL strain",
+        shortDescription: "Focused quadratus lumborum template: hip thrusts, standing side bends, and walking. Judge by the next morning.",
+        objective80_20: PrimaryLoadCatalog.hipThrust.homeObjective
+    )
+
     func objective(for primaryLoad: PrimaryLoadOption) -> String {
         primaryLoad.homeObjective
     }
 
-    static let all: [RehabTemplate] = [.knee]
+    static let all: [RehabTemplate] = [.knee, .ql]
 
     static func template(for id: RehabTrackID) -> RehabTemplate {
         all.first { $0.id == id } ?? .knee

@@ -103,7 +103,7 @@ enum WorkoutStreak {
         case .approaching:
             return (
                 "Window closing",
-                "A hard session in the next hours keeps the chain. One seated extension still counts."
+                "A hard session in the next hours keeps the chain. One loaded session still counts."
             )
         case .oneMiss:
             let chain = lastChain > 0 ? " Last chain: \(sessionWord(lastChain))." : ""

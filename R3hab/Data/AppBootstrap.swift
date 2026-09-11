@@ -14,8 +14,13 @@ enum SettingsSeedPolicy {
         hour == legacyPMReminderHour && minute == legacyPMReminderMinute
     }
 
+    static let knownTrackIDs: Set<String> = [
+        RehabTrackID.knee.rawValue,
+        RehabTrackID.ql.rawValue
+    ]
+
     static func shouldNormalizeActiveTracks(_ csv: String) -> Bool {
-        csv != RehabTrackID.knee.rawValue
+        !knownTrackIDs.contains(csv)
     }
 }
 

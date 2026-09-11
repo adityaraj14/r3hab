@@ -36,15 +36,30 @@ struct SettingsStubView: View {
                     }
                     Text(PhaseGuideCopy.summary(
                         for: settings.currentPhase,
-                        primaryLift: settings.primaryLoad.title
+                        primaryLift: settings.primaryLoad.title,
+                        track: settings.protocolTrack
                     ))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Primary lift") {
-                    Picker("Primary lift", selection: primaryLoadBinding(settings)) {
-                        ForEach(PrimaryLoadCatalog.all) { option in
+                Section("Injury") {
+                    Picker("Injury", selection: injuryBinding(settings)) {
+                        ForEach(InjuryCatalog.selectable) { injury in
+                            Text(injury.title).tag(injury.id)
+                        }
+                    }
+                    Text(settings.selectedInjury.subtitle)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                Section(settings.protocolTrack == .ql ? "Primary work" : "Primary lift") {
+                    Picker(
+                        settings.protocolTrack == .ql ? "Primary work" : "Primary lift",
+                        selection: primaryLoadBinding(settings)
+                    ) {
+                        ForEach(PrimaryLoadCatalog.options(for: settings.protocolTrack)) { option in
                             Text(option.title).tag(option.id)
                         }
                     }
@@ -237,11 +252,28 @@ struct SettingsStubView: View {
         )
     }
 
+    private func injuryBinding(_ settings: AppSettings) -> Binding<String> {
+        Binding(
+            get: { InjuryCatalog.normalizedID(settings.selectedInjuryID) },
+            set: { newValue in
+                settings.selectedInjury = InjuryCatalog.definition(for: newValue)
+                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    settings.primaryLoadID,
+                    track: settings.protocolTrack
+                )
+                try? modelContext.save()
+            }
+        )
+    }
+
     private func primaryLoadBinding(_ settings: AppSettings) -> Binding<String> {
         Binding(
-            get: { PrimaryLoadCatalog.normalizedID(settings.primaryLoadID) },
+            get: { PrimaryLoadCatalog.normalizedID(settings.primaryLoadID, track: settings.protocolTrack) },
             set: { newValue in
-                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(newValue)
+                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    newValue,
+                    track: settings.protocolTrack
+                )
                 try? modelContext.save()
             }
         )

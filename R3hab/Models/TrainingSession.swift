@@ -22,9 +22,9 @@ final class TrainingSession {
     var warmupLoadLbs: Double?
     /// JSON array of `ResistanceSet` — preferred source for multi-set logging.
     var resistanceSetsJSON: String?
-    /// Stored region string. Knee-only in UI; leftover `lowerBack` values map to knee.
+    /// Stored region string. Unknown leftover values (e.g. `lowerBack`) map to knee.
     var loadRegionRaw: String?
-    /// Stored track string. Knee-only in UI; leftover `lowerBack` values map to knee.
+    /// Stored track string (`knee` or `ql`). Unknown leftover values map to knee.
     var trackRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
@@ -67,16 +67,19 @@ final class TrainingSession {
     }
 
     var track: RehabTrackID {
-        get { .knee }
+        get { RehabTrackID(rawValue: trackRaw ?? "") ?? .knee }
         set {
-            trackRaw = RehabTrackID.knee.rawValue
-            loadRegionRaw = LoadRegion.knee.rawValue
+            trackRaw = newValue.rawValue
+            loadRegionRaw = newValue.loadRegion.rawValue
         }
     }
 
     /// Region used for Progress load series. Legacy rows with load but no region map to knee.
     var effectiveLoadRegion: LoadRegion? {
         if let loadRegion { return loadRegion }
+        if let trackRaw, let stored = RehabTrackID(rawValue: trackRaw) {
+            return stored.loadRegion
+        }
         if hasResistanceLog { return .knee }
         return nil
     }
@@ -115,8 +118,9 @@ final class TrainingSession {
         self.warmupReps = warmupReps
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
-        self.loadRegionRaw = LoadRegion.knee.rawValue
-        self.trackRaw = RehabTrackID.knee.rawValue
+        let resolvedTrack = track ?? .knee
+        self.trackRaw = resolvedTrack.rawValue
+        self.loadRegionRaw = (loadRegion ?? resolvedTrack.loadRegion).rawValue
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""

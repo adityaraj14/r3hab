@@ -7,7 +7,6 @@ struct InjuryDefinition: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
     var subtitle: String
-    /// Protocol this label maps to. All current options use the knee / PT diary.
     var protocolTrack: RehabTrackID
     var isSelectable: Bool
 }
@@ -37,17 +36,26 @@ enum InjuryCatalog {
         isSelectable: true
     )
 
-    /// Registry for current and future injuries. Keep QL / low-back out until a protocol exists.
+    static let qlStrain = InjuryDefinition(
+        id: "ql-strain",
+        title: "QL strain",
+        subtitle: "Quadratus lumborum · side-of-waist · hip thrust / side bend / walk",
+        protocolTrack: .ql,
+        isSelectable: true
+    )
+
     static let all: [InjuryDefinition] = [
         jumpersKnee,
         patellarTendinopathy,
-        patellarTendonitis
+        patellarTendonitis,
+        qlStrain
     ]
 
     static var selectable: [InjuryDefinition] {
         all.filter(\.isSelectable)
     }
 
+    /// Skip-from-the-first-screen default stays the knee diary.
     static let defaultSelectable = patellarTendinopathy
 
     static func definition(for id: String) -> InjuryDefinition {
@@ -56,5 +64,9 @@ enum InjuryCatalog {
 
     static func normalizedID(_ id: String) -> String {
         definition(for: id).id
+    }
+
+    static func contains(_ id: String) -> Bool {
+        all.contains { $0.id == id }
     }
 }

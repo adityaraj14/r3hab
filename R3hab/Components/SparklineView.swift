@@ -22,6 +22,8 @@ struct KneeExploreChart: View {
     var height: CGFloat = 168
     var visibleDays: Int = 7
     var loadTitle: String = "Seated extension load"
+    var showsLoad: Bool = true
+    var emptyDescription: String = "Log this morning’s pain or a seated-extension session. Load vs next-morning pain is the insight."
 
     @State private var selectedDate: Date?
 
@@ -80,20 +82,22 @@ struct KneeExploreChart: View {
                 ) {
                     painChart
                 }
-                chartBlock(
-                    title: loadTitle,
-                    unit: "lbs",
-                    accessibility: "\(loadTitle) in pounds. Tap a day for details."
-                ) {
-                    loadChart
+                if showsLoad {
+                    chartBlock(
+                        title: loadTitle,
+                        unit: "lbs",
+                        accessibility: "\(loadTitle) in pounds. Tap a day for details."
+                    ) {
+                        loadChart
+                    }
+                    loadLegend
                 }
-                loadLegend
                 selectionCard
             } else {
                 ContentUnavailableView(
                     "The trend starts with one honest number",
                     systemImage: "chart.xyaxis.line",
-                    description: Text("Log this morning’s pain or a seated-extension session. Load vs next-morning pain is the insight.")
+                    description: Text(emptyDescription)
                 )
                 .frame(height: 140)
             }
@@ -258,15 +262,17 @@ struct KneeExploreChart: View {
                     labeledValue("During", selected.duringPain.map { String(Int($0)) } ?? "—")
                     labeledValue("After", selected.afterPain.map { String(Int($0)) } ?? "—")
                 }
-                HStack(spacing: 16) {
-                    if sidesDiverge {
-                        labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
-                        labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
-                    } else {
-                        labeledValue(
-                            "Load",
-                            (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
-                        )
+                if showsLoad {
+                    HStack(spacing: 16) {
+                        if sidesDiverge {
+                            labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
+                            labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
+                        } else {
+                            labeledValue(
+                                "Load",
+                                (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
+                            )
+                        }
                     }
                 }
             }
@@ -624,6 +630,7 @@ struct ConsistencyCard: View {
 
 struct LoadProgressChart: View {
     let points: [DayValue]
+    var title: String = "Seated extension load"
     var height: CGFloat = 140
 
     private var hasData: Bool {
@@ -643,7 +650,7 @@ struct LoadProgressChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Seated extension load")
+                Text(title)
                     .font(.headline)
                 Spacer()
                 Text("lbs")
@@ -694,6 +701,6 @@ struct LoadProgressChart: View {
             }
         }
         .frame(height: height)
-        .accessibilityLabel("Seated extension max load in pounds")
+        .accessibilityLabel("\(title) in pounds")
     }
 }

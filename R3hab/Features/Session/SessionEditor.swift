@@ -70,7 +70,7 @@ struct SessionEditor: View {
                     }
                 }
             } header: {
-                Text("Patellar tendinopathy")
+                Text(activeTemplate.name)
             }
 
             Section("Exercise") {
@@ -227,7 +227,15 @@ struct SessionEditor: View {
     }
 
     private var primaryLoadID: String {
-        settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID
+        settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID(for: protocolTrack)
+    }
+
+    private var protocolTrack: RehabTrackID {
+        settings?.protocolTrack ?? .knee
+    }
+
+    private var activeTemplate: RehabTemplate {
+        RehabTemplate.template(for: protocolTrack)
     }
 
     private var lateralityBinding: Binding<SetLaterality> {
@@ -248,9 +256,9 @@ struct SessionEditor: View {
 
     private var workSetsSection: some View {
         Section {
-            Picker("Legs", selection: lateralityBinding) {
+            Picker(protocolTrack == .ql ? "Sides" : "Legs", selection: lateralityBinding) {
                 ForEach(SetLaterality.allCases) { mode in
-                    Text(mode.title).tag(mode)
+                    Text(mode.title(for: protocolTrack)).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
@@ -295,7 +303,7 @@ struct SessionEditor: View {
             Text(usesIsoHolds ? "Working holds" : "Working sets")
         } footer: {
             Text(laterality == .bilateral
-                 ? "One load for both knees. Switch to Each leg if left and right use different loads. One 24h resolve for the session."
+                 ? "One load for both \(protocolTrack.lateralityNoun). Switch to \(SetLaterality.unilateral.title(for: protocolTrack)) if left and right use different loads. One 24h resolve for the session."
                  : "Each set logs left and right separately so loads can differ. One 24h resolve for the session.")
         }
     }
@@ -335,7 +343,7 @@ struct SessionEditor: View {
         } header: {
             Text("Warm-up (isometric holds)")
         } footer: {
-            Text("Reps = holds · time per hold · load (lbs). Same load for both knees.")
+            Text("Reps = holds · time per hold · load (lbs). Same load for both \(protocolTrack.lateralityNoun).")
         }
     }
 
@@ -522,7 +530,9 @@ struct SessionEditor: View {
             workSets = []
             warmupSets = []
         }
-        seedDefaultSets()
+        if preset.tracksResistance {
+            seedDefaultSets()
+        }
         syncWhatIDid()
         refreshSpacing()
     }
@@ -626,8 +636,7 @@ struct SessionEditor: View {
             existing.painDuring = painDuring
             existing.painAfter = storedAfter
             existing.notes = notes
-            existing.track = .knee
-            existing.loadRegion = .knee
+            applyTrack(to: existing)
             existing.setResistanceSets(allSets)
             existing.updatedAt = Date()
             do {
@@ -650,8 +659,8 @@ struct SessionEditor: View {
             whatIDid: text,
             painDuring: painDuring,
             painAfter: storedAfter,
-            loadRegion: .knee,
-            track: .knee,
+            loadRegion: resolvedLoadRegion,
+            track: resolvedTrack,
             resistanceSets: allSets,
             calendar: calendar
         )
@@ -679,6 +688,34 @@ struct SessionEditor: View {
         } catch {
             presentError(error.localizedDescription)
         }
+    }
+
+    private var selectedPreset: SessionPreset? {
+        guard let selectedPresetId else { return nil }
+        return SessionPreset.all.first { $0.id == selectedPresetId }
+    }
+
+    private var resolvedTrack: RehabTrackID {
+        if let preset = selectedPreset, !preset.tracks.contains(protocolTrack) {
+            return preset.tracks.first ?? protocolTrack
+        }
+        return protocolTrack
+    }
+
+    private var resolvedLoadRegion: LoadRegion {
+        selectedPreset?.loadRegion ?? resolvedTrack.loadRegion
+    }
+
+    private func applyTrack(to session: TrainingSession) {
+        if isEditing {
+            if let preset = selectedPreset, !preset.tracks.contains(session.track) {
+                session.track = preset.tracks.first ?? session.track
+                session.loadRegion = preset.loadRegion
+            }
+            return
+        }
+        session.track = resolvedTrack
+        session.loadRegion = resolvedLoadRegion
     }
 
     private func resolvedPainAfter() -> Int {

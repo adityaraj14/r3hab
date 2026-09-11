@@ -100,6 +100,10 @@ struct RehabProgressView: View {
         !checkIns.isEmpty || !sessions.isEmpty
     }
 
+    private var primaryLoad: PrimaryLoadOption {
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: settings?.protocolTrack ?? .knee)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -108,7 +112,7 @@ struct RehabProgressView: View {
                         ContentUnavailableView(
                             "Your first votes are still coming",
                             systemImage: "chart.line.uptrend.xyaxis",
-                            description: Text("Log this morning’s pain or a seated-extension session. Progress is the diary filling in — not a grade.")
+                            description: Text(progressEmptyDescription)
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
@@ -142,7 +146,9 @@ struct RehabProgressView: View {
                                 height: 140,
                                 // Must match the picker. Capping at 7 kept 28-day on a 7-day domain.
                                 visibleDays: range.rawValue,
-                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
+                                loadTitle: primaryLoad.chartLoadTitle,
+                                showsLoad: primaryLoad.plotsLoad,
+                                emptyDescription: progressEmptyDescription
                             )
                             .id(range.rawValue)
                         }
@@ -154,13 +160,25 @@ struct RehabProgressView: View {
 
                         OutcomeMixCard(mix: outcomeMix)
                         ConsistencyCard(summary: consistency)
-                        LoadProgressChart(points: loadPoints)
+                        if primaryLoad.plotsLoad {
+                            LoadProgressChart(points: loadPoints, title: primaryLoad.chartLoadTitle)
+                        }
                     }
                 }
                 .padding()
             }
             .navigationTitle("Progress")
         }
+    }
+
+    private var progressEmptyDescription: String {
+        if primaryLoad.track == .ql {
+            if primaryLoad.plotsLoad {
+                return "Log this morning’s pain or a \(primaryLoad.title.lowercased()) session. Progress is the diary filling in — not a grade."
+            }
+            return "Log this morning’s pain or a walk. Walking stays time-based — no fake lbs."
+        }
+        return "Log this morning’s pain or a seated-extension session. Progress is the diary filling in — not a grade."
     }
 
     private var heroRow: some View {

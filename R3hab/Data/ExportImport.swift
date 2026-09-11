@@ -346,10 +346,15 @@ enum ExportImportService {
         settings.notificationsEnabled = dto.notificationsEnabled
         settings.protocolRevision = dto.protocolRevision
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
-            settings.selectedInjuryID = InjuryCatalog.normalizedID(injuryID)
+            settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }
         if let loadID = dto.primaryLoadID, !loadID.isEmpty {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID, track: settings.protocolTrack)
+        } else {
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                settings.primaryLoadID,
+                track: settings.protocolTrack
+            )
         }
     }
 

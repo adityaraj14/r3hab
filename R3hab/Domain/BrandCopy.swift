@@ -52,13 +52,40 @@ enum BrandCopy {
     ]
 
     static let onboardingFootnote = """
-    Day to day that looks like Record, Reload, Resolve: morning pain, one lift (default seated leg extension), then Better / Same / Worse. Mild pain during load is OK if the next morning is not worse.
+    Day to day that looks like Record, Reload, Resolve: morning pain, one primary movement, then Better / Same / Worse. Mild pain during load is OK if the next morning is not worse.
     """
+
+    static let injuryLead = """
+    Knee labels share the patellar tendon diary. QL strain is its own template: hip thrusts, standing side bends, and walking.
+    """
+
+    static let primaryLiftLead = "This is the lift you dose the same way. Switch later in Settings."
+
+    static let qlPrimaryWorkLead = "Hip thrusts and side bends carry weight. Walking is time and steps — not fake lbs."
 
     static let settingsSectionTitle = "Why R3hab"
     static let settingsBlurb = """
-    R3hab is rehab with a 3: Identity, Process, Outcome — a habit of informed rehab. Session streaks count Process votes. No badges.
+    R3hab is rehab with a 3: Identity, Process, Outcome — a habit of informed rehab. Session streaks count Process votes. No badges. Completely private. No ads. Logs stay on this iPhone.
     """
+
+    static let privacyEyebrow = "Private"
+    static let privacyTitle = "Yours. On this phone."
+    static let privacyLead = "A diary, not a product that sells you."
+
+    static let privacyPoints: [BrandHabit] = [
+        BrandHabit(
+            title: "Completely private",
+            body: "No account. No cloud login. Pain and sessions never leave this device."
+        ),
+        BrandHabit(
+            title: "No ads",
+            body: "Nothing to tap through. Nothing watching the set."
+        ),
+        BrandHabit(
+            title: "On-device only",
+            body: "SwiftData on your iPhone. Export a file if you want a backup — we don’t host one."
+        )
+    ]
 }
 
 /// Short Today lines. Original R3hab copy, paraphrased habit ideas, and
@@ -95,7 +122,7 @@ enum MotivationalQuotes {
         ),
         MotivationalQuote(text: "Log the set. The morning tells the truth.", attribution: "R3hab"),
         MotivationalQuote(
-            text: "Don’t break the chain — one seated extension still counts.",
+            text: "Don’t break the chain — one hard session still counts.",
             attribution: "R3hab, inspired by Atomic Habits"
         ),
         MotivationalQuote(text: "Capacity is built in quiet sessions.", attribution: "R3hab")

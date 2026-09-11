@@ -82,6 +82,18 @@ struct HomeView: View {
         todayCheckIn?.dailyPainPM != nil
     }
 
+    private var activeTrack: RehabTrackID {
+        settings?.protocolTrack ?? .knee
+    }
+
+    private var activeTemplate: RehabTemplate {
+        RehabTemplate.template(for: activeTrack)
+    }
+
+    private var activePrimaryLoad: PrimaryLoadOption {
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: activeTrack)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -456,14 +468,14 @@ struct HomeView: View {
             .controlSize(.large)
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("Patellar tendon", systemImage: "figure.strengthtraining.traditional")
+                Label(activeTemplate.name, systemImage: activeTrack.systemImage)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PainChartColors.knee)
-                Text(RehabTemplate.knee.objective(for: settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable))
+                Text(activeTemplate.objective(for: activePrimaryLoad))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button { showSession = true } label: {
-                    Text(settings?.primaryLoad.logCTA ?? PrimaryLoadCatalog.defaultSelectable.logCTA)
+                    Text(activePrimaryLoad.logCTA)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -484,7 +496,8 @@ struct HomeView: View {
                 .font(.headline)
             Text(PhaseGuideCopy.summary(
                 for: settings?.currentPhase ?? .aFlareDeLoad,
-                primaryLift: settings?.primaryLoad.title ?? PrimaryLoadCatalog.defaultSelectable.title
+                primaryLift: activePrimaryLoad.title,
+                track: activeTrack
             ))
                 .font(.footnote)
                 .foregroundStyle(.secondary)

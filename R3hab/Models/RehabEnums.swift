@@ -57,10 +57,16 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
 /// Which resistance chart a structured load belongs on. Knee-only.
 enum LoadRegion: String, Codable, CaseIterable, Identifiable, Sendable {
     case knee
+    case ql
 
     var id: String { rawValue }
 
-    var title: String { "Knee" }
+    var title: String {
+        switch self {
+        case .knee: return "Knee"
+        case .ql: return "QL"
+        }
+    }
 }
 
 /// How SessionEditor opens for a new log.
