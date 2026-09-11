@@ -31,7 +31,7 @@ struct Resolve24hSheet: View {
                             .foregroundStyle(.secondary)
                     }
                     LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
-                    LabeledContent("During / after", value: "\(session.painDuring) → \(session.painAfter)")
+                    LabeledContent("During / after", value: "\(session.painDuring) → \(session.displayPainAfter)")
                 }
 
                 Section("How is the tendon next day?") {

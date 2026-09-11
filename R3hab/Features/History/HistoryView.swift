@@ -11,6 +11,7 @@ struct HistoryView: View {
     @State private var editDailyDate: Date?
     @State private var editSessionId: UUID?
     @State private var resolveSessionId: UUID?
+    @State private var afterPainSessionId: UUID?
     @State private var showBackdate = false
     @State private var backdateKind: BackdateKind = .daily
     @State private var backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
@@ -21,7 +22,7 @@ struct HistoryView: View {
 
     private var calendar: Calendar { .current }
 
-    enum Filter: String, CaseIterable, Identifiable {
+    enum Filter: String, CaseIterable, Identifiable, Hashable {
         case all, daily, sessions
         var id: String { rawValue }
         var title: String {
@@ -46,60 +47,7 @@ struct HistoryView: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                switch filter {
-                case .all:
-                    ForEach(dayEntries) { day in
-                        Button {
-                            editDailyDate = day.date
-                        } label: {
-                            daySummaryRow(day)
-                        }
-                    }
-                case .daily:
-                    ForEach(checkIns, id: \.dayKey) { checkIn in
-                        Button {
-                            editDailyDate = checkIn.date
-                        } label: {
-                            dailyRow(checkIn)
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                deleteDailyKey = checkIn.dayKey
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
-                case .sessions:
-                    ForEach(sessionRows, id: \.id) { session in
-                        Button {
-                            editSessionId = session.id
-                        } label: {
-                            sessionRow(session)
-                        }
-                        .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                            if session.response24h == .pending {
-                                Button {
-                                    resolveSessionId = session.id
-                                } label: {
-                                    Label("Resolve", systemImage: "checkmark.circle")
-                                }
-                                .tint(.orange)
-                            }
-                        }
-                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                            Button(role: .destructive) {
-                                deleteSessionId = session.id
-                            } label: {
-                                Label("Delete", systemImage: "trash")
-                            }
-                        }
-                    }
-                }
-            }
-            .listStyle(.insetGrouped)
-            .safeAreaInset(edge: .top, spacing: 0) {
+            VStack(spacing: 0) {
                 Picker("Filter", selection: $filter) {
                     ForEach(Filter.allCases) { f in
                         Text(f.title).tag(f)
@@ -109,6 +57,16 @@ struct HistoryView: View {
                 .padding(.horizontal)
                 .padding(.vertical, 10)
                 .background(Color(.systemBackground))
+
+                TabView(selection: $filter) {
+                    allList
+                        .tag(Filter.all)
+                    dailyList
+                        .tag(Filter.daily)
+                    workoutsList
+                        .tag(Filter.sessions)
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .navigationTitle("Log")
             .toolbar {
@@ -127,15 +85,6 @@ struct HistoryView: View {
                     } label: {
                         Image(systemName: "plus.circle")
                     }
-                }
-            }
-            .overlay {
-                if isEmpty {
-                    ContentUnavailableView(
-                        emptyTitle,
-                        systemImage: "calendar",
-                        description: Text(emptyDescription)
-                    )
                 }
             }
             .sheet(isPresented: Binding(
@@ -166,6 +115,14 @@ struct HistoryView: View {
             )) {
                 if let id = resolveSessionId, let s = sessions.first(where: { $0.id == id }) {
                     Resolve24hSheet(session: s)
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { afterPainSessionId != nil },
+                set: { if !$0 { afterPainSessionId = nil } }
+            )) {
+                if let id = afterPainSessionId, let s = sessions.first(where: { $0.id == id }) {
+                    AfterPainSheet(session: s)
                 }
             }
             .sheet(isPresented: $showBackdate) {
@@ -263,7 +220,7 @@ struct HistoryView: View {
                 Button("Delete", role: .destructive) {
                     if let id = deleteSessionId,
                        let row = sessions.first(where: { $0.id == id }) {
-                        NotificationScheduler.cancelPending(sessionId: row.id)
+                        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
                         modelContext.delete(row)
                         try? modelContext.save()
                         Haptics.warning()
@@ -273,6 +230,100 @@ struct HistoryView: View {
                 Button("Cancel", role: .cancel) { deleteSessionId = nil }
             }
         }
+    }
+
+    private var allList: some View {
+        List {
+            ForEach(dayEntries) { day in
+                Button {
+                    editDailyDate = day.date
+                } label: {
+                    daySummaryRow(day)
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .overlay {
+            if dayEntries.isEmpty {
+                emptyState(title: "No days yet", description: "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate.")
+            }
+        }
+    }
+
+    private var dailyList: some View {
+        List {
+            ForEach(checkIns, id: \.dayKey) { checkIn in
+                Button {
+                    editDailyDate = checkIn.date
+                } label: {
+                    dailyRow(checkIn)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteDailyKey = checkIn.dayKey
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .overlay {
+            if checkIns.isEmpty {
+                emptyState(title: "No check-ins yet", description: "Morning and evening pain plus steps will show here.")
+            }
+        }
+    }
+
+    private var workoutsList: some View {
+        List {
+            ForEach(sessionRows, id: \.id) { session in
+                Button {
+                    editSessionId = session.id
+                } label: {
+                    sessionRow(session)
+                }
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                    if !session.hasLoggedPainAfter {
+                        Button {
+                            afterPainSessionId = session.id
+                        } label: {
+                            Label("After", systemImage: "bolt.heart")
+                        }
+                        .tint(Color.accentColor)
+                    }
+                    if session.response24h == .pending {
+                        Button {
+                            resolveSessionId = session.id
+                        } label: {
+                            Label("Resolve", systemImage: "checkmark.circle")
+                        }
+                        .tint(.orange)
+                    }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteSessionId = session.id
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .listStyle(.insetGrouped)
+        .overlay {
+            if sessions.isEmpty {
+                emptyState(title: "No workouts yet", description: "Logged workouts will show here. Use + to backdate.")
+            }
+        }
+    }
+
+    private func emptyState(title: String, description: String) -> some View {
+        ContentUnavailableView(
+            title,
+            systemImage: "calendar",
+            description: Text(description)
+        )
     }
 
     private struct DayLogEntry: Identifiable {
@@ -312,30 +363,6 @@ struct HistoryView: View {
         sessions.sorted { a, b in
             if a.date != b.date { return a.date > b.date }
             return a.createdAt > b.createdAt
-        }
-    }
-
-    private var isEmpty: Bool {
-        switch filter {
-        case .all: return dayEntries.isEmpty
-        case .daily: return checkIns.isEmpty
-        case .sessions: return sessions.isEmpty
-        }
-    }
-
-    private var emptyTitle: String {
-        switch filter {
-        case .all: return "No days yet"
-        case .daily: return "No check-ins yet"
-        case .sessions: return "No workouts yet"
-        }
-    }
-
-    private var emptyDescription: String {
-        switch filter {
-        case .all: return "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate."
-        case .daily: return "Morning and evening pain plus steps will show here."
-        case .sessions: return "Logged workouts will show here. Use + to backdate."
         }
     }
 
@@ -403,12 +430,12 @@ struct HistoryView: View {
             }
             metricRow("Date", s.date.formatted(date: .abbreviated, time: .omitted))
             metricRow("Pain during", String(s.painDuring))
-            metricRow("Pain after", String(s.painAfter))
+            metricRow("Pain after", s.displayPainAfter)
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Workout, \(s.displayTitle). \(s.date.formatted(date: .abbreviated, time: .omitted)). Pain during \(s.painDuring), after \(s.painAfter). \(s.response24h.title)."
+            "Workout, \(s.displayTitle). \(s.date.formatted(date: .abbreviated, time: .omitted)). Pain during \(s.painDuring), after \(s.displayPainAfter). \(s.response24h.title)."
         )
     }
 
@@ -490,6 +517,7 @@ struct HistoryView: View {
 
 #Preview {
     HistoryView()
+        .environment(AppRouter())
         .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

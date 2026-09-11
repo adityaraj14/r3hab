@@ -25,6 +25,7 @@
 		49060090CED747AB85AC2725 /* RehabProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabProgressView.swift; sourceTree = "<group>"; };
 		7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Resolve24hSheet.swift; sourceTree = "<group>"; };
 		47E696520C304998860FBB89 /* SessionEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionEditor.swift; sourceTree = "<group>"; };
+		A71C4E5F8B2D4A90C1D3E4F5 /* AfterPainSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AfterPainSheet.swift; sourceTree = "<group>"; };
 		221B4266A75B41A3BCBE40BB /* SessionPresets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionPresets.swift; sourceTree = "<group>"; };
 		602D044C686A40A3BB2B4414 /* SettingsStubView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsStubView.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F64001A2B3C4D5 /* PhaseGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideView.swift; sourceTree = "<group>"; };
@@ -68,6 +69,7 @@
 		659AAA46B98B42759D73F90C /* RehabProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49060090CED747AB85AC2725 /* RehabProgressView.swift */; };
 		C8EADC1601E04DCDBF7D169E /* Resolve24hSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */; };
 		9B961E5758404C578F03981B /* SessionEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47E696520C304998860FBB89 /* SessionEditor.swift */; };
+		B82D5F6A9C3E4B01D2E4F506 /* AfterPainSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = A71C4E5F8B2D4A90C1D3E4F5 /* AfterPainSheet.swift */; };
 		28D2ECE299044FEFBDC1D67F /* SessionPresets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221B4266A75B41A3BCBE40BB /* SessionPresets.swift */; };
 		72C3BEF25F6C4DBF8310C07E /* SettingsStubView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 602D044C686A40A3BB2B4414 /* SettingsStubView.swift */; };
 		A1B2C3D4E5F64002A2B3C4D6 /* PhaseGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F64001A2B3C4D5 /* PhaseGuideView.swift */; };
@@ -131,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				7C90FD78D2A1450980145395 /* Resolve24hSheet.swift */,
+				A71C4E5F8B2D4A90C1D3E4F5 /* AfterPainSheet.swift */,
 				47E696520C304998860FBB89 /* SessionEditor.swift */,
 				221B4266A75B41A3BCBE40BB /* SessionPresets.swift */,
 			);
@@ -296,6 +299,7 @@
 				0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */,
 				659AAA46B98B42759D73F90C /* RehabProgressView.swift in Sources */,
 				C8EADC1601E04DCDBF7D169E /* Resolve24hSheet.swift in Sources */,
+				B82D5F6A9C3E4B01D2E4F506 /* AfterPainSheet.swift in Sources */,
 				9B961E5758404C578F03981B /* SessionEditor.swift in Sources */,
 				28D2ECE299044FEFBDC1D67F /* SessionPresets.swift in Sources */,
 				72C3BEF25F6C4DBF8310C07E /* SettingsStubView.swift in Sources */,
@@ -373,7 +377,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
@@ -403,7 +407,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 17;
+				CURRENT_PROJECT_VERSION = 18;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;

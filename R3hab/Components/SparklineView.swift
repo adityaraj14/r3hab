@@ -91,9 +91,9 @@ struct KneeExploreChart: View {
                 selectionCard
             } else {
                 ContentUnavailableView(
-                    "No knee data yet",
+                    "The trend starts with one honest number",
                     systemImage: "chart.xyaxis.line",
-                    description: Text("Log AM pain or a session to explore the trend.")
+                    description: Text("Log this morning’s pain or a seated-extension session. Load vs next-morning pain is the insight.")
                 )
                 .frame(height: 140)
             }
@@ -186,14 +186,13 @@ struct KneeExploreChart: View {
         if let load = sidesDiverge ? point.leftLoadLbs : (point.leftLoadLbs ?? point.rightLoadLbs) {
             LineMark(
                 x: .value("Day", point.date),
-                y: .value("Load", load),
-                series: .value("Side", sidesDiverge ? "L" : "Load")
+                y: .value(sidesDiverge ? "Left load" : "Load", load)
             )
             .interpolationMethod(.linear)
             .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
             PointMark(
                 x: .value("Day", point.date),
-                y: .value("Load", load)
+                y: .value(sidesDiverge ? "Left load" : "Load", load)
             )
             .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
             .symbolSize(40)
@@ -205,14 +204,13 @@ struct KneeExploreChart: View {
         if let right = point.rightLoadLbs {
             LineMark(
                 x: .value("Day", point.date),
-                y: .value("Load", right),
-                series: .value("Side", "R")
+                y: .value("Right load", right)
             )
             .interpolationMethod(.linear)
             .foregroundStyle(PainChartColors.right)
             PointMark(
                 x: .value("Day", point.date),
-                y: .value("Load", right)
+                y: .value("Right load", right)
             )
             .foregroundStyle(PainChartColors.right)
             .symbolSize(40)
@@ -256,7 +254,11 @@ struct KneeExploreChart: View {
                 Text(selected.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 16) {
-                    labeledValue("Morning pain", selected.amPain.map { String(Int($0)) } ?? "—")
+                    labeledValue("Morning", selected.amPain.map { String(Int($0)) } ?? "—")
+                    labeledValue("During", selected.duringPain.map { String(Int($0)) } ?? "—")
+                    labeledValue("After", selected.afterPain.map { String(Int($0)) } ?? "—")
+                }
+                HStack(spacing: 16) {
                     if sidesDiverge {
                         labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
                         labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
@@ -472,5 +474,226 @@ struct MetricChartCard: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
         )
+    }
+}
+
+struct OutcomeMixCard: View {
+    let mix: OutcomeMix
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("24h outcomes")
+                .font(.headline)
+            if mix.resolved == 0 && mix.pending == 0 {
+                Text("Resolve a session tomorrow morning. Better / Same is the vote that counts — not zero pain during the set.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("\(mix.cleanStreak)")
+                        .font(.largeTitle.monospacedDigit().weight(.bold))
+                        .foregroundStyle(Color.accentColor)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(mix.cleanStreak == 1 ? "clean session" : "clean sessions")
+                            .font(.subheadline.weight(.semibold))
+                        Text("Better or Same in a row")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                mixBar
+                HStack {
+                    mixStat("Better", mix.better, .green)
+                    mixStat("Same", mix.same, .secondary)
+                    mixStat("Worse", mix.worse, .orange)
+                    if mix.pending > 0 {
+                        mixStat("Open", mix.pending, .orange)
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "24 hour outcomes. Clean streak \(mix.cleanStreak). Better \(mix.better), same \(mix.same), worse \(mix.worse)."
+        )
+    }
+
+    @ViewBuilder
+    private var mixBar: some View {
+        let total = max(mix.resolved + mix.pending, 1)
+        GeometryReader { geo in
+            HStack(spacing: 3) {
+                if mix.better > 0 {
+                    Capsule().fill(Color.green).frame(width: geo.size.width * CGFloat(mix.better) / CGFloat(total))
+                }
+                if mix.same > 0 {
+                    Capsule().fill(Color.secondary.opacity(0.55)).frame(width: geo.size.width * CGFloat(mix.same) / CGFloat(total))
+                }
+                if mix.worse > 0 {
+                    Capsule().fill(Color.orange).frame(width: geo.size.width * CGFloat(mix.worse) / CGFloat(total))
+                }
+                if mix.pending > 0 {
+                    Capsule().fill(Color.accentColor.opacity(0.45)).frame(width: geo.size.width * CGFloat(mix.pending) / CGFloat(total))
+                }
+            }
+        }
+        .frame(height: 10)
+    }
+
+    private func mixStat(_ title: String, _ value: Int, _ color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text("\(value)")
+                .font(.title3.monospacedDigit().weight(.bold))
+                .foregroundStyle(color)
+            Text(title)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+struct ConsistencyCard: View {
+    let summary: ConsistencySummary
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Showing up")
+                .font(.headline)
+            Text(encouragement)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            meter(title: "Check-ins", value: summary.checkInDays, total: summary.windowDays)
+            meter(title: "Mornings", value: summary.morningDays, total: summary.windowDays)
+            meter(title: "Train days", value: summary.sessionDays, total: summary.windowDays)
+            Text("\(summary.sessionCount) session\(summary.sessionCount == 1 ? "" : "s") in this window")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Consistency. \(summary.checkInDays) of \(summary.windowDays) check-ins. \(summary.sessionDays) train days. \(summary.sessionCount) sessions."
+        )
+    }
+
+    private var encouragement: String {
+        if summary.checkInDays == 0 {
+            return "One morning score is a vote. The diary is the rehab."
+        }
+        if summary.checkInDays >= summary.windowDays {
+            return "Every day in this window has a mark. That’s the habit."
+        }
+        return "\(summary.checkInDays) of \(summary.windowDays) days logged. Keep the votes coming."
+    }
+
+    private func meter(title: String, value: Int, total: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                Spacer()
+                Text("\(value)/\(total)")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule()
+                        .fill(Color.white.opacity(0.08))
+                    Capsule()
+                        .fill(Color.accentColor)
+                        .frame(width: geo.size.width * CGFloat(total == 0 ? 0 : Double(value) / Double(total)))
+                }
+            }
+            .frame(height: 8)
+        }
+    }
+}
+
+struct LoadProgressChart: View {
+    let points: [DayValue]
+    var height: CGFloat = 140
+
+    private var hasData: Bool {
+        points.contains { $0.value != nil }
+    }
+
+    private var xDomain: ClosedRange<Date>? {
+        guard let first = points.first?.date, let last = points.last?.date else { return nil }
+        return first...last
+    }
+
+    private var yMax: Double {
+        let maxVal = points.compactMap(\.value).max() ?? 20
+        return max(maxVal * 1.1, 20)
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Seated extension load")
+                    .font(.headline)
+                Spacer()
+                Text("lbs")
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+            }
+            if hasData {
+                loadChart
+            } else {
+                Text("Add load on a working set and this line becomes your capacity trail.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(minHeight: 80, alignment: .topLeading)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+    }
+
+    private var loadChart: some View {
+        Chart {
+            ForEach(points) { point in
+                if let value = point.value {
+                    LineMark(
+                        x: .value("Day", point.date),
+                        y: .value("Load", value)
+                    )
+                    .interpolationMethod(.linear)
+                    .foregroundStyle(PainChartColors.left)
+                    PointMark(
+                        x: .value("Day", point.date),
+                        y: .value("Load", value)
+                    )
+                    .foregroundStyle(PainChartColors.left)
+                    .symbolSize(36)
+                }
+            }
+        }
+        .chartYScale(domain: 0...yMax)
+        .modifier(MetricChartXScaleModifier(domain: xDomain))
+        .chartXAxis {
+            AxisMarks(values: .stride(by: .day, count: max(1, points.count / 3))) { _ in
+                AxisGridLine()
+                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
+            }
+        }
+        .frame(height: height)
+        .accessibilityLabel("Seated extension max load in pounds")
     }
 }

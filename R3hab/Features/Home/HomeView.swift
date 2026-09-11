@@ -13,6 +13,7 @@ struct HomeView: View {
     @State private var showPM = false
     @State private var showSession = false
     @State private var resolveTargetId: UUID?
+    @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
 
     private var calendar: Calendar { .current }
@@ -53,30 +54,10 @@ struct HomeView: View {
         )
     }
 
-    private var metrics: [DailyMetricSnapshot] {
-        checkIns.map {
-            DailyMetricSnapshot(
-                date: $0.date,
-                restingPainAM: $0.restingPainAM,
-                dailyPainPM: $0.dailyPainPM,
-                steps: $0.steps
-            )
-        }
-    }
-
-    private var explorePoints: [DayExplorePoint] {
-        ChartMetricBuilder.explorePoints(
-            checkIns: metrics,
-            sideLoads: sessions.map {
-                SessionSideLoadSnapshot(
-                    date: $0.date,
-                    leftMaxLbs: $0.chartMaxLoadLeft,
-                    rightMaxLbs: $0.chartMaxLoadRight,
-                    unspecifiedMaxLbs: $0.chartMaxLoad
-                )
-            },
-            dayCount: 7
-        )
+    private var missingAfterPain: [TrainingSession] {
+        sessions
+            .filter { !$0.hasLoggedPainAfter }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var pendingBadge: Int { overduePending.count }
@@ -105,22 +86,8 @@ struct HomeView: View {
 
                     checklist
 
-                    if explorePoints.contains(where: \.hasValues) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Last 7 days")
-                                .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(
-                                points: explorePoints,
-                                height: 110,
-                                visibleDays: 7,
-                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
-                            )
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(.secondarySystemBackground))
-                        )
+                    if !missingAfterPain.isEmpty {
+                        afterPainSection
                     }
 
                     if !todayPending.isEmpty {
@@ -162,6 +129,14 @@ struct HomeView: View {
             )) {
                 if let id = resolveTargetId, let session = sessions.first(where: { $0.id == id }) {
                     Resolve24hSheet(session: session)
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { afterPainTargetId != nil },
+                set: { if !$0 { afterPainTargetId = nil } }
+            )) {
+                if let id = afterPainTargetId, let session = sessions.first(where: { $0.id == id }) {
+                    AfterPainSheet(session: session)
                 }
             }
             .confirmationDialog(
@@ -211,6 +186,43 @@ struct HomeView: View {
 
             ForEach(overduePending, id: \.id) { session in
                 pendingCard(session, early: false)
+            }
+        }
+    }
+
+    private var afterPainSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Log pain after", systemImage: "clock.badge.exclamationmark")
+                .font(.headline)
+                .foregroundStyle(Color.accentColor)
+
+            ForEach(missingAfterPain, id: \.id) { session in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(session.displayTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    if let resistance = session.resistanceSummary {
+                        Text(resistance)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Text("During \(session.painDuring) · after not logged yet")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Button("Log after-pain") {
+                        afterPainTargetId = session.id
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                )
             }
         }
     }
@@ -268,7 +280,7 @@ struct HomeView: View {
     }
 
     private func pendingSubtitle(_ session: TrainingSession) -> String {
-        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.painAfter) after"
+        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.displayPainAfter) after"
     }
 
     private func phaseABanner(_ status: PhaseAExitStatus) -> some View {

@@ -26,6 +26,7 @@ struct SessionEditor: View {
     @State private var painAfter: Int? = nil
     @State private var notes: String = ""
     @State private var errorMessage: String?
+    @State private var errorDismissTask: Task<Void, Never>?
     @State private var spacingWarning: String?
     @State private var didLoad = false
     @State private var showResolve = false
@@ -120,13 +121,29 @@ struct SessionEditor: View {
                 }
             }
 
+            if !isEditing, let last = lastSessionContext {
+                lastSessionSection(last)
+            }
+
             Section {
                 PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
-                PainScoreControl(title: "After (required)", value: $painAfter, allowsClear: false)
+                if isEditing {
+                    PainScoreControl(
+                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
+                        value: $painAfter,
+                        allowsClear: !afterPainAlreadyLogged
+                    )
+                }
             } header: {
                 Text("Pain")
             } footer: {
-                Text("Starts empty. Both sides share this score and one 24h resolve.")
+                if isEditing {
+                    Text(afterPainAlreadyLogged
+                         ? "Both sides share this score and one 24h resolve."
+                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
+                } else {
+                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
+                }
             }
 
             Section("Notes") {
@@ -145,11 +162,6 @@ struct SessionEditor: View {
                     Text(spacingWarning).font(.footnote).foregroundStyle(.orange)
                 }
             }
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).font(.footnote).foregroundStyle(.red)
-                }
-            }
         }
         .navigationTitle(navigationTitleText)
         .navigationBarTitleDisplayMode(.inline)
@@ -161,11 +173,47 @@ struct SessionEditor: View {
                 Button("Save") { save() }.fontWeight(.semibold)
             }
         }
+        .safeAreaInset(edge: .top, spacing: 0) {
+            if let errorMessage {
+                FormErrorBanner(message: errorMessage)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.easeInOut(duration: 0.2), value: errorMessage)
         .onAppear(perform: load)
-        .onChange(of: workSets) { _, _ in syncWhatIDid() }
-        .onChange(of: warmupSets) { _, _ in syncWhatIDid() }
+        .onChange(of: workSets) { _, _ in
+            clearError()
+            syncWhatIDid()
+        }
+        .onChange(of: warmupSets) { _, _ in
+            clearError()
+            syncWhatIDid()
+        }
+        .onChange(of: whatIDid) { _, _ in clearError() }
+        .onChange(of: painDuring) { _, _ in clearError() }
+        .onChange(of: painAfter) { _, _ in clearError() }
         .sheet(isPresented: $showResolve) {
             if let existing { Resolve24hSheet(session: existing) }
+        }
+    }
+
+    private var afterPainAlreadyLogged: Bool {
+        existing?.hasLoggedPainAfter == true
+    }
+
+    private var lastSessionContext: TrainingSession? {
+        sessions.first { $0.id != existing?.id }
+    }
+
+    private func lastSessionSection(_ last: TrainingSession) -> some View {
+        Section {
+            LabeledContent("Last session", value: last.displayTitle)
+            if let load = last.chartMaxLoad {
+                LabeledContent("Last max load", value: LoadCopy.labeled(load))
+            }
+            LabeledContent("Last pain during", value: String(last.painDuring))
+        } footer: {
+            Text("Context only — today’s numbers are what count.")
         }
     }
 
@@ -435,7 +483,7 @@ struct SessionEditor: View {
             sessionType = existing.sessionType
             whatIDid = existing.whatIDid
             painDuring = existing.painDuring
-            painAfter = existing.painAfter
+            painAfter = existing.loggedPainAfter
             notes = existing.notes
             usesIsoHolds = existing.sessionType == .isometrics
             let all = existing.resistanceSets()
@@ -545,51 +593,38 @@ struct SessionEditor: View {
     }
 
     private func save() {
-        errorMessage = nil
-        guard let painDuring, let painAfter else {
-            errorMessage = "Pain during and after are required (0–10)."
-            return
-        }
-        guard (0...10).contains(painDuring), (0...10).contains(painAfter) else {
-            errorMessage = "Pain must be 0–10."
-            return
-        }
-        let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty else {
-            errorMessage = "Describe what you did (or pick a preset)."
-            return
-        }
+        clearError()
 
         // Normalize warmup flags
         var wu = warmupSets.map { var s = $0; s.isWarmup = true; return s }
         var work = workSets.map { var s = $0; s.isWarmup = false; return s }
-        // Drop fully empty rows
         wu = wu.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         work = work.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
+        let allSets = wu + work
 
-        for row in wu + work {
-            if let r = row.reps, r <= 0 {
-                errorMessage = "Reps must be positive."
-                return
-            }
-            if let h = row.holdSeconds, h <= 0 {
-                errorMessage = "Hold time must be positive."
-                return
-            }
-            if let l = row.loadLbs, l < 0 {
-                errorMessage = "Load must be ≥ 0."
-                return
-            }
+        if let issue = SessionSaveValidation.validate(
+            painDuring: painDuring,
+            painAfter: painAfter,
+            whatIDid: whatIDid,
+            sets: allSets
+        ) {
+            presentError(issue.message)
+            return
         }
 
-        let allSets = wu + work
+        guard let painDuring else {
+            presentError(SessionSaveIssue.missingPainDuring.message)
+            return
+        }
+        let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
+        let storedAfter = resolvedPainAfter()
 
         if let existing {
             existing.phase = phase
             existing.sessionType = sessionType
             existing.whatIDid = text
             existing.painDuring = painDuring
-            existing.painAfter = painAfter
+            existing.painAfter = storedAfter
             existing.notes = notes
             existing.track = .knee
             existing.loadRegion = .knee
@@ -597,10 +632,13 @@ struct SessionEditor: View {
             existing.updatedAt = Date()
             do {
                 try modelContext.save()
+                if existing.hasLoggedPainAfter {
+                    NotificationScheduler.cancelPainAfter(sessionId: existing.id)
+                }
                 Haptics.success()
                 dismiss()
             } catch {
-                errorMessage = error.localizedDescription
+                presentError(error.localizedDescription)
             }
             return
         }
@@ -611,7 +649,7 @@ struct SessionEditor: View {
             sessionType: sessionType,
             whatIDid: text,
             painDuring: painDuring,
-            painAfter: painAfter,
+            painAfter: storedAfter,
             loadRegion: .knee,
             track: .knee,
             resistanceSets: allSets,
@@ -629,12 +667,41 @@ struct SessionEditor: View {
                     amHour: settings.amReminderHour,
                     amMinute: settings.amReminderMinute
                 )
+                if !session.hasLoggedPainAfter {
+                    NotificationScheduler.schedulePainAfter(
+                        sessionId: session.id,
+                        createdAt: session.createdAt
+                    )
+                }
             }
             Haptics.success()
             dismiss()
         } catch {
-            errorMessage = error.localizedDescription
+            presentError(error.localizedDescription)
         }
+    }
+
+    private func resolvedPainAfter() -> Int {
+        if let painAfter, PainScore.isLogged(painAfter) {
+            return painAfter
+        }
+        return PainScore.notLogged
+    }
+
+    private func presentError(_ message: String) {
+        errorMessage = message
+        errorDismissTask?.cancel()
+        errorDismissTask = Task {
+            try? await Task.sleep(nanoseconds: 4_000_000_000)
+            if !Task.isCancelled {
+                await MainActor.run { errorMessage = nil }
+            }
+        }
+    }
+
+    private func clearError() {
+        errorMessage = nil
+        errorDismissTask?.cancel()
     }
 }
 

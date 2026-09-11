@@ -261,4 +261,76 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(tapped?.amPain, 2)
         XCTAssertEqual(tapped?.leftLoadLbs, 20)
     }
+
+    func testExplorePointsSkipsUnloggedAfterPain() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sideLoads: [],
+            dayCount: 1,
+            today: today,
+            calendar: calendar,
+            sessionPains: [
+                SessionPainSnapshot(date: today, painDuring: 3, painAfter: PainScore.notLogged)
+            ]
+        )
+        XCTAssertEqual(points[0].duringPain, 3)
+        XCTAssertNil(points[0].afterPain)
+    }
+
+    func testOutcomeMixAndCleanStreak() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let sessions = [
+            SessionOutcomeSnapshot(date: day(-3, from: today), createdAt: day(-3, from: today), response24h: .worse),
+            SessionOutcomeSnapshot(date: day(-2, from: today), createdAt: day(-2, from: today), response24h: .better),
+            SessionOutcomeSnapshot(date: day(-1, from: today), createdAt: day(-1, from: today), response24h: .same),
+            SessionOutcomeSnapshot(date: today, createdAt: today, response24h: .pending)
+        ]
+        let mix = ChartMetricBuilder.outcomeMix(
+            sessions: sessions,
+            dayCount: 4,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(mix.better, 1)
+        XCTAssertEqual(mix.same, 1)
+        XCTAssertEqual(mix.worse, 1)
+        XCTAssertEqual(mix.pending, 1)
+        XCTAssertEqual(mix.cleanStreak, 2)
+
+        let points = ChartMetricBuilder.outcomePoints(
+            sessions: sessions,
+            dayCount: 4,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points.count, 4)
+        XCTAssertEqual(points[0].worse, 1)
+        XCTAssertEqual(points[3].pending, 1)
+    }
+
+    func testConsistencyCountsOnlyWindowDays() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let checkIns = [
+            DailyMetricSnapshot(date: day(-10, from: today), restingPainAM: 4, dailyPainPM: nil, steps: nil),
+            DailyMetricSnapshot(date: day(-1, from: today), restingPainAM: 2, dailyPainPM: 3, steps: 5000),
+            DailyMetricSnapshot(date: today, restingPainAM: nil, dailyPainPM: 2, steps: nil)
+        ]
+        let sessions = [
+            SessionOutcomeSnapshot(date: day(-10, from: today), createdAt: day(-10, from: today), response24h: .better),
+            SessionOutcomeSnapshot(date: today, createdAt: today, response24h: .pending)
+        ]
+        let summary = ChartMetricBuilder.consistency(
+            checkIns: checkIns,
+            sessions: sessions,
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(summary.windowDays, 3)
+        XCTAssertEqual(summary.checkInDays, 2)
+        XCTAssertEqual(summary.morningDays, 1)
+        XCTAssertEqual(summary.sessionDays, 1)
+        XCTAssertEqual(summary.sessionCount, 1)
+    }
 }

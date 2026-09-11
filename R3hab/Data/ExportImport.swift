@@ -166,7 +166,7 @@ struct SessionDTO: Codable {
         type = try c.decode(String.self, forKey: .type)
         whatIDid = try c.decode(String.self, forKey: .whatIDid)
         painDuring = try c.decode(Int.self, forKey: .painDuring)
-        painAfter = try c.decode(Int.self, forKey: .painAfter)
+        painAfter = try c.decodeIfPresent(Int.self, forKey: .painAfter) ?? PainScore.notLogged
         sets = try c.decodeIfPresent(Int.self, forKey: .sets)
         reps = try c.decodeIfPresent(Int.self, forKey: .reps)
         loadLbs = try c.decodeIfPresent(Double.self, forKey: .loadLbs)

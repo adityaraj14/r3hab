@@ -58,6 +58,34 @@ struct PainScoreControl: View {
     }
 }
 
+/// Top-of-form error so validation is not hidden under the keyboard.
+struct FormErrorBanner: View {
+    let message: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.body.weight(.semibold))
+            Text(message)
+                .font(.subheadline.weight(.semibold))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .foregroundStyle(Color.black)
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.accentColor)
+        )
+        .padding(.horizontal)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
+        .accessibilityIdentifier("form-error-banner")
+        .accessibilityLabel("Error: \(message)")
+    }
+}
+
 #Preview {
     struct Host: View {
         @State var v: Int? = 2

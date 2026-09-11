@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Trends tab — 7/28 day charts (PR-10/14).
+/// Progress tab — pain vs load, 24h outcomes, consistency, load trail.
 struct RehabProgressView: View {
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
@@ -29,6 +29,18 @@ struct RehabProgressView: View {
         }
     }
 
+    private var sessionPains: [SessionPainSnapshot] {
+        sessions.map {
+            SessionPainSnapshot(date: $0.date, painDuring: $0.painDuring, painAfter: $0.painAfter)
+        }
+    }
+
+    private var sessionOutcomes: [SessionOutcomeSnapshot] {
+        sessions.map {
+            SessionOutcomeSnapshot(date: $0.date, createdAt: $0.createdAt, response24h: $0.response24h)
+        }
+    }
+
     private var explorePoints: [DayExplorePoint] {
         ChartMetricBuilder.explorePoints(
             checkIns: metrics,
@@ -40,22 +52,38 @@ struct RehabProgressView: View {
                     unspecifiedMaxLbs: $0.chartMaxLoad
                 )
             },
+            dayCount: range.rawValue,
+            sessionPains: sessionPains
+        )
+    }
+
+    private var loadPoints: [DayValue] {
+        ChartMetricBuilder.loadSeries(
+            sessions: sessions.map {
+                SessionLoadSnapshot(
+                    date: $0.date,
+                    volume: $0.chartVolume,
+                    maxLoadLbs: $0.chartMaxLoad,
+                    loadLbs: $0.chartLoadLbs
+                )
+            },
             dayCount: range.rawValue
         )
     }
 
-    private var kneePM: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .dailyPM, dayCount: range.rawValue)
+    private var outcomeMix: OutcomeMix {
+        ChartMetricBuilder.outcomeMix(
+            sessions: sessionOutcomes,
+            dayCount: range.rawValue
+        )
     }
 
-    private var stepsSeries: [DayValue] {
-        ChartMetricBuilder.series(rows: metrics, metric: .steps, dayCount: range.rawValue)
-    }
-
-    private var cleanSessions: Int {
-        sessions.filter {
-            $0.response24h == .better || $0.response24h == .same
-        }.count
+    private var consistency: ConsistencySummary {
+        ChartMetricBuilder.consistency(
+            checkIns: metrics,
+            sessions: sessionOutcomes,
+            dayCount: range.rawValue
+        )
     }
 
     /// Phase B stretch: clean sessions since phase change while in B (REQ-FUNC-017).
@@ -68,10 +96,6 @@ struct RehabProgressView: View {
         }.count
     }
 
-    private var pendingCount: Int {
-        sessions.filter { $0.response24h == .pending }.count
-    }
-
     private var hasAnyData: Bool {
         !checkIns.isEmpty || !sessions.isEmpty
     }
@@ -82,9 +106,9 @@ struct RehabProgressView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if !hasAnyData {
                         ContentUnavailableView(
-                            "No trends yet",
+                            "Your first votes are still coming",
                             systemImage: "chart.line.uptrend.xyaxis",
-                            description: Text("Log this morning’s pain or a training session — charts fill in as you go.")
+                            description: Text("Log this morning’s pain or a seated-extension session. Progress is the diary filling in — not a grade.")
                         )
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
@@ -97,53 +121,22 @@ struct RehabProgressView: View {
                         .pickerStyle(.segmented)
                         .accessibilityLabel("Chart range")
 
-                        statsRow
+                        heroRow
 
                         if let settings, settings.currentPhase == .aFlareDeLoad {
-                            let status = PhaseAExitEvaluator.evaluate(
-                                checkIns: checkIns.map(\.snapshot),
-                                settings: settings.phaseSnapshot,
-                                today: Date()
-                            )
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Phase A exit")
-                                    .font(.subheadline.weight(.semibold))
-                                Text(status.message)
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-                            )
-                            .accessibilityElement(children: .combine)
+                            phaseACard(settings)
                         }
 
                         if let phaseBCleanCount {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text("Phase B clean sessions")
-                                    .font(.subheadline.weight(.semibold))
-                                Text("\(phaseBCleanCount) Better/Same since you entered Phase B")
-                                    .font(.footnote)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .padding()
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                    .fill(Color(.secondarySystemBackground))
-                            )
+                            phaseBCard(phaseBCleanCount)
                         }
 
-                        Text("Patellar tendon")
-                            .font(.title3.weight(.semibold))
-                            .padding(.top, 4)
-
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("AM pain + load")
+                            Text("Load vs next morning")
                                 .font(.headline)
+                            Text("Mild pain during load is OK if mornings stay calm. Tap a day.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             KneeExploreChart(
                                 points: explorePoints,
                                 height: 140,
@@ -159,14 +152,9 @@ struct RehabProgressView: View {
                                 .fill(Color(.secondarySystemBackground))
                         )
 
-                        MetricChartCard(
-                            title: "Knee daily pain PM",
-                            points: kneePM,
-                            yDomain: 0...10,
-                            lineColor: PainChartColors.knee
-                        )
-
-                        MetricChartCard(title: "Steps", points: stepsSeries, yDomain: 0...(maxStepsDomain), unitHint: "")
+                        OutcomeMixCard(mix: outcomeMix)
+                        ConsistencyCard(summary: consistency)
+                        LoadProgressChart(points: loadPoints)
                     }
                 }
                 .padding()
@@ -175,38 +163,69 @@ struct RehabProgressView: View {
         }
     }
 
-    private var maxStepsDomain: Double {
-        let maxVal = stepsSeries.compactMap(\.value).max() ?? 10000
-        return max(10000, maxVal * 1.1)
-    }
-
-    private var statsRow: some View {
+    private var heroRow: some View {
         HStack(spacing: 12) {
-            statChip(title: "Check-ins", value: "\(checkIns.count)")
-            statChip(title: "Sessions", value: "\(sessions.count)")
-            statChip(title: "Clean 24h", value: "\(cleanSessions)")
-            if pendingCount > 0 {
-                statChip(title: "Pending", value: "\(pendingCount)")
-            }
+            heroChip(title: "Mornings", value: "\(consistency.morningDays)/\(consistency.windowDays)")
+            heroChip(title: "Train days", value: "\(consistency.sessionDays)")
+            heroChip(title: "Clean streak", value: "\(outcomeMix.cleanStreak)")
         }
     }
 
-    private func statChip(title: String, value: String) -> some View {
+    private func heroChip(title: String, value: String) -> some View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.title3.monospacedDigit().weight(.bold))
+                .foregroundStyle(Color.accentColor)
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 10)
+        .padding(.vertical, 12)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel("\(title): \(value)")
+    }
+
+    private func phaseACard(_ settings: AppSettings) -> some View {
+        let status = PhaseAExitEvaluator.evaluate(
+            checkIns: checkIns.map(\.snapshot),
+            settings: settings.phaseSnapshot,
+            today: Date()
+        )
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Phase A exit")
+                .font(.subheadline.weight(.semibold))
+            Text(status.message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
+        )
+        .accessibilityElement(children: .combine)
+    }
+
+    private func phaseBCard(_ count: Int) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text("Phase B clean sessions")
+                .font(.subheadline.weight(.semibold))
+            Text("\(count) Better/Same since you entered Phase B")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
     }
 }
 

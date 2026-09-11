@@ -9,6 +9,7 @@ final class TrainingSession {
     var typeRaw: String
     var whatIDid: String
     var painDuring: Int
+    /// 0–10 when logged. `PainScore.notLogged` (−1) means after-pain is still outstanding.
     var painAfter: Int
     /// Legacy single-block fields (kept for migration / old rows).
     var sets: Int?
@@ -87,7 +88,7 @@ final class TrainingSession {
         sessionType: SessionType,
         whatIDid: String,
         painDuring: Int,
-        painAfter: Int,
+        painAfter: Int = PainScore.notLogged,
         sets: Int? = nil,
         reps: Int? = nil,
         loadLbs: Double? = nil,
@@ -247,5 +248,17 @@ final class TrainingSession {
             return String(Int(lbs))
         }
         return String(format: "%g", lbs)
+    }
+
+    var hasLoggedPainAfter: Bool {
+        PainScore.isLogged(painAfter)
+    }
+
+    var loggedPainAfter: Int? {
+        PainScore.optional(painAfter)
+    }
+
+    var displayPainAfter: String {
+        PainScore.display(painAfter)
     }
 }

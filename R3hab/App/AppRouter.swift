@@ -6,12 +6,18 @@ import SwiftUI
 final class AppRouter {
     var selectedTab: Int = 0
     var resolveSessionId: UUID?
+    var afterPainSessionId: UUID?
     /// Bumps when notifications or data should reschedule.
     var notificationSyncToken: Int = 0
 
     func openResolve(sessionId: UUID) {
         selectedTab = 0
         resolveSessionId = sessionId
+    }
+
+    func openAfterPain(sessionId: UUID) {
+        selectedTab = 0
+        afterPainSessionId = sessionId
     }
 
     func requestNotificationSync() {

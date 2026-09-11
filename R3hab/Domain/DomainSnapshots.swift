@@ -17,6 +17,8 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
     var resolvedAt: Date?
     var snoozedUntil: Date?
     var phase: RehabPhase
+    var painDuring: Int
+    var painAfter: Int
 
     init(
         id: UUID = UUID(),
@@ -27,7 +29,9 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         decision: SessionDecision?,
         resolvedAt: Date?,
         snoozedUntil: Date?,
-        phase: RehabPhase
+        phase: RehabPhase,
+        painDuring: Int = 0,
+        painAfter: Int = PainScore.notLogged
     ) {
         self.id = id
         self.date = date
@@ -38,6 +42,12 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         self.resolvedAt = resolvedAt
         self.snoozedUntil = snoozedUntil
         self.phase = phase
+        self.painDuring = painDuring
+        self.painAfter = painAfter
+    }
+
+    var hasLoggedPainAfter: Bool {
+        PainScore.isLogged(painAfter)
     }
 }
 

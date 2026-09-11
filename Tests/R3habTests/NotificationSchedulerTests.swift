@@ -61,4 +61,36 @@ final class NotificationSchedulerTests: XCTestCase {
         XCTAssertFalse(NotificationScheduler.amReminderId.hasPrefix("stretch-"))
         XCTAssertFalse(NotificationScheduler.pmReminderId.hasPrefix("stretch-"))
     }
+
+    func testLeftoverStretchIdsStayCancelledOnReconcile() {
+        XCTAssertEqual(NotificationScheduler.leftoverStretchIds, ["stretch-0", "stretch-1", "stretch-2"])
+    }
+
+    func testPainAfterIdentifierRoundTrips() {
+        let id = UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE")!
+        XCTAssertEqual(NotificationScheduler.painAfterId(for: id), "pain-after-\(id.uuidString)")
+        XCTAssertEqual(NotificationScheduler.sessionId(fromPainAfterId: "pain-after-\(id.uuidString)"), id)
+        XCTAssertNil(NotificationScheduler.sessionId(fromPainAfterId: "pending-\(id.uuidString)"))
+        XCTAssertEqual(NotificationScheduler.sessionId(fromPendingId: "pending-\(id.uuidString)"), id)
+    }
+
+    func testPainAfterFireDateIsThirtyMinutesWhenStillUpcoming() {
+        let created = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = created.addingTimeInterval(5 * 60)
+        let fire = NotificationScheduler.painAfterFireDate(createdAt: created, now: now)
+        XCTAssertEqual(fire, created.addingTimeInterval(30 * 60))
+    }
+
+    func testPainAfterFireDateCatchesUpWithinTwelveHours() {
+        let created = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = created.addingTimeInterval(40 * 60)
+        let fire = NotificationScheduler.painAfterFireDate(createdAt: created, now: now)
+        XCTAssertEqual(fire, now.addingTimeInterval(60))
+    }
+
+    func testPainAfterFireDateStopsAfterCatchUpWindow() {
+        let created = Date(timeIntervalSince1970: 1_700_000_000)
+        let now = created.addingTimeInterval(13 * 60 * 60)
+        XCTAssertNil(NotificationScheduler.painAfterFireDate(createdAt: created, now: now))
+    }
 }
