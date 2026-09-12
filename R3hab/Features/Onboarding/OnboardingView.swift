@@ -555,13 +555,6 @@ enum OnboardingCompletion {
     }
 }
 
-/// TEMPORARY TestFlight helper. Remove before App Store / public release.
-enum OnboardingReset {
-    static func reopenGate(on settings: AppSettings) {
-        settings.hasCompletedOnboarding = false
-    }
-}
-
 struct OnboardingChoices: Equatable, Sendable {
     var phase: RehabPhase
     var notificationsEnabled: Bool

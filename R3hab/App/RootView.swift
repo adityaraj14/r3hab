@@ -117,9 +117,6 @@ private struct RootTabContent: View {
                 showOnboarding = true
             }
         }
-        .onChange(of: router.onboardingReplayToken) { _, _ in
-            showOnboarding = true
-        }
         .onChange(of: router.notificationSyncToken) { _, _ in
             let generation = syncGeneration
             Task { await syncNotifications(generation: generation) }
