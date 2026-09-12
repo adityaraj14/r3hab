@@ -85,6 +85,8 @@ struct SessionEditor: View {
                             exercisePill(preset, selected: selectedPresetId == preset.id)
                         }
                     }
+                    .padding(.vertical, 2)
+                    .padding(.trailing, 4)
                 }
                 Picker("Type", selection: $sessionType) {
                     ForEach(SessionType.allCases) { t in
@@ -209,8 +211,13 @@ struct SessionEditor: View {
         Button {
             applyPreset(preset)
         } label: {
+            // Form rows can propose a squeezed width to the horizontal
+            // ScrollView’s children; fixedSize keeps the label at its ideal
+            // width so short chips (“Easy bike”) never truncate.
             Text(preset.label)
                 .font(.subheadline.weight(selected ? .bold : .medium))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(selected ? AppTheme.ink : Color.white)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 8)
