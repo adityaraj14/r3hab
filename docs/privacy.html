@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Privacy Policy — R3hab</title>
+  <meta name="description" content="Privacy Policy for the R3hab iOS app. All data stays on your device.">
+  <style>
+    :root { --bg: #0B0B0C; --fg: #EDEAE3; --muted: #9A968D; --gold: #E8BA3A; --line: #23232A; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--fg); font: 17px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+    main { max-width: 640px; margin: 0 auto; padding: 48px 20px 72px; }
+    nav a { color: var(--gold); text-decoration: none; font-size: 0.95rem; }
+    h1 { font-size: 2rem; margin: 24px 0 4px; letter-spacing: -0.01em; }
+    h2 { font-size: 1.2rem; margin: 36px 0 10px; color: var(--gold); }
+    p, li { margin: 0 0 14px; }
+    ul { padding-left: 22px; margin: 0 0 14px; }
+    .muted { color: var(--muted); }
+    .note { border-left: 3px solid var(--gold); padding: 10px 16px; background: #131316; border-radius: 0 8px 8px 0; margin: 20px 0; }
+    a { color: var(--gold); }
+    footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <nav><a href="index.html">← R3hab</a></nav>
+    <h1>Privacy Policy</h1>
+    <p class="muted">R3hab for iOS (<code>com.devrising.r3hab</code>) · Last updated: September 12, 2026</p>
+
+    <p>R3hab is a personal rehab log built by Aditya Raj Shrivastava. It is designed to keep your data on your device. This policy explains what the app stores, what it reads, and what it does not do.</p>
+
+    <div class="note">
+      <p><strong>Short version:</strong> there is no account, no cloud, no ads, and no marketing analytics. Your pain scores, sessions, and settings live only on your iPhone. The only outside data the app can read is your step count from Apple Health, and only if you allow it.</p>
+    </div>
+
+    <h2>No account, no cloud login</h2>
+    <p>R3hab does not ask you to create an account or sign in. Nothing you enter is sent to a server run by the developer, and the developer has no access to your data.</p>
+
+    <h2>Data stored on your device</h2>
+    <p>The app stores the following locally using Apple’s SwiftData framework (an on-device database):</p>
+    <ul>
+      <li>Daily pain check-ins and pain scores</li>
+      <li>Training sessions and your 24-hour load–response decisions</li>
+      <li>Rehab phase, thresholds, reminders, and other settings</li>
+    </ul>
+    <p>This data stays in the app’s private storage on your device. If you use iCloud Backup or an encrypted device backup, it may be included in that backup under Apple’s terms, like any other app data. Deleting the app deletes its data from the device.</p>
+
+    <h2>Export and import</h2>
+    <p>You can export your log as a JSON file and import it later (Replace or Merge). Export happens on your device using the standard iOS share sheet. Where that file goes — Files, AirDrop, email, another app — is your choice, and the developer never receives a copy.</p>
+
+    <h2>Apple Health (HealthKit) — optional</h2>
+    <p>If you choose to connect Apple Health, R3hab requests <strong>read-only</strong> access to a single data type: <strong>step count</strong>. It uses this to fill in your daily steps so you don’t have to type them.</p>
+    <ul>
+      <li>R3hab does <strong>not write</strong> anything to Apple Health.</li>
+      <li>Pain scores, sessions, and rehab notes are <strong>never</strong> stored in Health; they stay in the app.</li>
+      <li>Health data is used only inside the app and is not transmitted anywhere.</li>
+      <li>You can revoke access at any time in the iOS Health app under Sharing → Apps.</li>
+    </ul>
+
+    <h2>Notifications</h2>
+    <p>Reminders (for example, morning and evening check-ins or a pending 24-hour resolve) are local notifications scheduled on your device. No push notification service is used and no data leaves the phone to deliver them.</p>
+
+    <h2>No ads, no tracking, no analytics SDKs</h2>
+    <p>R3hab contains no advertising, no third-party analytics or marketing SDKs, and does not track you across other apps or websites. The developer does not sell, rent, or share personal data with anyone.</p>
+
+    <h2>Children</h2>
+    <p>R3hab is not directed at children under 13, and the developer does not knowingly collect information from them.</p>
+
+    <h2>Not a medical device</h2>
+    <p>R3hab is a self-managed logging tool. It is not a medical device and is not a substitute for diagnosis, treatment, or advice from a qualified clinician. If your pain is severe, changes suddenly, or you are unsure, see a professional.</p>
+
+    <h2>Changes to this policy</h2>
+    <p>If the app’s data practices change, this page will be updated and the date at the top revised.</p>
+
+    <h2>Contact</h2>
+    <p>Questions about privacy: <a href="mailto:aditya.raj1305@gmail.com">aditya.raj1305@gmail.com</a></p>
+
+    <footer>
+      <p>Developer: Aditya Raj Shrivastava · <a href="support.html">Support</a></p>
+    </footer>
+  </main>
+</body>
+</html>
