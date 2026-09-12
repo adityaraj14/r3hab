@@ -121,36 +121,44 @@ struct OnboardingView: View {
         .accessibilityLabel("Onboarding step \(page + 1) of \(pageCount)")
     }
 
-    /// Sized to fit above Continue on a 6.1" phone: short lead, one compact
-    /// privacy card, three benefit rows. ScrollView stays only as a fallback
-    /// for large Dynamic Type.
+    /// Laid out to fit above Continue, not to scroll: `ViewThatFits` takes the
+    /// plain stack when the page has room (6.1" and up at default text size)
+    /// and only falls back to a ScrollView for small phones / large Dynamic
+    /// Type. Every line uses `fixedSize` so text wraps instead of truncating.
     private var nameStoryPage: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                screenHeader(
-                    eyebrow: BrandCopy.onboardingEyebrow,
-                    title: BrandCopy.onboardingTitle
-                )
-                Text(BrandCopy.onboardingLead)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        ViewThatFits(in: .vertical) {
+            welcomeContent
+            ScrollView {
+                welcomeContent
+            }
+            .scrollIndicators(.hidden)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
 
-                privacyPitch
+    private var welcomeContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            screenHeader(
+                eyebrow: BrandCopy.onboardingEyebrow,
+                title: BrandCopy.onboardingTitle
+            )
+            Text(BrandCopy.onboardingLead)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
 
-                VStack(spacing: 8) {
-                    ForEach(BrandCopy.habits) { habit in
-                        habitRow(habit)
-                    }
+            privacyPitch
+
+            VStack(spacing: 10) {
+                ForEach(BrandCopy.habits) { habit in
+                    habitRow(habit)
                 }
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 8)
-            .padding(.bottom, 8)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .scrollBounceBehavior(.basedOnSize)
-        .scrollIndicators(.hidden)
+        .padding(.horizontal, 24)
+        .padding(.top, 8)
+        .padding(.bottom, 8)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     private var injurySelectPage: some View {
@@ -388,7 +396,6 @@ struct OnboardingView: View {
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
