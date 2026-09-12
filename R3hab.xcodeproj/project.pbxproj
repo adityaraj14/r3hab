@@ -10,6 +10,7 @@
 		99066D8CD9C34E9081E6E951 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
 		B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
 		A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
+		C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
 		ED9AA8F2B526430384E46937 /* ExportImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImport.swift; sourceTree = "<group>"; };
 		4670AE5C99794407900C0055 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
@@ -57,6 +58,7 @@
 		79E27029191247DC802802AF /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99066D8CD9C34E9081E6E951 /* PhaseChip.swift */; };
 		1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */; };
 		A9C1E7B3D5F24A6B8C0D1E30 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */; };
+		C3D5E7F9A1B24C6D8E0F1A2C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */; };
 		FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */; };
 		C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9AA8F2B526430384E46937 /* ExportImport.swift */; };
 		1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670AE5C99794407900C0055 /* ModelMapping.swift */; };
@@ -182,6 +184,7 @@
 				99066D8CD9C34E9081E6E951 /* PhaseChip.swift */,
 				B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */,
 				A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */,
+				C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */,
 			);
 			path = Components;
 			sourceTree = "<group>";
@@ -306,6 +309,7 @@
 				D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */,
 				B7D2F8C4E6A35B7C9D1E2F3B /* TodayPlanner.swift in Sources */,
 				A9C1E7B3D5F24A6B8C0D1E30 /* AppTheme.swift in Sources */,
+				C3D5E7F9A1B24C6D8E0F1A2C /* FlowLayout.swift in Sources */,
 				61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */,
 				EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */,
 				0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */,

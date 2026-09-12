@@ -79,15 +79,14 @@ struct SessionEditor: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 8) {
-                        ForEach(presetsForPhase) { preset in
-                            exercisePill(preset, selected: selectedPresetId == preset.id)
-                        }
+                // Wrapping chips: a horizontal ScrollView inside a Form row
+                // measured content at row width and clipped the overflow.
+                FlowLayout(spacing: 8, lineSpacing: 8) {
+                    ForEach(presetsForPhase) { preset in
+                        exercisePill(preset, selected: selectedPresetId == preset.id)
                     }
-                    .padding(.vertical, 2)
-                    .padding(.trailing, 4)
                 }
+                .padding(.vertical, 2)
                 Picker("Type", selection: $sessionType) {
                     ForEach(SessionType.allCases) { t in
                         Text(t.title).tag(t)
@@ -211,9 +210,8 @@ struct SessionEditor: View {
         Button {
             applyPreset(preset)
         } label: {
-            // Form rows can propose a squeezed width to the horizontal
-            // ScrollView’s children; fixedSize keeps the label at its ideal
-            // width so short chips (“Easy bike”) never truncate.
+            // fixedSize keeps the label at its ideal width; FlowLayout wraps
+            // chips to the next line instead of squeezing or clipping them.
             Text(preset.label)
                 .font(.subheadline.weight(selected ? .bold : .medium))
                 .lineLimit(1)
