@@ -2,22 +2,31 @@ import XCTest
 @testable import R3hab
 
 final class InjuryCatalogTests: XCTestCase {
-    func testSelectableIncludesKneeLabelsAndQLStrain() {
+    func testSelectableIsCollapsedKneePlusQL() {
         let ids = InjuryCatalog.selectable.map(\.id)
         XCTAssertEqual(ids, [
-            "jumpers-knee",
             "patellar-tendinopathy",
-            "patellar-tendonitis",
             "ql-strain"
         ])
         XCTAssertEqual(InjuryCatalog.selectable.map(\.title), [
-            "Jumper's knee",
-            "Patellar tendinopathy",
-            "Patellar tendonitis",
+            "Jumper’s knee / patellar tendinopathy",
             "QL strain"
         ])
+        XCTAssertEqual(InjuryCatalog.selectable.count, 2)
         XCTAssertTrue(InjuryCatalog.contains("ql-strain"))
         XCTAssertTrue(InjuryCatalog.qlStrain.isSelectable)
+        XCTAssertFalse(InjuryCatalog.jumpersKnee.isSelectable)
+        XCTAssertFalse(InjuryCatalog.patellarTendonitis.isSelectable)
+    }
+
+    func testCollapsedKneeAliasesRemapToPatellarTendinopathy() {
+        XCTAssertEqual(InjuryCatalog.normalizedID("jumpers-knee"), "patellar-tendinopathy")
+        XCTAssertEqual(InjuryCatalog.normalizedID("patellar-tendonitis"), "patellar-tendinopathy")
+        XCTAssertEqual(InjuryCatalog.definition(for: "jumpers-knee").id, "patellar-tendinopathy")
+        XCTAssertTrue(InjuryCatalog.needsRemap("jumpers-knee"))
+        XCTAssertTrue(InjuryCatalog.needsRemap("patellar-tendonitis"))
+        XCTAssertFalse(InjuryCatalog.needsRemap("patellar-tendinopathy"))
+        XCTAssertFalse(InjuryCatalog.needsRemap("ql-strain"))
     }
 
     func testKneeLabelsMapToKneeAndQLMapsToQLTrack() {
@@ -60,7 +69,7 @@ final class InjuryCatalogTests: XCTestCase {
         )
         XCTAssertEqual(skipped.phase, .bIsometrics)
         XCTAssertFalse(skipped.notificationsEnabled)
-        XCTAssertEqual(skipped.injuryID, InjuryCatalog.jumpersKnee.id)
+        XCTAssertEqual(skipped.injuryID, InjuryCatalog.patellarTendinopathy.id)
         XCTAssertEqual(skipped.protocolTrack, .knee)
         XCTAssertEqual(skipped.primaryLoadID, PrimaryLoadCatalog.legPress.id)
     }
@@ -90,7 +99,7 @@ final class InjuryCatalogTests: XCTestCase {
         )
         XCTAssertEqual(chosen.phase, .cHeavySlowResistance)
         XCTAssertTrue(chosen.notificationsEnabled)
-        XCTAssertEqual(chosen.injuryID, "patellar-tendonitis")
+        XCTAssertEqual(chosen.injuryID, InjuryCatalog.patellarTendinopathy.id)
         XCTAssertEqual(chosen.protocolTrack, .knee)
         XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.seatedExtension.id)
     }

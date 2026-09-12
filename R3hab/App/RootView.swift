@@ -112,6 +112,14 @@ private struct RootTabContent: View {
             }
             await syncNotifications(generation: syncGeneration)
         }
+        .onChange(of: settings?.hasCompletedOnboarding ?? true) { _, completed in
+            if !completed {
+                showOnboarding = true
+            }
+        }
+        .onChange(of: router.onboardingReplayToken) { _, _ in
+            showOnboarding = true
+        }
         .onChange(of: router.notificationSyncToken) { _, _ in
             let generation = syncGeneration
             Task { await syncNotifications(generation: generation) }

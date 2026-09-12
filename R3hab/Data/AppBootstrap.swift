@@ -26,6 +26,10 @@ enum SettingsSeedPolicy {
     static func shouldRemapPrimaryLoad(_ id: String, track: RehabTrackID) -> Bool {
         PrimaryLoadCatalog.needsRemap(id, track: track)
     }
+
+    static func shouldRemapInjury(_ id: String) -> Bool {
+        InjuryCatalog.needsRemap(id)
+    }
 }
 
 enum AppBootstrap {
@@ -56,6 +60,10 @@ enum AppBootstrap {
                     existing.primaryLoadID,
                     track: existing.protocolTrack
                 )
+                changed = true
+            }
+            if SettingsSeedPolicy.shouldRemapInjury(existing.selectedInjuryID) {
+                existing.selectedInjuryID = InjuryCatalog.normalizedID(existing.selectedInjuryID)
                 changed = true
             }
             if changed {

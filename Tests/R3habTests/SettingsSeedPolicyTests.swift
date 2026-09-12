@@ -57,6 +57,14 @@ final class SettingsSeedPolicyTests: XCTestCase {
         )
         let alreadyKnee = !SettingsSeedPolicy.shouldNormalizeActiveTracks("knee")
         let alreadyLoad = !SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension", track: .knee)
-        XCTAssertTrue(alreadyMigrated && alreadyKnee && alreadyLoad)
+        let alreadyInjury = !SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy")
+        XCTAssertTrue(alreadyMigrated && alreadyKnee && alreadyLoad && alreadyInjury)
+    }
+
+    func testCollapsedKneeInjuryNeedsAWrite() {
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("jumpers-knee"))
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("patellar-tendonitis"))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy"))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
     }
 }

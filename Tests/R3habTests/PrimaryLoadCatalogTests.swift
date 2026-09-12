@@ -93,9 +93,17 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(PrimaryLoadCatalog.legPress.chartLoadTitle, "Leg press load")
     }
 
-    func testBrandCopyHasThreeHabits() {
-        XCTAssertEqual(BrandCopy.habits.map(\.title), ["Identity", "Process", "Outcome"])
-        XCTAssertTrue(BrandCopy.onboardingTitle.contains("3"))
+    func testBrandCopyHasJourneyCardsNotNameStory() {
+        XCTAssertEqual(
+            BrandCopy.habits.map(\.title),
+            ["Track the journey", "Stay accountable", "Trust the data"]
+        )
+        XCTAssertEqual(BrandCopy.onboardingEyebrow, "Welcome")
+        XCTAssertEqual(BrandCopy.onboardingTitle, "Your personal rehab assistant.")
+        XCTAssertFalse(BrandCopy.onboardingTitle.contains("3"))
+        XCTAssertFalse(BrandCopy.settingsBlurb.contains("Identity"))
+        XCTAssertFalse(BrandCopy.settingsBlurb.contains("Process"))
+        XCTAssertFalse(BrandCopy.settingsBlurb.contains("written with a 3"))
         XCTAssertEqual(BrandCopy.privacyPoints.map(\.title), ["Completely private", "No ads", "On-device only"])
     }
 

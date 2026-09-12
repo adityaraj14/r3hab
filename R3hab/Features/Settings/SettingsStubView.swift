@@ -161,15 +161,21 @@ struct SettingsStubView: View {
                     .foregroundStyle(.tertiary)
             }
 
+            // TEMPORARY: remove this section before App Store / public release.
+            Section {
+                Button("Simulate onboarding") {
+                    simulateOnboarding()
+                }
+            } header: {
+                Text("Debug (temporary)")
+            } footer: {
+                Text("Re-opens first-launch onboarding without wiping logs. Remove before App Store.")
+            }
+
             #if DEBUG
             Section("Debug") {
                 Button("Seed sample week") {
                     seedSampleWeek()
-                }
-                Button("Reset onboarding flag") {
-                    settings?.hasCompletedOnboarding = false
-                    try? modelContext.save()
-                    presentAlert("Onboarding", "Flag cleared — relaunch or kill app to see onboarding again if gated only on launch. Or toggle from Root next open.")
                 }
             }
             #endif
@@ -411,6 +417,14 @@ struct SettingsStubView: View {
         alertTitle = title
         alertMessage = message
         showAlert = true
+    }
+
+    /// TEMPORARY: re-open onboarding without wiping the diary. Remove before App Store.
+    private func simulateOnboarding() {
+        guard let settings else { return }
+        OnboardingReset.reopenGate(on: settings)
+        try? modelContext.save()
+        router.requestOnboardingReplay()
     }
 
     #if DEBUG
