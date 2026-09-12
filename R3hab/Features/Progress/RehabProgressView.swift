@@ -57,20 +57,6 @@ struct RehabProgressView: View {
         )
     }
 
-    private var loadPoints: [DayValue] {
-        ChartMetricBuilder.loadSeries(
-            sessions: sessions.map {
-                SessionLoadSnapshot(
-                    date: $0.date,
-                    volume: $0.chartVolume,
-                    maxLoadLbs: $0.chartMaxLoad,
-                    loadLbs: $0.chartLoadLbs
-                )
-            },
-            dayCount: range.rawValue
-        )
-    }
-
     private var outcomeMix: OutcomeMix {
         ChartMetricBuilder.outcomeMix(
             sessions: sessionOutcomes,
@@ -160,9 +146,6 @@ struct RehabProgressView: View {
 
                         OutcomeMixCard(mix: outcomeMix)
                         ConsistencyCard(summary: consistency)
-                        if primaryLoad.plotsLoad {
-                            LoadProgressChart(points: loadPoints, title: primaryLoad.chartLoadTitle)
-                        }
                     }
                 }
                 .padding()
@@ -174,11 +157,11 @@ struct RehabProgressView: View {
     private var progressEmptyDescription: String {
         if primaryLoad.track == .ql {
             if primaryLoad.plotsLoad {
-                return "Log this morning’s pain or a \(primaryLoad.title.lowercased()) session. Progress is the diary filling in — not a grade."
+                return "Log morning or evening pain or a \(primaryLoad.title.lowercased()) session. Progress is the diary filling in — not a grade."
             }
-            return "Log this morning’s pain or a walk. Walking stays time-based — no fake lbs."
+            return "Log morning or evening pain or a walk. Walking stays time-based — no fake lbs."
         }
-        return "Log this morning’s pain or a seated-extension session. Progress is the diary filling in — not a grade."
+        return "Log morning or evening pain or a seated-extension session. Progress is the diary filling in — not a grade."
     }
 
     private var heroRow: some View {

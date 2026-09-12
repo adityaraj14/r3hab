@@ -258,7 +258,7 @@ struct HomeView: View {
 
     private var streakSubtitle: String {
         if streak.best == 0 {
-            return "Hard rehab chain · tap the line for another"
+            return "Hard session chain · tap the line for another"
         }
         if streak.current == 0, streak.lastChain > 0 {
             return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"

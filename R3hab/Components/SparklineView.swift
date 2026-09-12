@@ -16,14 +16,14 @@ enum PainChartColors {
     static let load = Color.orange
 }
 
-/// Explorable knee chart: tap a day for AM pain + L/R load (lbs).
+/// Explorable knee chart: tap a day for averaged AM/PM pain + L/R load (lbs).
 struct KneeExploreChart: View {
     let points: [DayExplorePoint]
     var height: CGFloat = 168
     var visibleDays: Int = 7
     var loadTitle: String = "Seated extension load"
     var showsLoad: Bool = true
-    var emptyDescription: String = "Log this morning’s pain or a seated-extension session. Load vs next-morning pain is the insight."
+    var emptyDescription: String = "Log morning or evening pain or a seated-extension session. Load vs pain is the insight."
 
     @State private var selectedDate: Date?
 
@@ -76,9 +76,10 @@ struct KneeExploreChart: View {
         VStack(alignment: .leading, spacing: 14) {
             if hasData {
                 chartBlock(
-                    title: "Morning pain",
+                    title: "Pain",
+                    subtitle: "Average of morning and evening check-ins",
                     unit: "0–10",
-                    accessibility: "Morning pain, 0 to 10. Tap a day for details."
+                    accessibility: "Pain, 0 to 10, average of morning and evening check-ins. Tap a day for details."
                 ) {
                     painChart
                 }
@@ -111,14 +112,22 @@ struct KneeExploreChart: View {
 
     private func chartBlock<Content: View>(
         title: String,
+        subtitle: String? = nil,
         unit: String,
         accessibility: String,
         @ViewBuilder content: () -> Content
     ) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.subheadline.weight(.semibold))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title)
+                        .font(.subheadline.weight(.semibold))
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
                 Spacer()
                 Text(unit)
                     .font(.caption2.weight(.medium))
@@ -132,16 +141,16 @@ struct KneeExploreChart: View {
     private var painChart: some View {
         Chart {
             ForEach(points) { point in
-                if let am = point.amPain {
+                if let pain = point.pain {
                     LineMark(
                         x: .value("Day", point.date),
-                        y: .value("AM pain", am)
+                        y: .value("Pain", pain)
                     )
                     .interpolationMethod(.catmullRom)
                     .foregroundStyle(PainChartColors.knee)
                     PointMark(
                         x: .value("Day", point.date),
-                        y: .value("AM pain", am)
+                        y: .value("Pain", pain)
                     )
                     .foregroundStyle(PainChartColors.knee)
                     .symbolSize(40)
@@ -258,9 +267,14 @@ struct KneeExploreChart: View {
                 Text(selected.date.formatted(date: .abbreviated, time: .omitted))
                     .font(.subheadline.weight(.semibold))
                 HStack(spacing: 16) {
-                    labeledValue("Morning", selected.amPain.map { String(Int($0)) } ?? "—")
+                    labeledValue("Pain", Self.formatPain(selected.pain))
                     labeledValue("During", selected.duringPain.map { String(Int($0)) } ?? "—")
                     labeledValue("After", selected.afterPain.map { String(Int($0)) } ?? "—")
+                }
+                if selected.morningPain != nil || selected.eveningPain != nil {
+                    Text("Morning \(Self.formatPain(selected.morningPain)) · Evening \(Self.formatPain(selected.eveningPain))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
                 if showsLoad {
                     HStack(spacing: 16) {
@@ -286,7 +300,7 @@ struct KneeExploreChart: View {
         }
         Text(allowsScroll
              ? "Tap a day for details. Scroll sideways to move the window."
-             : "Tap a day for morning pain and load.")
+             : "Tap a day for pain and load.")
             .font(.caption)
             .foregroundStyle(.secondary)
     }
@@ -299,6 +313,15 @@ struct KneeExploreChart: View {
             Text(value)
                 .font(.subheadline.monospacedDigit().weight(.semibold))
         }
+    }
+
+    /// Whole numbers stay integer; half-scores show one decimal (e.g. 3.5).
+    private static func formatPain(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        if value.rounded() == value {
+            return String(Int(value.rounded()))
+        }
+        return String(format: "%.1f", value)
     }
 }
 
@@ -628,79 +651,3 @@ struct ConsistencyCard: View {
     }
 }
 
-struct LoadProgressChart: View {
-    let points: [DayValue]
-    var title: String = "Seated extension load"
-    var height: CGFloat = 140
-
-    private var hasData: Bool {
-        points.contains { $0.value != nil }
-    }
-
-    private var xDomain: ClosedRange<Date>? {
-        guard let first = points.first?.date, let last = points.last?.date else { return nil }
-        return first...last
-    }
-
-    private var yMax: Double {
-        let maxVal = points.compactMap(\.value).max() ?? 20
-        return max(maxVal * 1.1, 20)
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(title)
-                    .font(.headline)
-                Spacer()
-                Text("lbs")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-            }
-            if hasData {
-                loadChart
-            } else {
-                Text("Add load on a working set and this line becomes your capacity trail.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(minHeight: 80, alignment: .topLeading)
-            }
-        }
-        .padding()
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
-        )
-    }
-
-    private var loadChart: some View {
-        Chart {
-            ForEach(points) { point in
-                if let value = point.value {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", value)
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(PainChartColors.left)
-                    PointMark(
-                        x: .value("Day", point.date),
-                        y: .value("Load", value)
-                    )
-                    .foregroundStyle(PainChartColors.left)
-                    .symbolSize(36)
-                }
-            }
-        }
-        .chartYScale(domain: 0...yMax)
-        .modifier(MetricChartXScaleModifier(domain: xDomain))
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: max(1, points.count / 3))) { _ in
-                AxisGridLine()
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
-            }
-        }
-        .frame(height: height)
-        .accessibilityLabel("\(title) in pounds")
-    }
-}

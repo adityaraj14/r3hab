@@ -23,7 +23,7 @@ final class AppSettings {
     var backTrackStageRaw: String = ""
     /// Onboarding injury id from `InjuryCatalog`. Default is lightweight-migration safe.
     var selectedInjuryID: String = "patellar-tendinopathy"
-    /// Primary movement from `PrimaryLoadCatalog`. Default is seated leg extension (knee).
+    /// Primary movement from `PrimaryLoadCatalog`. Default is seated extension (knee).
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {

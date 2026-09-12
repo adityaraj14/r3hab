@@ -436,7 +436,7 @@ struct SettingsStubView: View {
                 date: today,
                 phase: phase,
                 sessionType: .isometrics,
-                whatIDid: "Seated knee extension 3×1 @ 15 lbs 30s hold",
+                whatIDid: "Seated extension 3×1 @ 15 lbs 30s hold",
                 painDuring: 2,
                 painAfter: 1,
                 sets: 3,

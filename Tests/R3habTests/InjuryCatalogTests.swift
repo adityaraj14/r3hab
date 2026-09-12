@@ -56,13 +56,13 @@ final class InjuryCatalogTests: XCTestCase {
             phase: .aFlareDeLoad,
             notificationsEnabled: true,
             injuryID: InjuryCatalog.jumpersKnee.id,
-            primaryLoadID: PrimaryLoadCatalog.wallSit.id
+            primaryLoadID: PrimaryLoadCatalog.legPress.id
         )
         XCTAssertEqual(skipped.phase, .bIsometrics)
         XCTAssertFalse(skipped.notificationsEnabled)
         XCTAssertEqual(skipped.injuryID, InjuryCatalog.jumpersKnee.id)
         XCTAssertEqual(skipped.protocolTrack, .knee)
-        XCTAssertEqual(skipped.primaryLoadID, PrimaryLoadCatalog.wallSit.id)
+        XCTAssertEqual(skipped.primaryLoadID, PrimaryLoadCatalog.legPress.id)
     }
 
     func testSkipKeepsChosenQLAndRemapsKneeLoad() {
@@ -86,13 +86,13 @@ final class InjuryCatalogTests: XCTestCase {
             phase: .cHeavySlowResistance,
             notificationsEnabled: true,
             injuryID: InjuryCatalog.patellarTendonitis.id,
-            primaryLoadID: PrimaryLoadCatalog.spanishSquat.id
+            primaryLoadID: "spanish-squat"
         )
         XCTAssertEqual(chosen.phase, .cHeavySlowResistance)
         XCTAssertTrue(chosen.notificationsEnabled)
         XCTAssertEqual(chosen.injuryID, "patellar-tendonitis")
         XCTAssertEqual(chosen.protocolTrack, .knee)
-        XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.spanishSquat.id)
+        XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.seatedExtension.id)
     }
 
     func testCompleteQLKeepsHipThrustDefault() {
