@@ -151,8 +151,27 @@ final class WorkoutStreakTests: XCTestCase {
 
         let first = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 0)
         let next = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 1)
-        XCTAssertNotEqual(first.text, next.text)
-        XCTAssertEqual(MotivationalQuotes.all.count, 13)
-        XCTAssertTrue(MotivationalQuotes.all.allSatisfy { $0.text.count < 160 })
+        XCTAssertEqual(first.text, "Just keep swimming.")
+        XCTAssertEqual(first.attribution, "Finding Nemo")
+        XCTAssertEqual(next.text, "Get up.")
+        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 0, tapOffset: 10).text, first.text)
+        XCTAssertEqual(MotivationalQuotes.all.count, 10)
+        XCTAssertEqual(MotivationalQuotes.all.map(\.attribution), [
+            "Finding Nemo",
+            "Rocky",
+            "Japanese proverb",
+            "Captain America",
+            "Batman Begins",
+            "The Empire Strikes Back",
+            "Journey",
+            "Ted Lasso",
+            "The Lion King",
+            "The Dark Knight"
+        ])
+        XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in
+            quote.text.count < 160
+                && quote.attribution != "R3hab"
+                && !(quote.attribution?.contains("Atomic Habits") == true)
+        })
     }
 }

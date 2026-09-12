@@ -88,44 +88,19 @@ enum BrandCopy {
     ]
 }
 
-/// Short Today lines. Original R3hab copy, paraphrased habit ideas, and
-/// single-sentence public-domain / proverb attributions. No book excerpts.
+/// Short Today lines. Adi’s 10 attributed cycle — no R3hab / Atomic Habits process copy.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
-        MotivationalQuote(text: "Train today. Judge tomorrow.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "Each log is a vote for the person who doses by the next morning.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(
-            text: "Missing once is a dip. Missing twice is a new groove.",
-            attribution: "Inspired by Atomic Habits"
-        ),
-        MotivationalQuote(
-            text: "The chain is the process — not a badge.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(
-            text: "Mild pain during the set is OK if the morning stays calm.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(text: "Soft cut before hard drop.", attribution: "R3hab"),
-        MotivationalQuote(text: "You own the phase.", attribution: "R3hab"),
-        MotivationalQuote(text: "Process first. Outcome follows.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "We are what we repeatedly do.",
-            attribution: "Will Durant, after Aristotle"
-        ),
-        MotivationalQuote(
-            text: "Little by little, a little becomes a lot.",
-            attribution: "Tanzanian proverb"
-        ),
-        MotivationalQuote(text: "Log the set. The morning tells the truth.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "Don’t break the chain — one hard session still counts.",
-            attribution: "R3hab, inspired by Atomic Habits"
-        ),
-        MotivationalQuote(text: "Capacity is built in quiet sessions.", attribution: "R3hab")
+        MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
+        MotivationalQuote(text: "Get up.", attribution: "Rocky"),
+        MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
+        MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
+        MotivationalQuote(text: "Why do we fall? So we can learn to pick ourselves up.", attribution: "Batman Begins"),
+        MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
+        MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
+        MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),
+        MotivationalQuote(text: "Hakuna matata.", attribution: "The Lion King"),
+        MotivationalQuote(text: "The night is darkest just before the dawn.", attribution: "The Dark Knight")
     ]
 
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {
