@@ -217,7 +217,8 @@ struct SessionDTO: Codable {
 }
 
 enum ExportImportService {
-    /// v6: multi-set resistance payload + rehab track.
+    /// v6: multi-set resistance payload. `loadRegion` / `track` strings are
+    /// carried through untouched for compatibility; the app is knee-only.
     static let schemaVersion = 6
     static let minimumSupportedSchemaVersion = 1
     static let utType = UTType.json
@@ -348,13 +349,11 @@ enum ExportImportService {
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
             settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }
+        // Retired ids in old backups (QL loads, old knee primaries) remap to seated extension.
         if let loadID = dto.primaryLoadID, !loadID.isEmpty {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID, track: settings.protocolTrack)
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
         } else {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
-                settings.primaryLoadID,
-                track: settings.protocolTrack
-            )
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(settings.primaryLoadID)
         }
     }
 

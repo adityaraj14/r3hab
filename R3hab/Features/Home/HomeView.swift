@@ -68,12 +68,8 @@ struct HomeView: View {
     private var hasMorningPain: Bool { todayCheckIn?.restingPainAM != nil }
     private var hasEveningPain: Bool { todayCheckIn?.dailyPainPM != nil }
 
-    private var activeTrack: RehabTrackID {
-        settings?.protocolTrack ?? .knee
-    }
-
     private var activePrimaryLoad: PrimaryLoadOption {
-        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: activeTrack)
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
     }
 
     private var nextAction: TodayNextAction {
@@ -247,7 +243,7 @@ struct HomeView: View {
 
             case .logSession:
                 Button { showSession = true } label: {
-                    Label(activePrimaryLoad.logCTA, systemImage: activeTrack.systemImage)
+                    Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
                 }
                 .buttonStyle(.primaryAction)
 
@@ -325,7 +321,7 @@ struct HomeView: View {
             ) { showAM = true }
             Divider().overlay(AppTheme.quietStroke)
             entryRow(
-                icon: activeTrack.systemImage,
+                icon: InjuryCatalog.systemImage,
                 title: activePrimaryLoad.title,
                 value: sessionRowValue,
                 logged: !todaySessions.isEmpty

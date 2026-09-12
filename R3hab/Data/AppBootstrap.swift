@@ -14,19 +14,14 @@ enum SettingsSeedPolicy {
         hour == legacyPMReminderHour && minute == legacyPMReminderMinute
     }
 
-    static let knownTrackIDs: Set<String> = [
-        RehabTrackID.knee.rawValue,
-        RehabTrackID.ql.rawValue
-    ]
-
-    static func shouldNormalizeActiveTracks(_ csv: String) -> Bool {
-        !knownTrackIDs.contains(csv)
+    /// Retired knee primaries and the removed QL loads (hip thrust / side bend /
+    /// walking) rewrite to seated extension.
+    static func shouldRemapPrimaryLoad(_ id: String) -> Bool {
+        PrimaryLoadCatalog.needsRemap(id)
     }
 
-    static func shouldRemapPrimaryLoad(_ id: String, track: RehabTrackID) -> Bool {
-        PrimaryLoadCatalog.needsRemap(id, track: track)
-    }
-
+    /// Collapsed knee aliases and the removed `ql-strain` rewrite to
+    /// patellar tendinopathy.
     static func shouldRemapInjury(_ id: String) -> Bool {
         InjuryCatalog.needsRemap(id)
     }
@@ -48,18 +43,8 @@ enum AppBootstrap {
                 existing.pmReminderMinute = SettingsSeedPolicy.currentPMReminderMinute
                 changed = true
             }
-            if SettingsSeedPolicy.shouldNormalizeActiveTracks(existing.activeTracksCSV) {
-                existing.activeTracksCSV = RehabTrackID.knee.rawValue
-                changed = true
-            }
-            if SettingsSeedPolicy.shouldRemapPrimaryLoad(
-                existing.primaryLoadID,
-                track: existing.protocolTrack
-            ) {
-                existing.primaryLoadID = PrimaryLoadCatalog.normalizedID(
-                    existing.primaryLoadID,
-                    track: existing.protocolTrack
-                )
+            if SettingsSeedPolicy.shouldRemapPrimaryLoad(existing.primaryLoadID) {
+                existing.primaryLoadID = PrimaryLoadCatalog.normalizedID(existing.primaryLoadID)
                 changed = true
             }
             if SettingsSeedPolicy.shouldRemapInjury(existing.selectedInjuryID) {

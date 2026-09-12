@@ -38,10 +38,10 @@ enum BrandCopy {
         )
     ]
 
-    static let injuryTitle = "Which injury are you tracking?"
+    static let injuryTitle = "Built for the patellar tendon."
 
     static let injuryLead = """
-    Two paths. Jumper’s knee and patellar tendinopathy share the same knee diary. QL strain is its own template: hip thrusts, side bends, and walking.
+    Jumper’s knee and patellar tendinopathy (also called patellar tendonitis) are the same injury and share one knee protocol: progressive loading, judged by the next morning.
     """
 
     static let injuryDiagnosisNote = """
@@ -49,8 +49,6 @@ enum BrandCopy {
     """
 
     static let primaryLiftLead = "This is the lift you dose the same way. Switch later in Settings."
-
-    static let qlPrimaryWorkLead = "Hip thrusts and side bends carry weight. Walking is time and steps — not fake lbs."
 
     static let setupEyebrow = "Setup"
     static let setupTitle = "Where are you right now?"

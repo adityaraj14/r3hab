@@ -22,7 +22,6 @@ struct KneeExploreChart: View {
     var height: CGFloat = 168
     var visibleDays: Int = 7
     var loadTitle: String = "Seated extension load"
-    var showsLoad: Bool = true
     var emptyDescription: String = "Log morning or evening pain or a seated-extension session. Load vs pain is the insight."
 
     @State private var selectedDate: Date?
@@ -83,16 +82,14 @@ struct KneeExploreChart: View {
                 ) {
                     painChart
                 }
-                if showsLoad {
-                    chartBlock(
-                        title: loadTitle,
-                        unit: "lbs",
-                        accessibility: "\(loadTitle) in pounds. Tap a day for details."
-                    ) {
-                        loadChart
-                    }
-                    loadLegend
+                chartBlock(
+                    title: loadTitle,
+                    unit: "lbs",
+                    accessibility: "\(loadTitle) in pounds. Tap a day for details."
+                ) {
+                    loadChart
                 }
+                loadLegend
                 selectionCard
             } else {
                 ContentUnavailableView(
@@ -276,17 +273,15 @@ struct KneeExploreChart: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                if showsLoad {
-                    HStack(spacing: 16) {
-                        if sidesDiverge {
-                            labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
-                            labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
-                        } else {
-                            labeledValue(
-                                "Load",
-                                (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
-                            )
-                        }
+                HStack(spacing: 16) {
+                    if sidesDiverge {
+                        labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
+                        labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
+                    } else {
+                        labeledValue(
+                            "Load",
+                            (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
+                        )
                     }
                 }
             }

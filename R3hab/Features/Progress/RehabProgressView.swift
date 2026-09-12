@@ -87,7 +87,7 @@ struct RehabProgressView: View {
     }
 
     private var primaryLoad: PrimaryLoadOption {
-        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: settings?.protocolTrack ?? .knee)
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
     }
 
     var body: some View {
@@ -133,7 +133,6 @@ struct RehabProgressView: View {
                                 // Must match the picker. Capping at 7 kept 28-day on a 7-day domain.
                                 visibleDays: range.rawValue,
                                 loadTitle: primaryLoad.chartLoadTitle,
-                                showsLoad: primaryLoad.plotsLoad,
                                 emptyDescription: progressEmptyDescription
                             )
                             .id(range.rawValue)
@@ -156,13 +155,7 @@ struct RehabProgressView: View {
     }
 
     private var progressEmptyDescription: String {
-        if primaryLoad.track == .ql {
-            if primaryLoad.plotsLoad {
-                return "Your first morning pain log or first \(primaryLoad.title.lowercased()) session starts the charts. Progress is the diary filling in — not a grade."
-            }
-            return "Your first morning pain log or first walk starts the charts. Walking stays time-based — no fake lbs."
-        }
-        return "Your first morning pain log or first seated-extension session starts the charts. Progress is the diary filling in — not a grade."
+        "Your first morning pain log or first \(primaryLoad.title.lowercased()) session starts the charts. Progress is the diary filling in — not a grade."
     }
 
     private var heroRow: some View {

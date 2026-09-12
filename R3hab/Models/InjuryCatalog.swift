@@ -1,71 +1,38 @@
 import Foundation
 
-/// One onboarding injury label and the protocol it currently runs.
-/// Onboarding and Settings pickers iterate `selectable` (two rows). Older knee
-/// aliases stay in `all` so existing installs remap without losing the track.
+/// The one injury R3hab ships: jumper’s knee / patellar tendinopathy.
+/// Older stored ids (knee aliases and the retired QL strain template) remap to
+/// it so existing installs and backups keep working without a second track.
 struct InjuryDefinition: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
     var subtitle: String
-    var protocolTrack: RehabTrackID
-    var isSelectable: Bool
 }
 
 enum InjuryCatalog {
-    /// Retired onboarding rows. Stored ids remap to `patellar-tendinopathy`.
-    static let collapsedKneeAliasIDs: Set<String> = [
+    /// Retired ids. Stored values remap to `patellar-tendinopathy` on launch.
+    static let retiredIDs: Set<String> = [
         "jumpers-knee",
-        "patellar-tendonitis"
+        "patellar-tendonitis",
+        "ql-strain"
     ]
-
-    static let jumpersKnee = InjuryDefinition(
-        id: "jumpers-knee",
-        title: "Jumper's knee",
-        subtitle: "Patellar tendon · pain-guided loading",
-        protocolTrack: .knee,
-        isSelectable: false
-    )
 
     static let patellarTendinopathy = InjuryDefinition(
         id: "patellar-tendinopathy",
         title: "Jumper’s knee / patellar tendinopathy",
-        subtitle: "Also called patellar tendonitis · same knee protocol.",
-        protocolTrack: .knee,
-        isSelectable: true
+        subtitle: "Also called patellar tendonitis · one knee protocol."
     )
 
-    static let patellarTendonitis = InjuryDefinition(
-        id: "patellar-tendonitis",
-        title: "Patellar tendonitis",
-        subtitle: "Same knee protocol as patellar tendinopathy",
-        protocolTrack: .knee,
-        isSelectable: false
-    )
-
-    static let qlStrain = InjuryDefinition(
-        id: "ql-strain",
-        title: "QL strain",
-        subtitle: "Side-of-waist · hip thrusts, side bends, walking.",
-        protocolTrack: .ql,
-        isSelectable: true
-    )
-
-    static let all: [InjuryDefinition] = [
-        jumpersKnee,
-        patellarTendinopathy,
-        patellarTendonitis,
-        qlStrain
-    ]
-
-    static var selectable: [InjuryDefinition] {
-        all.filter(\.isSelectable)
-    }
-
-    /// Skip-from-the-first-screen default stays the knee diary.
+    static let all: [InjuryDefinition] = [patellarTendinopathy]
     static let defaultSelectable = patellarTendinopathy
 
+    /// Protocol identity shown in the Phase guide and Session editor header.
+    static let protocolName = "Patellar tendinopathy"
+    static let protocolDescription = "Progressive loading A→E, pain-guided 24h decisions, one primary lift (default seated leg extension)."
+    static let systemImage = "figure.strengthtraining.traditional"
+
     static func remappedID(_ id: String) -> String {
-        collapsedKneeAliasIDs.contains(id) ? patellarTendinopathy.id : id
+        retiredIDs.contains(id) ? patellarTendinopathy.id : id
     }
 
     static func definition(for id: String) -> InjuryDefinition {

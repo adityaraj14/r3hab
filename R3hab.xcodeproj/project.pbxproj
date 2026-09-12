@@ -38,7 +38,6 @@
 		3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabEnums.swift; sourceTree = "<group>"; };
 		E8011A626D364764ADC7D7E8 /* TrainingSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingSession.swift; sourceTree = "<group>"; };
 		EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResistanceSet.swift; sourceTree = "<group>"; };
-		C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RehabTemplate.swift; sourceTree = "<group>"; };
 		C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InjuryCatalog.swift; sourceTree = "<group>"; };
 		B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrimaryLoadCatalog.swift; sourceTree = "<group>"; };
 		A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrandCopy.swift; sourceTree = "<group>"; };
@@ -86,7 +85,6 @@
 		73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */; };
 		47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8011A626D364764ADC7D7E8 /* TrainingSession.swift */; };
 		B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */; };
-		37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */; };
 		D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */; };
 		C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */; };
 		D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */; };
@@ -239,7 +237,6 @@
 				3A5FDB81088A4D1CB8BC670C /* RehabEnums.swift */,
 				E8011A626D364764ADC7D7E8 /* TrainingSession.swift */,
 				EC6B8A1AEF0A493A8640E2BC /* ResistanceSet.swift */,
-				C76B2B9842F8462C8A5C275B /* RehabTemplate.swift */,
 				C41A8B7D2E9F4A11B6C3D5E7 /* InjuryCatalog.swift */,
 				B5C7D9E1F2A34568B90C1D2E /* PrimaryLoadCatalog.swift */,
 			);
@@ -325,7 +322,6 @@
 				73A790C5D9AE4975B8A8091F /* RehabEnums.swift in Sources */,
 				47270681870B4D2A8848EE4E /* TrainingSession.swift in Sources */,
 				B6C4C1A4441847CDA69B50CF /* ResistanceSet.swift in Sources */,
-				37BE775C61BE40A2831875B7 /* RehabTemplate.swift in Sources */,
 				D52B9C8E3FA05B22C7D4E6F8 /* InjuryCatalog.swift in Sources */,
 				C6D8E0F1A2B34569C01D2E3F /* PrimaryLoadCatalog.swift in Sources */,
 				D7E9F1A2B3C44570D12E3F40 /* BrandCopy.swift in Sources */,
