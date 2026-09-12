@@ -1,7 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Chronological daily + session feed with backdate + delete (PR-09).
+/// History — chronological daily + session feed with backdate + delete (PR-09).
+/// Today adds entries; this tab is where the past lives.
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
@@ -56,7 +57,7 @@ struct HistoryView: View {
                 .pickerStyle(.segmented)
                 .padding(.horizontal)
                 .padding(.vertical, 10)
-                .background(Color(.systemBackground))
+                .background(AppTheme.canvas)
 
                 TabView(selection: $filter) {
                     allList
@@ -68,16 +69,17 @@ struct HistoryView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
             }
-            .navigationTitle("Log")
+            .appCanvas()
+            .navigationTitle("History")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu {
-                        Button("Log past check-in") {
+                        Button("Add a past check-in") {
                             backdateKind = .daily
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
-                        Button("Log past workout") {
+                        Button("Add a past workout") {
                             backdateKind = .session
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
@@ -85,6 +87,7 @@ struct HistoryView: View {
                     } label: {
                         Image(systemName: "plus.circle")
                     }
+                    .tint(AppTheme.quiet)
                 }
             }
             .sheet(isPresented: Binding(
@@ -141,7 +144,7 @@ struct HistoryView: View {
                             displayedComponents: .date
                         )
                     }
-                    .navigationTitle("Log past day")
+                    .navigationTitle("Add a past day")
                     .navigationBarTitleDisplayMode(.inline)
                     .toolbar {
                         ToolbarItem(placement: .cancellationAction) {
@@ -243,6 +246,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .overlay {
             if dayEntries.isEmpty {
                 emptyState(title: "No days yet", description: "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate.")
@@ -268,6 +272,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .overlay {
             if checkIns.isEmpty {
                 emptyState(title: "No check-ins yet", description: "Morning and evening pain plus steps will show here.")
@@ -290,7 +295,7 @@ struct HistoryView: View {
                         } label: {
                             Label("After", systemImage: "bolt.heart")
                         }
-                        .tint(Color.accentColor)
+                        .tint(.gray)
                     }
                     if session.response24h == .pending {
                         Button {
@@ -311,6 +316,7 @@ struct HistoryView: View {
             }
         }
         .listStyle(.insetGrouped)
+        .scrollContentBackground(.hidden)
         .overlay {
             if sessions.isEmpty {
                 emptyState(title: "No workouts yet", description: "Logged workouts will show here. Use + to backdate.")
@@ -399,7 +405,7 @@ struct HistoryView: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "\(c.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(c.restingPainAM.map(String.init) ?? "missing"). Evening pain \(c.dailyPainPM.map(String.init) ?? "missing"). Steps \(c.steps.map { $0.formatted() } ?? "missing")."
+            "\(c.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(c.restingPainAM.map(String.init) ?? "not logged"). Evening pain \(c.dailyPainPM.map(String.init) ?? "not logged"). Steps \(c.steps.map { $0.formatted() } ?? "not logged")."
         )
     }
 
@@ -410,8 +416,8 @@ struct HistoryView: View {
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .foregroundStyle(Color.accentColor)
-                    .background(Color.accentColor.opacity(0.22), in: Capsule())
+                    .foregroundStyle(AppTheme.quiet)
+                    .background(AppTheme.quietFill, in: Capsule())
                     .accessibilityHidden(true)
                 sessionTypeTag(s.sessionType)
                 Spacer()
@@ -502,9 +508,9 @@ struct HistoryView: View {
     }
 
     private func dayAccessibility(_ day: DayLogEntry) -> String {
-        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "missing"
-        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "missing"
-        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "missing"
+        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "not logged"
+        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "not logged"
+        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "not logged"
         let workout: String
         if day.sessions.isEmpty {
             workout = "no workout"

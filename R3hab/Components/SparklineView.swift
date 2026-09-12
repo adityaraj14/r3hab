@@ -514,14 +514,14 @@ struct OutcomeMixCard: View {
             Text("24h outcomes")
                 .font(.headline)
             if mix.resolved == 0 && mix.pending == 0 {
-                Text("Resolve a session tomorrow morning. Better / Same is the vote that counts — not zero pain during the set.")
+                Text("Resolve a session tomorrow morning. Better / Same is what counts — not zero pain during the set.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(mix.cleanStreak)")
                         .font(.largeTitle.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color.accentColor)
+                        .foregroundStyle(.primary)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(mix.cleanStreak == 1 ? "clean session" : "clean sessions")
                             .font(.subheadline.weight(.semibold))
@@ -568,7 +568,7 @@ struct OutcomeMixCard: View {
                     Capsule().fill(Color.orange).frame(width: geo.size.width * CGFloat(mix.worse) / CGFloat(total))
                 }
                 if mix.pending > 0 {
-                    Capsule().fill(Color.accentColor.opacity(0.45)).frame(width: geo.size.width * CGFloat(mix.pending) / CGFloat(total))
+                    Capsule().fill(Color.white.opacity(0.25)).frame(width: geo.size.width * CGFloat(mix.pending) / CGFloat(total))
                 }
             }
         }
@@ -619,12 +619,12 @@ struct ConsistencyCard: View {
 
     private var encouragement: String {
         if summary.checkInDays == 0 {
-            return "One morning score is a vote. The diary is the rehab."
+            return "One morning score is a start. The diary is the rehab."
         }
         if summary.checkInDays >= summary.windowDays {
             return "Every day in this window has a mark. That’s the habit."
         }
-        return "\(summary.checkInDays) of \(summary.windowDays) days logged. Keep the votes coming."
+        return "\(summary.checkInDays) of \(summary.windowDays) days logged. Keep it going."
     }
 
     private func meter(title: String, value: Int, total: Int) -> some View {
@@ -642,7 +642,7 @@ struct ConsistencyCard: View {
                     Capsule()
                         .fill(Color.white.opacity(0.08))
                     Capsule()
-                        .fill(Color.accentColor)
+                        .fill(Color.white.opacity(0.7))
                         .frame(width: geo.size.width * CGFloat(total == 0 ? 0 : Double(value) / Double(total)))
                 }
             }

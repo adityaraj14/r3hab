@@ -83,8 +83,11 @@ private struct RootTabContent: View {
 
     var body: some View {
         @Bindable var router = router
+        // Tab bar is white (quiet chrome); each tab re-tints its own subtree so
+        // controls inside keep the single gold accent.
         TabView(selection: $router.selectedTab) {
             HomeView()
+                .tint(AppTheme.gold)
                 .tabItem {
                     Label("Today", systemImage: "sun.max.fill")
                 }
@@ -92,18 +95,20 @@ private struct RootTabContent: View {
                 .badge(overdueBadge > 0 ? overdueBadge : 0)
 
             HistoryView()
+                .tint(AppTheme.gold)
                 .tabItem {
-                    Label("Log", systemImage: "list.bullet.rectangle")
+                    Label("History", systemImage: "clock.arrow.circlepath")
                 }
                 .tag(1)
 
             RehabProgressView()
+                .tint(AppTheme.gold)
                 .tabItem {
                     Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
                 }
                 .tag(2)
         }
-        .tint(Color.accentColor)
+        .tint(.white)
         .preferredColorScheme(.dark)
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)

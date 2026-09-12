@@ -96,7 +96,7 @@ struct RehabProgressView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if !hasAnyData {
                         ContentUnavailableView(
-                            "Your first votes are still coming",
+                            "No pain logs or sessions yet",
                             systemImage: "chart.line.uptrend.xyaxis",
                             description: Text(progressEmptyDescription)
                         )
@@ -150,6 +150,7 @@ struct RehabProgressView: View {
                 }
                 .padding()
             }
+            .appCanvas()
             .navigationTitle("Progress")
         }
     }
@@ -157,11 +158,11 @@ struct RehabProgressView: View {
     private var progressEmptyDescription: String {
         if primaryLoad.track == .ql {
             if primaryLoad.plotsLoad {
-                return "Log morning or evening pain or a \(primaryLoad.title.lowercased()) session. Progress is the diary filling in — not a grade."
+                return "Your first morning pain log or first \(primaryLoad.title.lowercased()) session starts the charts. Progress is the diary filling in — not a grade."
             }
-            return "Log morning or evening pain or a walk. Walking stays time-based — no fake lbs."
+            return "Your first morning pain log or first walk starts the charts. Walking stays time-based — no fake lbs."
         }
-        return "Log morning or evening pain or a seated-extension session. Progress is the diary filling in — not a grade."
+        return "Your first morning pain log or first seated-extension session starts the charts. Progress is the diary filling in — not a grade."
     }
 
     private var heroRow: some View {
@@ -176,7 +177,7 @@ struct RehabProgressView: View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.title3.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.primary)
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)

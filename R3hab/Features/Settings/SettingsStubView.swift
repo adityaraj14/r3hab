@@ -161,25 +161,25 @@ struct SettingsStubView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // TEMPORARY: remove this section before App Store / public release.
+            // TEMPORARY: one Debug section. "Simulate onboarding" ships in TestFlight
+            // until onboarding UX sign-off; "Seed sample week" is DEBUG-only.
+            // Remove the whole section before App Store / public release.
             Section {
                 Button("Simulate onboarding") {
                     simulateOnboarding()
                 }
-            } header: {
-                Text("Debug (temporary)")
-            } footer: {
-                Text("Re-opens first-launch onboarding without wiping logs. Remove before App Store.")
-            }
-
-            #if DEBUG
-            Section("Debug") {
+                #if DEBUG
                 Button("Seed sample week") {
                     seedSampleWeek()
                 }
+                #endif
+            } header: {
+                Text("Debug")
+            } footer: {
+                Text("Simulate onboarding re-opens first launch without wiping logs. Temporary — removed before App Store.")
             }
-            #endif
         }
+        .appListCanvas()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
