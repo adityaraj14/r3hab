@@ -20,13 +20,24 @@ final class BrandCopyTests: XCTestCase {
                 XCTAssertFalse(quote.text.contains(flagged), quote.text)
             }
         }
-        // Only the proverb keeps an attribution; every other line is R3hab’s own voice.
-        XCTAssertEqual(MotivationalQuotes.all.compactMap(\.attribution), ["Japanese proverb"])
+        // Two attributed lines: the proverb and Adi’s Atomic Habits paraphrase.
+        XCTAssertEqual(
+            MotivationalQuotes.all.compactMap(\.attribution),
+            ["Japanese proverb", "Inspired by Atomic Habits"]
+        )
+    }
+
+    func testAdisAtomicHabitsLineIsInSlotTen() {
+        let last = MotivationalQuotes.all[9]
+        XCTAssertEqual(last.text, "The greatest threat to success is not failure but boredom. Keep going.")
+        XCTAssertEqual(last.attribution, "Inspired by Atomic Habits")
+        XCTAssertFalse(last.text.contains("strength"), "Adi asked for the threat/boredom wording")
     }
 
     func testQuotesStayShortEnoughForTheTodayStreakLine() {
+        // Rendered as “text” — attribution at footnote size, lineLimit(3) on Today.
         for quote in MotivationalQuotes.all {
-            XCTAssertLessThanOrEqual(quote.text.count, 45, quote.text)
+            XCTAssertLessThanOrEqual(quote.text.count, 80, quote.text)
         }
     }
 
@@ -46,12 +57,15 @@ final class BrandCopyTests: XCTestCase {
         )
     }
 
-    func testQuoteCycleHasNoAtomicHabitsProcessCopy() {
+    func testQuoteCycleKeepsBookReferencesToTheOneAdiChose() {
         for quote in MotivationalQuotes.all {
             XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("atomic habits"), quote.text)
-            XCTAssertFalse(quote.attribution?.localizedCaseInsensitiveContains("atomic habits") ?? false, quote.text)
             XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("r3hab"), quote.text)
         }
+        let bookLines = MotivationalQuotes.all.filter {
+            $0.attribution?.localizedCaseInsensitiveContains("atomic habits") == true
+        }
+        XCTAssertEqual(bookLines.count, 1)
     }
 
     func testQuoteIndexWrapsAcrossTenSlots() {

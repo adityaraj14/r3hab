@@ -165,12 +165,11 @@ final class WorkoutStreakTests: XCTestCase {
             nil,
             nil,
             nil,
-            nil
+            "Inspired by Atomic Habits"
         ])
         XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in
             quote.text.count < 160
                 && quote.attribution != "R3hab"
-                && !(quote.attribution?.contains("Atomic Habits") == true)
         })
     }
 }

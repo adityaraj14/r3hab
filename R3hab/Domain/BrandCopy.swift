@@ -105,8 +105,8 @@ enum BrandCopy {
 }
 
 /// Short Today lines. 10-item cycle in R3hab’s own voice — short, neutral,
-/// rehab-owned. No franchise memes, no Atomic Habits process copy. The one
-/// attributed line is a proverb, not a film.
+/// rehab-owned. No franchise memes. Two attributed lines: a proverb and
+/// Adi’s Atomic Habits paraphrase (slot 10).
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
         MotivationalQuote(text: "Show up. Log it. Move on.", attribution: nil),
@@ -118,7 +118,10 @@ enum MotivationalQuotes {
         MotivationalQuote(text: "Trust the numbers, not the mood.", attribution: nil),
         MotivationalQuote(text: "One session at a time.", attribution: nil),
         MotivationalQuote(text: "A flat week is still a week logged.", attribution: nil),
-        MotivationalQuote(text: "Progress hides in ordinary days.", attribution: nil)
+        MotivationalQuote(
+            text: "The greatest threat to success is not failure but boredom. Keep going.",
+            attribution: "Inspired by Atomic Habits"
+        )
     ]
 
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {
