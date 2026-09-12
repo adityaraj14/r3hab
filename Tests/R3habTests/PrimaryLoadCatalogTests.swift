@@ -88,6 +88,42 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertTrue(hsrChips.allSatisfy { !$0.label.contains("HSR") })
     }
 
+    func testKneeChipsAreSeatedExtensionAndLegPressOnly() {
+        // Adi (PR #18): no "Easy bike", no "Custom…" in the knee chip row.
+        XCTAssertFalse(SessionPreset.all.contains { $0.id == "bike" || $0.id == "custom" })
+        XCTAssertFalse(SessionPreset.all.contains { $0.label == "Easy bike" || $0.label.hasPrefix("Custom") })
+
+        let phaseB = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
+        XCTAssertEqual(phaseB.map(\.id), ["ext", "lp-iso"])
+        XCTAssertEqual(phaseB.map(\.label), ["Seated extension", "Leg press"])
+
+        let phaseA = SessionPreset.forPhase(.aFlareDeLoad, primaryLoadID: PrimaryLoadCatalog.legPress.id)
+        XCTAssertEqual(phaseA.map(\.id), ["lp-iso", "ext"])
+
+        let phaseC = SessionPreset.forPhase(.cHeavySlowResistance, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
+        XCTAssertEqual(phaseC.map(\.id), ["ke", "lp"])
+    }
+
+    func testKneeLoadersStayAvailableInLaterPhases() {
+        // With bike/custom gone, D/E rows still lead with the primary lift.
+        let phaseD = SessionPreset.forPhase(.dEnergyStorage, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
+        XCTAssertEqual(phaseD.first?.id, "ke")
+        XCTAssertTrue(phaseD.contains { $0.id == "lp" })
+        XCTAssertTrue(phaseD.contains { $0.id == "land" })
+
+        let phaseE = SessionPreset.forPhase(.eReturnToSport, primaryLoadID: PrimaryLoadCatalog.legPress.id)
+        XCTAssertEqual(phaseE.first?.id, "lp")
+        XCTAssertTrue(phaseE.contains { $0.id == "ke" })
+        XCTAssertFalse(phaseE.contains { $0.id == "bike" || $0.id == "custom" })
+    }
+
+    func testQLChipsDoNotIncludeBikeOrCustom() {
+        for phase in RehabPhase.allCases {
+            let chips = SessionPreset.forPhase(phase, primaryLoadID: PrimaryLoadCatalog.hipThrust.id)
+            XCTAssertEqual(chips.map(\.id), ["ql-ht", "ql-sb", "ql-walk"], "\(phase)")
+        }
+    }
+
     func testChartLoadTitleKeepsSeatedExtensionLabel() {
         XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartLoadTitle, "Seated extension load")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.chartLoadTitle, "Leg press load")

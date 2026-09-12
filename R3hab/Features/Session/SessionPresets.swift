@@ -8,7 +8,7 @@ struct SessionPreset: Identifiable, Hashable {
     let phases: Set<RehabPhase>?
     let tracksResistance: Bool
     let loadRegion: LoadRegion
-    /// Tracks this preset belongs to. `custom` is on every track.
+    /// Tracks this preset belongs to.
     let tracks: Set<RehabTrackID>
     /// Prefer multi-set editor (HSR seated extension).
     let usesPerSetLogging: Bool
@@ -55,7 +55,7 @@ struct SessionPreset: Identifiable, Hashable {
             label: "Seated extension",
             sessionType: .hsrStrength,
             whatIDid: "Seated extension",
-            phases: [.cHeavySlowResistance],
+            phases: [.cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
@@ -75,15 +75,17 @@ struct SessionPreset: Identifiable, Hashable {
             label: "Leg press",
             sessionType: .hsrStrength,
             whatIDid: "Leg press",
-            phases: [.cHeavySlowResistance],
+            phases: [.cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
         ),
+        // Knee chips are the two loaders only (Adi, PR #18): no "Easy bike",
+        // no "Custom…". Other session types stay reachable via the Type picker
+        // and the free-text "What I did" field.
         .init(id: "land", label: "Low landings", sessionType: .energyStorage, whatIDid: "Low-volume landings / small jumps", phases: [.dEnergyStorage]),
         .init(id: "hit", label: "Short hitting", sessionType: .tennisSport, whatIDid: "Tennis: short hitting session", phases: [.eReturnToSport]),
         .init(id: "match", label: "Match play", sessionType: .tennisSport, whatIDid: "Tennis: match play", phases: [.eReturnToSport]),
-        .init(id: "bike", label: "Easy bike", sessionType: .other, whatIDid: "Easy bike 5–10 min", phases: nil),
         .init(
             id: "ql-ht",
             label: "Hip thrusts",
@@ -115,14 +117,6 @@ struct SessionPreset: Identifiable, Hashable {
             tracksResistance: false,
             loadRegion: .ql,
             tracks: [.ql]
-        ),
-        .init(
-            id: "custom",
-            label: "Custom…",
-            sessionType: .other,
-            whatIDid: "",
-            phases: nil,
-            tracks: [.knee, .ql]
         )
     ]
 
@@ -148,7 +142,7 @@ struct SessionPreset: Identifiable, Hashable {
             presetID = option.hsrPresetID
         }
         return all.first { $0.id == presetID }
-            ?? all.first { $0.tracks.contains(option.track) && $0.id != "custom" }
+            ?? all.first { $0.tracks.contains(option.track) }
             ?? all.first { $0.id == seatedExtensionIsometricId }
             ?? all[0]
     }
