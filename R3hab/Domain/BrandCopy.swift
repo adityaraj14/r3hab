@@ -18,7 +18,7 @@ enum BrandCopy {
     static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    Rehab isn’t a straight line. Some weeks click; others leave you wondering if you’re on the right path, or if any of it is working. R3hab keeps the journey on this phone — so when doubt shows up, you look at your numbers instead of unpacking the whole story again.
+    Rehab isn’t a straight line. R3hab keeps the journey on this phone, so when doubt shows up you look at your numbers instead of re-telling the whole story.
     """
 
     static let habits: [BrandHabit] = [
@@ -36,9 +36,7 @@ enum BrandCopy {
         )
     ]
 
-    static let onboardingFootnote = """
-    Log what you did. Check how you feel next. The pattern lives here so you can trust the path you’re on.
-    """
+    static let injuryTitle = "Which injury are you tracking?"
 
     static let injuryLead = """
     Two paths. Jumper’s knee and patellar tendinopathy share the same knee diary. QL strain is its own template: hip thrusts, side bends, and walking.
@@ -87,6 +85,8 @@ enum BrandCopy {
     static let privacyEyebrow = "Private"
     static let privacyTitle = "Yours. On this phone."
     static let privacyLead = "A diary, not a product that sells you."
+    /// One-line version for the compact Welcome card.
+    static let privacySummary = "No account · No ads · Stored on this iPhone only"
 
     static let privacyPoints: [BrandHabit] = [
         BrandHabit(
@@ -99,19 +99,20 @@ enum BrandCopy {
         ),
         BrandHabit(
             title: "On-device only",
-            body: "SwiftData on your iPhone. Export a file if you want a backup — we don’t host one."
+            body: "Stored on this iPhone only. Export a file if you want a backup — we don’t host one."
         )
     ]
 }
 
-/// Short Today lines. Adi’s 10 attributed cycle — no R3hab / Atomic Habits process copy.
+/// Short Today lines. Adi’s 10-item cycle — no R3hab / Atomic Habits process copy.
+/// Slot 5 is a neutral rehab-owned line (the Batman Begins quote read off-tone).
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
         MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
         MotivationalQuote(text: "Get up.", attribution: "Rocky"),
         MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
         MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
-        MotivationalQuote(text: "Why do we fall? So we can learn to pick ourselves up.", attribution: "Batman Begins"),
+        MotivationalQuote(text: "Load a little. Judge it tomorrow morning.", attribution: nil),
         MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
         MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
         MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),

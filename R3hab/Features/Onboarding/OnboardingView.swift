@@ -51,13 +51,8 @@ struct OnboardingView: View {
                     }
                 } label: {
                     Text(primaryCTATitle)
-                        .font(.headline.weight(.semibold))
-                        .foregroundStyle(OnboardingTheme.ink)
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
-                .tint(OnboardingTheme.gold)
-                .controlSize(.large)
+                .buttonStyle(.primaryAction)
                 .disabled(isBusy)
 
                 Button("Skip for now") {
@@ -78,16 +73,15 @@ struct OnboardingView: View {
                     }
                 }
                 .font(.subheadline)
-                .foregroundStyle(OnboardingTheme.gold.opacity(0.85))
+                .foregroundStyle(.secondary)
                 .disabled(isBusy)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             .padding(.top, 8)
         }
-        .background(OnboardingTheme.canvas.ignoresSafeArea())
+        .appCanvas()
         .preferredColorScheme(.dark)
-        .tint(OnboardingTheme.gold)
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
             if let settings {
@@ -117,7 +111,7 @@ struct OnboardingView: View {
         HStack(spacing: 8) {
             ForEach(0..<pageCount, id: \.self) { index in
                 Capsule()
-                    .fill(index == page ? OnboardingTheme.gold : OnboardingTheme.gold.opacity(0.22))
+                    .fill(index == page ? Color.white : Color.white.opacity(0.22))
                     .frame(width: index == page ? 22 : 7, height: 7)
                     .accessibilityHidden(true)
             }
@@ -127,34 +121,35 @@ struct OnboardingView: View {
         .accessibilityLabel("Onboarding step \(page + 1) of \(pageCount)")
     }
 
+    /// Sized to fit above Continue on a 6.1" phone: short lead, one compact
+    /// privacy card, three benefit rows. ScrollView stays only as a fallback
+    /// for large Dynamic Type.
     private var nameStoryPage: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
+            VStack(alignment: .leading, spacing: 16) {
                 screenHeader(
                     eyebrow: BrandCopy.onboardingEyebrow,
                     title: BrandCopy.onboardingTitle
                 )
                 Text(BrandCopy.onboardingLead)
-                    .font(.body)
+                    .font(.subheadline)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 privacyPitch
 
-                VStack(spacing: 10) {
+                VStack(spacing: 8) {
                     ForEach(BrandCopy.habits) { habit in
-                        habitCard(habit)
+                        habitRow(habit)
                     }
                 }
-
-                Text(BrandCopy.onboardingFootnote)
-                    .font(.footnote)
-                    .foregroundStyle(.tertiary)
             }
             .padding(.horizontal, 24)
-            .padding(.top, 12)
+            .padding(.top, 8)
             .padding(.bottom, 8)
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
+        .scrollBounceBehavior(.basedOnSize)
         .scrollIndicators(.hidden)
     }
 
@@ -163,7 +158,7 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
                     eyebrow: "Injury",
-                    title: "What are you loading?"
+                    title: BrandCopy.injuryTitle
                 )
                 Text(BrandCopy.injuryLead)
                     .font(.body)
@@ -275,7 +270,7 @@ struct OnboardingView: View {
                             .foregroundStyle(.secondary)
                     }
                 }
-                .tint(OnboardingTheme.gold)
+                .tint(AppTheme.gold)
                 .padding(.top, 4)
             }
             .padding(.horizontal, 24)
@@ -316,9 +311,9 @@ struct OnboardingView: View {
             Text(eyebrow.uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.2)
-                .foregroundStyle(OnboardingTheme.gold)
+                .foregroundStyle(AppTheme.quiet)
             Text(title)
-                .font(.system(size: 34, weight: .heavy, design: .default))
+                .font(.system(size: 30, weight: .heavy, design: .default))
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
@@ -333,53 +328,41 @@ struct OnboardingView: View {
         selectedTrack == .ql ? BrandCopy.qlPrimaryWorkLead : BrandCopy.primaryLiftLead
     }
 
+    /// Compact privacy card: one title, one summary line, three short points.
     private var privacyPitch: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text(BrandCopy.privacyEyebrow.uppercased())
-                .font(.caption.weight(.semibold))
-                .tracking(1.2)
-                .foregroundStyle(OnboardingTheme.gold)
-
-            Text(BrandCopy.privacyTitle)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(.white)
-
-            Text(BrandCopy.privacyLead)
-                .font(.subheadline)
-                .foregroundStyle(Color.white.opacity(0.72))
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "lock.fill")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.quiet)
+                Text(BrandCopy.privacyTitle)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+            }
+            Text(BrandCopy.privacySummary)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(Color.white.opacity(0.8))
                 .fixedSize(horizontal: false, vertical: true)
 
             ForEach(BrandCopy.privacyPoints) { point in
-                HStack(alignment: .top, spacing: 10) {
-                    Image(systemName: "lock.fill")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(OnboardingTheme.gold)
-                        .frame(width: 16)
-                        .padding(.top, 2)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(point.title)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.white)
-                        Text(point.body)
-                            .font(.caption)
-                            .foregroundStyle(Color.white.opacity(0.65))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                }
+                Text(point.body)
+                    .font(.caption)
+                    .foregroundStyle(Color.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .padding(16)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(OnboardingTheme.gold.opacity(0.08))
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(Color.white.opacity(0.05))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .stroke(OnboardingTheme.gold.opacity(0.28), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .strokeBorder(AppTheme.quietStroke, lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Private. No ads. On this iPhone.")
+        .accessibilityLabel("Private. No account, no ads, stored on this iPhone only.")
     }
 
     private func selectInjury(_ id: String) {
@@ -390,27 +373,34 @@ struct OnboardingView: View {
         }
     }
 
-    private func habitCard(_ habit: BrandHabit) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(habit.title)
-                .font(.headline)
-                .foregroundStyle(OnboardingTheme.gold)
-            Text(habit.body)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+    private func habitRow(_ habit: BrandHabit) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: habitIcon(habit))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+                .frame(width: 20)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(habit.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(habit.body)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .lineLimit(2)
+            }
         }
-        .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.04))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.08), lineWidth: 1)
-        )
         .accessibilityElement(children: .combine)
+    }
+
+    private func habitIcon(_ habit: BrandHabit) -> String {
+        switch habit.title {
+        case "Track the journey": return "chart.line.uptrend.xyaxis"
+        case "Stay accountable": return "checkmark.circle"
+        default: return "scalemass"
+        }
     }
 
     private func phaseChoice(
@@ -432,19 +422,19 @@ struct OnboardingView: View {
                 Spacer(minLength: 8)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                     .font(.title3)
-                    .foregroundStyle(selected ? OnboardingTheme.gold : .secondary)
+                    .foregroundStyle(selected ? Color.white : Color.secondary)
                     .accessibilityHidden(true)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color.white.opacity(selected ? 0.08 : 0.04))
+                    .fill(Color.white.opacity(selected ? 0.10 : 0.04))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
                     .strokeBorder(
-                        selected ? OnboardingTheme.gold : Color.white.opacity(0.08),
+                        selected ? Color.white.opacity(0.7) : Color.white.opacity(0.08),
                         lineWidth: selected ? 1.5 : 1
                     )
             )
@@ -568,13 +558,6 @@ struct OnboardingChoices: Equatable, Sendable {
     var injuryID: String
     var protocolTrack: RehabTrackID
     var primaryLoadID: String
-}
-
-private enum OnboardingTheme {
-    /// Unstoppable gold on near-black.
-    static let gold = Color(red: 0.91, green: 0.73, blue: 0.23)
-    static let ink = Color(red: 0.07, green: 0.06, blue: 0.04)
-    static let canvas = Color.black
 }
 
 #Preview {

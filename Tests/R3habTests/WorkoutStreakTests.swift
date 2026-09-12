@@ -161,7 +161,7 @@ final class WorkoutStreakTests: XCTestCase {
             "Rocky",
             "Japanese proverb",
             "Captain America",
-            "Batman Begins",
+            nil,
             "The Empire Strikes Back",
             "Journey",
             "Ted Lasso",
