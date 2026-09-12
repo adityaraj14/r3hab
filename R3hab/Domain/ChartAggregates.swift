@@ -68,14 +68,17 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
     var dayKey: String
     var date: Date
-    var amPain: Double?
+    /// Averaged morning + evening pain (or the one logged side).
+    var pain: Double?
+    var morningPain: Double? = nil
+    var eveningPain: Double? = nil
     var duringPain: Double? = nil
     var afterPain: Double? = nil
     var leftLoadLbs: Double?
     var rightLoadLbs: Double?
 
     var hasValues: Bool {
-        amPain != nil || duringPain != nil || afterPain != nil
+        pain != nil || duringPain != nil || afterPain != nil
             || leftLoadLbs != nil || rightLoadLbs != nil
     }
 }
@@ -317,11 +320,14 @@ enum ChartMetricBuilder {
         for offset in stride(from: dayCount - 1, through: 0, by: -1) {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
             let key = CalendarDay.dayKey(day, calendar: calendar)
+            let row = painByDay[key]
             result.append(
                 DayExplorePoint(
                     dayKey: key,
                     date: day,
-                    amPain: painByDay[key]?.restingPainAM.map(Double.init),
+                    pain: averagedDailyPain(morning: row?.restingPainAM, evening: row?.dailyPainPM),
+                    morningPain: row?.restingPainAM.map(Double.init),
+                    eveningPain: row?.dailyPainPM.map(Double.init),
                     duringPain: duringByDay[key].map(Double.init),
                     afterPain: afterByDay[key].map(Double.init),
                     leftLoadLbs: leftByDay[key],
@@ -330,6 +336,20 @@ enum ChartMetricBuilder {
             )
         }
         return result
+    }
+
+    /// Morning + evening mean when both exist; otherwise the logged side. Never invents 0.
+    static func averagedDailyPain(morning: Int?, evening: Int?) -> Double? {
+        switch (morning, evening) {
+        case let (am?, pm?):
+            return (Double(am) + Double(pm)) / 2
+        case let (am?, nil):
+            return Double(am)
+        case let (nil, pm?):
+            return Double(pm)
+        case (nil, nil):
+            return nil
+        }
     }
 
     static func average(of series: [DayValue]) -> Double? {

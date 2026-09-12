@@ -1,8 +1,8 @@
 import Foundation
 
 /// One onboarding injury label and the protocol it currently runs.
-/// Add a new row to `InjuryCatalog.all` when a new protocol ships — OnboardingView
-/// only iterates `selectable`, so the first screen does not need a rewrite.
+/// Onboarding and Settings pickers iterate `selectable` (two rows). Older knee
+/// aliases stay in `all` so existing installs remap without losing the track.
 struct InjuryDefinition: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
@@ -12,18 +12,24 @@ struct InjuryDefinition: Identifiable, Hashable, Sendable {
 }
 
 enum InjuryCatalog {
+    /// Retired onboarding rows. Stored ids remap to `patellar-tendinopathy`.
+    static let collapsedKneeAliasIDs: Set<String> = [
+        "jumpers-knee",
+        "patellar-tendonitis"
+    ]
+
     static let jumpersKnee = InjuryDefinition(
         id: "jumpers-knee",
         title: "Jumper's knee",
         subtitle: "Patellar tendon · pain-guided loading",
         protocolTrack: .knee,
-        isSelectable: true
+        isSelectable: false
     )
 
     static let patellarTendinopathy = InjuryDefinition(
         id: "patellar-tendinopathy",
-        title: "Patellar tendinopathy",
-        subtitle: "Same knee protocol as jumper's knee",
+        title: "Jumper’s knee / patellar tendinopathy",
+        subtitle: "Also called patellar tendonitis · same knee protocol.",
         protocolTrack: .knee,
         isSelectable: true
     )
@@ -33,13 +39,13 @@ enum InjuryCatalog {
         title: "Patellar tendonitis",
         subtitle: "Same knee protocol as patellar tendinopathy",
         protocolTrack: .knee,
-        isSelectable: true
+        isSelectable: false
     )
 
     static let qlStrain = InjuryDefinition(
         id: "ql-strain",
         title: "QL strain",
-        subtitle: "Quadratus lumborum · side-of-waist · hip thrust / side bend / walk",
+        subtitle: "Side-of-waist · hip thrusts, side bends, walking.",
         protocolTrack: .ql,
         isSelectable: true
     )
@@ -58,12 +64,21 @@ enum InjuryCatalog {
     /// Skip-from-the-first-screen default stays the knee diary.
     static let defaultSelectable = patellarTendinopathy
 
+    static func remappedID(_ id: String) -> String {
+        collapsedKneeAliasIDs.contains(id) ? patellarTendinopathy.id : id
+    }
+
     static func definition(for id: String) -> InjuryDefinition {
-        all.first { $0.id == id } ?? defaultSelectable
+        let resolved = remappedID(id)
+        all.first { $0.id == resolved } ?? defaultSelectable
     }
 
     static func normalizedID(_ id: String) -> String {
         definition(for: id).id
+    }
+
+    static func needsRemap(_ id: String) -> Bool {
+        normalizedID(id) != id
     }
 
     static func contains(_ id: String) -> Bool {

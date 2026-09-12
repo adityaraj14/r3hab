@@ -40,6 +40,13 @@ final class SettingsSeedPolicyTests: XCTestCase {
         XCTAssertTrue(SettingsSeedPolicy.shouldNormalizeActiveTracks(""))
     }
 
+    func testRetiredKneePrimaryLoadNeedsAWrite() {
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapPrimaryLoad("spanish-squat", track: .knee))
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapPrimaryLoad("wall-sit", track: .knee))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension", track: .knee))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad("leg-press", track: .knee))
+    }
+
     func testIdempotentOpenDoesNotNeedAWrite() {
         // The foreground path used to assign activeTracksCSV and save on every
         // ensureSettings() call. After the first migration, both predicates
@@ -49,6 +56,15 @@ final class SettingsSeedPolicyTests: XCTestCase {
             minute: SettingsSeedPolicy.currentPMReminderMinute
         )
         let alreadyKnee = !SettingsSeedPolicy.shouldNormalizeActiveTracks("knee")
-        XCTAssertTrue(alreadyMigrated && alreadyKnee)
+        let alreadyLoad = !SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension", track: .knee)
+        let alreadyInjury = !SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy")
+        XCTAssertTrue(alreadyMigrated && alreadyKnee && alreadyLoad && alreadyInjury)
+    }
+
+    func testCollapsedKneeInjuryNeedsAWrite() {
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("jumpers-knee"))
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("patellar-tendonitis"))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy"))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
     }
 }

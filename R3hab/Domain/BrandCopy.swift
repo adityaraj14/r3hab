@@ -1,6 +1,5 @@
 import Foundation
 
-/// One of the three layers the “3” in R3hab stands for.
 struct BrandHabit: Identifiable, Hashable, Sendable {
     var title: String
     var body: String
@@ -13,59 +12,76 @@ struct MotivationalQuote: Identifiable, Hashable, Sendable {
     var id: String { text }
 }
 
-/// Product name story for onboarding and Settings.
-///
-/// Atomic Habits’ only official triad is the three layers of change:
-/// Identity (what you believe), Process (what you do), Outcome (what you get).
-/// Lasting habits run inside-out: decide who you are, prove it with a system,
-/// and let results follow. R3hab is rehab with the E written as 3, and the 3
-/// names those layers — the habit of informed rehab.
-///
-/// Record / Reload / Resolve is the daily loop that casts the votes:
-/// record pain, reload one lift, resolve 24 hours later.
-///
-/// The book’s four laws are Obvious / Attractive / Easy / Satisfying.
-/// This app does three of them (checklist + reminders, 60-second paths,
-/// close the 24h loop). Attractive stays light: **session streaks** count
-/// Process votes (hard rehab within 48h). Still no gamified badges.
+/// Onboarding and Settings product copy. Personal assistant — not a name story.
 enum BrandCopy {
-    static let onboardingEyebrow = "The name"
-    static let onboardingTitle = "Rehab, written with a 3."
+    static let onboardingEyebrow = "Welcome"
+    static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    The 3 is the E in rehab. It also names the three layers a habit actually sticks at: who you believe you are, what you do, and what you get.
+    Rehab isn’t a straight line. Some weeks click; others leave you wondering if you’re on the right path, or if any of it is working. R3hab keeps the journey on this phone — so when doubt shows up, you look at your numbers instead of unpacking the whole story again.
     """
 
     static let habits: [BrandHabit] = [
         BrandHabit(
-            title: "Identity",
-            body: "You are someone who judges load by the next morning, not the set. Each log is a vote for informed rehab — you own the phase."
+            title: "Track the journey",
+            body: "Pain, sessions, and load in one place, not just how today felt."
         ),
         BrandHabit(
-            title: "Process",
-            body: "One primary lift, dosed the same way. Train today. Judge tomorrow. Soft cut before hard drop. The system is the rehab."
+            title: "Stay accountable",
+            body: "Small, honest logs. Enough to keep going without making rehab a second job."
         ),
         BrandHabit(
-            title: "Outcome",
-            body: "Pain, steps, and load you can see. Capacity without guessing. Results come last — after the votes add up."
+            title: "Trust the data",
+            body: "A quiet system that helps you decide. You don’t have to re-argue the plan every time the week feels messy."
         )
     ]
 
     static let onboardingFootnote = """
-    Day to day that looks like Record, Reload, Resolve: morning pain, one primary movement, then Better / Same / Worse. Mild pain during load is OK if the next morning is not worse.
+    Log what you did. Check how you feel next. The pattern lives here so you can trust the path you’re on.
     """
 
     static let injuryLead = """
-    Knee labels share the patellar tendon diary. QL strain is its own template: hip thrusts, standing side bends, and walking.
+    Two paths. Jumper’s knee and patellar tendinopathy share the same knee diary. QL strain is its own template: hip thrusts, side bends, and walking.
+    """
+
+    static let injuryDiagnosisNote = """
+    Getting a professional diagnosis first is recommended. R3hab helps you track and decide from your own numbers — it isn’t a diagnosis, and we don’t take on the risk if you move ahead without care.
     """
 
     static let primaryLiftLead = "This is the lift you dose the same way. Switch later in Settings."
 
     static let qlPrimaryWorkLead = "Hip thrusts and side bends carry weight. Walking is time and steps — not fake lbs."
 
+    static let setupEyebrow = "Setup"
+    static let setupTitle = "Where are you right now?"
+    static let setupLead = """
+    Rehab here moves in phases — from protecting a flare, to easy loading, to heavier work later. You only pick a starting point. Change it anytime in Settings when mornings tell you to.
+    """
+
+    static let setupPhaseLines: [BrandHabit] = [
+        BrandHabit(
+            title: "Phase A · Flare / protect",
+            body: "Ease off. Relative rest until resting pain settles."
+        ),
+        BrandHabit(
+            title: "Phase B · Already loading",
+            body: "Easy, consistent isometric work (your primary lift). Most people start here."
+        ),
+        BrandHabit(
+            title: "Later (C →)",
+            body: "Heavier slow loading, then return. You’ll grow into these; no need to choose them now."
+        )
+    ]
+
+    static let disclaimerEyebrow = "Before you start"
+    static let disclaimerTitle = "Not a clinic — and that’s intentional."
+    static let disclaimerBody = """
+    R3hab is a personal log for your rehab journey. It helps you see patterns and decide with data. It is not a medical device, not a diagnosis, and not a substitute for a clinician. If something feels wrong — sharp joint pain, swelling, locking, or pain that won’t settle — see a professional.
+    """
+
     static let settingsSectionTitle = "Why R3hab"
     static let settingsBlurb = """
-    R3hab is rehab with a 3: Identity, Process, Outcome — a habit of informed rehab. Session streaks count Process votes. No badges. Completely private. No ads. Logs stay on this iPhone.
+    R3hab is your personal rehab assistant. Logs stay on this iPhone — private, no ads. When the week feels messy, look at the numbers instead of re-arguing the plan.
     """
 
     static let privacyEyebrow = "Private"
@@ -88,44 +104,19 @@ enum BrandCopy {
     ]
 }
 
-/// Short Today lines. Original R3hab copy, paraphrased habit ideas, and
-/// single-sentence public-domain / proverb attributions. No book excerpts.
+/// Short Today lines. Adi’s 10 attributed cycle — no R3hab / Atomic Habits process copy.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
-        MotivationalQuote(text: "Train today. Judge tomorrow.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "Each log is a vote for the person who doses by the next morning.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(
-            text: "Missing once is a dip. Missing twice is a new groove.",
-            attribution: "Inspired by Atomic Habits"
-        ),
-        MotivationalQuote(
-            text: "The chain is the process — not a badge.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(
-            text: "Mild pain during the set is OK if the morning stays calm.",
-            attribution: "R3hab"
-        ),
-        MotivationalQuote(text: "Soft cut before hard drop.", attribution: "R3hab"),
-        MotivationalQuote(text: "You own the phase.", attribution: "R3hab"),
-        MotivationalQuote(text: "Process first. Outcome follows.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "We are what we repeatedly do.",
-            attribution: "Will Durant, after Aristotle"
-        ),
-        MotivationalQuote(
-            text: "Little by little, a little becomes a lot.",
-            attribution: "Tanzanian proverb"
-        ),
-        MotivationalQuote(text: "Log the set. The morning tells the truth.", attribution: "R3hab"),
-        MotivationalQuote(
-            text: "Don’t break the chain — one hard session still counts.",
-            attribution: "R3hab, inspired by Atomic Habits"
-        ),
-        MotivationalQuote(text: "Capacity is built in quiet sessions.", attribution: "R3hab")
+        MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
+        MotivationalQuote(text: "Get up.", attribution: "Rocky"),
+        MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
+        MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
+        MotivationalQuote(text: "Why do we fall? So we can learn to pick ourselves up.", attribution: "Batman Begins"),
+        MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
+        MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
+        MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),
+        MotivationalQuote(text: "Hakuna matata.", attribution: "The Lion King"),
+        MotivationalQuote(text: "The night is darkest just before the dawn.", attribution: "The Dark Knight")
     ]
 
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {

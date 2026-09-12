@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Log or edit a training session (seated knee extension iso/HSR + 24h loop).
+/// Log or edit a training session (primary lift iso/HSR + 24h loop).
 struct SessionEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss

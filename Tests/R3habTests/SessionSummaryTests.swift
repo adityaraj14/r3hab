@@ -4,9 +4,9 @@ import XCTest
 final class SessionSummaryTests: XCTestCase {
     func testDisplayTitleTakesHeadBeforeDotSeparator() {
         let title = SessionSummary.displayTitle(
-            whatIDid: "Seated extension HSR · WU 2×30s @ 15 lbs · 8r L @ 15 lbs, 8r R @ 15 lbs"
+            whatIDid: "Seated extension · WU 2×30s @ 15 lbs · 8r L @ 15 lbs, 8r R @ 15 lbs"
         )
-        XCTAssertEqual(title, "Seated extension HSR")
+        XCTAssertEqual(title, "Seated extension")
     }
 
     func testDisplayTitleFallsBackWhenEmpty() {

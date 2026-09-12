@@ -1,6 +1,6 @@
 import Foundation
 
-/// The user’s chosen primary loading movement. Knee default is seated leg extension.
+/// The user’s chosen primary loading movement. Knee default is seated extension.
 struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
@@ -22,51 +22,30 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
 }
 
 enum PrimaryLoadCatalog {
+    /// Retired knee primaries. Existing settings / backups remap to seated extension.
+    static let retiredKneeIDs: Set<String> = ["spanish-squat", "wall-sit"]
+
     static let seatedExtension = PrimaryLoadOption(
         id: "seated-extension",
-        title: "Seated leg extension",
+        title: "Seated extension",
         subtitle: "Default · iso holds, then heavy slow on the machine",
         track: .knee,
         isometricPresetID: "ext",
         hsrPresetID: "ke",
         logCTA: "Log seated extension",
-        homeObjective: "Primary load is seated leg extension. Build tendon capacity without next-morning flares.",
-        plotsLoad: true
-    )
-
-    static let spanishSquat = PrimaryLoadOption(
-        id: "spanish-squat",
-        title: "Spanish squat",
-        subtitle: "Band behind the knees · no extension machine needed",
-        track: .knee,
-        isometricPresetID: "spanish",
-        hsrPresetID: "spanish",
-        logCTA: "Log Spanish squat",
-        homeObjective: "Primary load is Spanish squat. Build tendon capacity without next-morning flares.",
-        plotsLoad: true
-    )
-
-    static let wallSit = PrimaryLoadOption(
-        id: "wall-sit",
-        title: "Wall sit",
-        subtitle: "No equipment now · seated HSR when you reach Phase C",
-        track: .knee,
-        isometricPresetID: "wall",
-        hsrPresetID: "ke",
-        logCTA: "Log wall sit",
-        homeObjective: "Primary load is wall sit (seated HSR in Phase C). Build tendon capacity without next-morning flares.",
+        homeObjective: "Primary load is seated extension. Build tendon capacity without next-morning flares.",
         plotsLoad: true
     )
 
     static let legPress = PrimaryLoadOption(
         id: "leg-press",
         title: "Leg press",
-        subtitle: "HSR on the press · seated-extension holds in Phase B",
+        subtitle: "Same load logger as seated extension · holds, then heavy slow",
         track: .knee,
-        isometricPresetID: "ext",
+        isometricPresetID: "lp-iso",
         hsrPresetID: "lp",
         logCTA: "Log leg press",
-        homeObjective: "Primary load is leg press (seated-extension holds in Phase B). Build tendon capacity without next-morning flares.",
+        homeObjective: "Primary load is leg press. Build tendon capacity without next-morning flares.",
         plotsLoad: true
     )
 
@@ -108,8 +87,6 @@ enum PrimaryLoadCatalog {
 
     static let all: [PrimaryLoadOption] = [
         seatedExtension,
-        spanishSquat,
-        wallSit,
         legPress,
         hipThrust,
         standingSideBend,
@@ -135,7 +112,8 @@ enum PrimaryLoadCatalog {
     }
 
     static func option(for id: String, track: RehabTrackID? = nil) -> PrimaryLoadOption {
-        if let match = all.first(where: { $0.id == id }) {
+        let resolved = remappedID(id)
+        if let match = all.first(where: { $0.id == resolved }) {
             if let track, match.track != track {
                 return defaultSelectable(for: track)
             }
@@ -146,6 +124,15 @@ enum PrimaryLoadCatalog {
 
     static func normalizedID(_ id: String, track: RehabTrackID? = nil) -> String {
         option(for: id, track: track).id
+    }
+
+    /// True when a stored id is retired or unknown and should be rewritten once.
+    static func needsRemap(_ id: String, track: RehabTrackID? = nil) -> Bool {
+        normalizedID(id, track: track) != id
+    }
+
+    static func remappedID(_ id: String) -> String {
+        retiredKneeIDs.contains(id) ? seatedExtension.id : id
     }
 
     static func contains(_ id: String, on track: RehabTrackID) -> Bool {

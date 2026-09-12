@@ -25,7 +25,7 @@ enum PhaseGuideCopy {
         case .aFlareDeLoad:
             return "Relative rest. No heavy knee loading, impact, or tennis. Optional easy bike if pain-free. Aim for 3 stable mornings ≤2 with a ~6k+ step day before Phase B."
         case .bIsometrics:
-            return "Primary load is \(lift) holds. Start 3–4×20–30s, 2×/week, ≥48h apart. Other knee isos stay available as backups. Build holds before adding days."
+            return "Primary load is \(lift) holds. Start 3–4×20–30s, 2×/week, ≥48h apart. Build holds before adding days."
         case .cHeavySlowResistance:
             return "Heavy slow \(lift), slow tempo (3-1-3), 2–3×/week. Main capacity phase — often months."
         case .dEnergyStorage:
@@ -35,7 +35,7 @@ enum PhaseGuideCopy {
         }
     }
 
-    static let medicalDisclaimer = "R3hab supports self-managed rehab logging. It is not a medical device and does not replace professional care."
+    static let medicalDisclaimer = BrandCopy.disclaimerBody
 
     static let redFlags = """
     See a clinician if: resting pain 5+, no improvement after 7–10 days of de-load, swelling, locking, instability, or sharp joint pain (not usual tendon ache).

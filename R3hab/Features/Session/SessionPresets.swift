@@ -42,9 +42,9 @@ struct SessionPreset: Identifiable, Hashable {
     static let all: [SessionPreset] = [
         .init(
             id: "ext",
-            label: "Seated knee extension",
+            label: "Seated extension",
             sessionType: .isometrics,
-            whatIDid: "Seated knee extension hold ~60°",
+            whatIDid: "Seated extension hold ~60°",
             phases: [.bIsometrics, .aFlareDeLoad],
             tracksResistance: true,
             usesPerSetLogging: true,
@@ -52,17 +52,34 @@ struct SessionPreset: Identifiable, Hashable {
         ),
         .init(
             id: "ke",
-            label: "Seated extension HSR",
+            label: "Seated extension",
             sessionType: .hsrStrength,
-            whatIDid: "Seated knee extension HSR",
+            whatIDid: "Seated extension",
             phases: [.cHeavySlowResistance],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
         ),
-        .init(id: "wall", label: "Wall sit", sessionType: .isometrics, whatIDid: "Wall sit 3–4×20–30s", phases: [.bIsometrics, .aFlareDeLoad]),
-        .init(id: "spanish", label: "Spanish squat", sessionType: .isometrics, whatIDid: "Spanish squat 3–4×20–30s", phases: [.bIsometrics, .cHeavySlowResistance]),
-        .init(id: "lp", label: "Leg press HSR", sessionType: .hsrStrength, whatIDid: "Leg press 3–4×6–15 @ 3-1-3", phases: [.cHeavySlowResistance]),
+        .init(
+            id: "lp-iso",
+            label: "Leg press",
+            sessionType: .isometrics,
+            whatIDid: "Leg press hold",
+            phases: [.bIsometrics, .aFlareDeLoad],
+            tracksResistance: true,
+            usesPerSetLogging: true,
+            usesIsoHoldLogging: true
+        ),
+        .init(
+            id: "lp",
+            label: "Leg press",
+            sessionType: .hsrStrength,
+            whatIDid: "Leg press",
+            phases: [.cHeavySlowResistance],
+            tracksResistance: true,
+            usesPerSetLogging: true,
+            usesIsoHoldLogging: false
+        ),
         .init(id: "land", label: "Low landings", sessionType: .energyStorage, whatIDid: "Low-volume landings / small jumps", phases: [.dEnergyStorage]),
         .init(id: "hit", label: "Short hitting", sessionType: .tennisSport, whatIDid: "Tennis: short hitting session", phases: [.eReturnToSport]),
         .init(id: "match", label: "Match play", sessionType: .tennisSport, whatIDid: "Tennis: match play", phases: [.eReturnToSport]),
@@ -111,6 +128,8 @@ struct SessionPreset: Identifiable, Hashable {
 
     static let seatedExtensionIsometricId = "ext"
     static let seatedExtensionHSRId = "ke"
+    static let legPressIsometricId = "lp-iso"
+    static let legPressHSRId = "lp"
     static let legExtensionIsometricId = seatedExtensionIsometricId
     static let legExtensionHSRId = seatedExtensionHSRId
 

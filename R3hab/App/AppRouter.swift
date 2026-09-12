@@ -9,6 +9,8 @@ final class AppRouter {
     var afterPainSessionId: UUID?
     /// Bumps when notifications or data should reschedule.
     var notificationSyncToken: Int = 0
+    /// TEMPORARY: TestFlight replay. Remove with Settings “Simulate onboarding”.
+    var onboardingReplayToken: Int = 0
 
     func openResolve(sessionId: UUID) {
         selectedTab = 0
@@ -26,5 +28,10 @@ final class AppRouter {
 
     func requestNotificationSync() {
         notificationSyncToken &+= 1
+    }
+
+    /// TEMPORARY: re-present onboarding without wiping logs. Remove before App Store.
+    func requestOnboardingReplay() {
+        onboardingReplayToken &+= 1
     }
 }

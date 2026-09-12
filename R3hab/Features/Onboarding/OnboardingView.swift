@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// First-launch onboarding. Five dark screens: name, injury, primary lift, setup, disclaimer.
+/// First-launch onboarding. Five dark screens: welcome, injury, primary lift, setup, disclaimer.
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [AppSettings]
@@ -90,15 +90,25 @@ struct OnboardingView: View {
         .tint(OnboardingTheme.gold)
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
+            if let settings {
+                selectedInjuryID = InjuryCatalog.normalizedID(settings.selectedInjuryID)
+                selectedPrimaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    settings.primaryLoadID,
+                    track: settings.protocolTrack
+                )
+                if settings.currentPhase == .aFlareDeLoad {
+                    phase = .aFlareDeLoad
+                }
+            }
         }
     }
 
     private var primaryCTATitle: String {
         if isBusy { return "Saving…" }
         switch page {
-        case 1: return "That's my injury"
-        case 2: return selectedTrack == .ql ? "That's my work" : "That's my lift"
-        case 4: return "Let's load"
+        case 1: return "That’s my injury"
+        case 2: return selectedTrack == .ql ? "That’s my work" : "That’s my lift"
+        case 4: return "Let’s load"
         default: return "Continue"
         }
     }
@@ -159,12 +169,17 @@ struct OnboardingView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
 
+                Text(BrandCopy.injuryDiagnosisNote)
+                    .font(.footnote)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 VStack(spacing: 10) {
                     ForEach(InjuryCatalog.selectable) { injury in
                         phaseChoice(
                             title: injury.title,
                             subtitle: injury.subtitle,
-                            selected: selectedInjuryID == injury.id
+                            selected: InjuryCatalog.normalizedID(selectedInjuryID) == injury.id
                         ) {
                             selectInjury(injury.id)
                         }
@@ -183,7 +198,7 @@ struct OnboardingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
-                    eyebrow: "Process",
+                    eyebrow: selectedTrack == .ql ? "Work" : "Lift",
                     title: selectedTrack == .ql ? "Your primary work" : "Your primary lift"
                 )
                 Text(primaryLiftLead)
@@ -211,70 +226,89 @@ struct OnboardingView: View {
     }
 
     private var setupPage: some View {
-        VStack(alignment: .leading, spacing: 20) {
-            screenHeader(
-                eyebrow: "Setup",
-                title: "Where are you?"
-            )
-            Text("Two starting points. You can change phase and lift later in Settings.")
-                .font(.body)
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 20) {
+                screenHeader(
+                    eyebrow: BrandCopy.setupEyebrow,
+                    title: BrandCopy.setupTitle
+                )
+                Text(BrandCopy.setupLead)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
 
-            VStack(spacing: 10) {
-                phaseChoice(
-                    title: "Already loading",
-                    subtitle: "Phase B · isometrics",
-                    selected: phase == .bIsometrics
-                ) {
-                    phase = .bIsometrics
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(BrandCopy.setupPhaseLines) { line in
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(line.title)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.white)
+                            Text(line.body)
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
                 }
-                phaseChoice(
-                    title: "Flare / protect",
-                    subtitle: "Phase A · reduce load",
-                    selected: phase == .aFlareDeLoad
-                ) {
-                    phase = .aFlareDeLoad
+
+                VStack(spacing: 10) {
+                    phaseChoice(
+                        title: "Flare / protect",
+                        subtitle: "Phase A · reduce load",
+                        selected: phase == .aFlareDeLoad
+                    ) {
+                        phase = .aFlareDeLoad
+                    }
+                    phaseChoice(
+                        title: "Already loading",
+                        subtitle: "Phase B · isometrics",
+                        selected: phase == .bIsometrics
+                    ) {
+                        phase = .bIsometrics
+                    }
                 }
+
+                Toggle(isOn: $wantNotifications) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Local notifications")
+                        Text("Morning and evening check-ins, plus overdue 24h pending. Local only — they never leave this phone. Off anytime in Settings.")
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .tint(OnboardingTheme.gold)
+                .padding(.top, 4)
             }
-
-            Toggle(isOn: $wantNotifications) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("Local notifications")
-                    Text("Morning and evening check-ins, plus overdue 24h pending. Local only — they never leave this phone. Off anytime in Settings.")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-            }
-            .tint(OnboardingTheme.gold)
-            .padding(.top, 4)
-
-            Spacer(minLength: 0)
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .scrollIndicators(.hidden)
     }
 
     private var disclaimerPage: some View {
         onboardingCard(
-            eyebrow: "Disclaimer",
-            title: "Not a clinic.",
-            body: PhaseGuideCopy.medicalDisclaimer
+            eyebrow: BrandCopy.disclaimerEyebrow,
+            title: BrandCopy.disclaimerTitle,
+            body: BrandCopy.disclaimerBody
         )
     }
 
     private func onboardingCard(eyebrow: String, title: String, body: String) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            screenHeader(eyebrow: eyebrow, title: title)
-            Text(body)
-                .font(.body)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 0)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                screenHeader(eyebrow: eyebrow, title: title)
+                Text(body)
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 24)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .scrollIndicators(.hidden)
     }
 
     private func screenHeader(eyebrow: String, title: String) -> some View {
@@ -518,6 +552,13 @@ enum OnboardingCompletion {
         settings.activeTracks = [choices.protocolTrack]
         settings.selectedInjuryID = choices.injuryID
         settings.primaryLoadID = choices.primaryLoadID
+    }
+}
+
+/// TEMPORARY TestFlight helper. Remove before App Store / public release.
+enum OnboardingReset {
+    static func reopenGate(on settings: AppSettings) {
+        settings.hasCompletedOnboarding = false
     }
 }
 

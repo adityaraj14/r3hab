@@ -131,9 +131,48 @@ final class ChartAggregatesTests: XCTestCase {
             calendar: calendar
         )
         XCTAssertEqual(points.count, 1)
-        XCTAssertEqual(points[0].amPain, 3)
+        XCTAssertEqual(points[0].pain, 3.5)
+        XCTAssertEqual(points[0].morningPain, 3)
+        XCTAssertEqual(points[0].eveningPain, 4)
         XCTAssertEqual(points[0].leftLoadLbs, 45)
         XCTAssertEqual(points[0].rightLoadLbs, 40)
+    }
+
+    func testAveragedDailyPainUsesLoggedSidesOnly() {
+        XCTAssertEqual(ChartMetricBuilder.averagedDailyPain(morning: 3, evening: 5), 4)
+        XCTAssertEqual(ChartMetricBuilder.averagedDailyPain(morning: 3, evening: 4), 3.5)
+        XCTAssertEqual(ChartMetricBuilder.averagedDailyPain(morning: 2, evening: nil), 2)
+        XCTAssertEqual(ChartMetricBuilder.averagedDailyPain(morning: nil, evening: 6), 6)
+        XCTAssertNil(ChartMetricBuilder.averagedDailyPain(morning: nil, evening: nil))
+    }
+
+    func testExplorePointsAveragesMorningAndEveningPain() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let checkIns = [
+            DailyMetricSnapshot(date: day(-3, from: today), restingPainAM: 2, dailyPainPM: 4, steps: nil),
+            DailyMetricSnapshot(date: day(-2, from: today), restingPainAM: 5, dailyPainPM: nil, steps: nil),
+            DailyMetricSnapshot(date: day(-1, from: today), restingPainAM: nil, dailyPainPM: 7, steps: nil),
+            DailyMetricSnapshot(date: today, restingPainAM: nil, dailyPainPM: nil, steps: 1000)
+        ]
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: checkIns,
+            sideLoads: [],
+            dayCount: 4,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points[0].pain, 3)
+        XCTAssertEqual(points[0].morningPain, 2)
+        XCTAssertEqual(points[0].eveningPain, 4)
+        XCTAssertEqual(points[1].pain, 5)
+        XCTAssertEqual(points[1].morningPain, 5)
+        XCTAssertNil(points[1].eveningPain)
+        XCTAssertEqual(points[2].pain, 7)
+        XCTAssertNil(points[2].morningPain)
+        XCTAssertEqual(points[2].eveningPain, 7)
+        XCTAssertNil(points[3].pain)
+        XCTAssertNil(points[3].morningPain)
+        XCTAssertNil(points[3].eveningPain)
     }
 
     func testExplorePointsMapsUnspecifiedLoadOntoBothSides() {
@@ -195,16 +234,16 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(calendar.startOfDay(for: month[27].date), ymd(2026, 9, 3))
 
         let byKey = Dictionary(uniqueKeysWithValues: month.map { ($0.dayKey, $0) })
-        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 7), calendar: calendar)]?.amPain, 4)
-        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 20), calendar: calendar)]?.amPain, 3)
-        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 9, 3), calendar: calendar)]?.amPain, 2)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 7), calendar: calendar)]?.pain, 4)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 20), calendar: calendar)]?.pain, 3)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 9, 3), calendar: calendar)]?.pain, 2)
         XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 10), calendar: calendar)]?.leftLoadLbs, 20)
         XCTAssertNil(byKey[CalendarDay.dayKey(ymd(2026, 7, 20), calendar: calendar)])
         XCTAssertNil(byKey[CalendarDay.dayKey(ymd(2026, 7, 25), calendar: calendar)])
 
         let emptyInterior = byKey[CalendarDay.dayKey(ymd(2026, 8, 15), calendar: calendar)]
         XCTAssertNotNil(emptyInterior)
-        XCTAssertNil(emptyInterior?.amPain)
+        XCTAssertNil(emptyInterior?.pain)
         XCTAssertNil(emptyInterior?.leftLoadLbs)
 
         let week = ChartMetricBuilder.explorePoints(
@@ -237,7 +276,7 @@ final class ChartAggregatesTests: XCTestCase {
             return DayExplorePoint(
                 dayKey: CalendarDay.dayKey(date, calendar: calendar),
                 date: date,
-                amPain: 2,
+                pain: 2,
                 leftLoadLbs: 20,
                 rightLoadLbs: 20
             )
@@ -258,7 +297,7 @@ final class ChartAggregatesTests: XCTestCase {
 
         let tapped = ChartDaySelection.nearestPoint(to: points[5].date, in: points)
         XCTAssertEqual(tapped?.dayKey, points[5].dayKey)
-        XCTAssertEqual(tapped?.amPain, 2)
+        XCTAssertEqual(tapped?.pain, 2)
         XCTAssertEqual(tapped?.leftLoadLbs, 20)
     }
 

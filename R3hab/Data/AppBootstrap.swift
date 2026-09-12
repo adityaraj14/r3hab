@@ -22,6 +22,14 @@ enum SettingsSeedPolicy {
     static func shouldNormalizeActiveTracks(_ csv: String) -> Bool {
         !knownTrackIDs.contains(csv)
     }
+
+    static func shouldRemapPrimaryLoad(_ id: String, track: RehabTrackID) -> Bool {
+        PrimaryLoadCatalog.needsRemap(id, track: track)
+    }
+
+    static func shouldRemapInjury(_ id: String) -> Bool {
+        InjuryCatalog.needsRemap(id)
+    }
 }
 
 enum AppBootstrap {
@@ -42,6 +50,20 @@ enum AppBootstrap {
             }
             if SettingsSeedPolicy.shouldNormalizeActiveTracks(existing.activeTracksCSV) {
                 existing.activeTracksCSV = RehabTrackID.knee.rawValue
+                changed = true
+            }
+            if SettingsSeedPolicy.shouldRemapPrimaryLoad(
+                existing.primaryLoadID,
+                track: existing.protocolTrack
+            ) {
+                existing.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    existing.primaryLoadID,
+                    track: existing.protocolTrack
+                )
+                changed = true
+            }
+            if SettingsSeedPolicy.shouldRemapInjury(existing.selectedInjuryID) {
+                existing.selectedInjuryID = InjuryCatalog.normalizedID(existing.selectedInjuryID)
                 changed = true
             }
             if changed {
