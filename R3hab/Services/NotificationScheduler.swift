@@ -434,7 +434,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     ) async {
         let info = response.notification.request.content.userInfo
         let nid = response.notification.request.identifier
-        let sessionId = (info["sessionId"] as? String).flatMap(UUID.init(uuidString))
+        let sessionId = (info["sessionId"] as? String).flatMap(UUID.init(uuidString:))
         let kind: NotificationOpenKind
         if let rawKind = info["kind"] as? String, let parsed = NotificationOpenKind(rawValue: rawKind) {
             kind = parsed
