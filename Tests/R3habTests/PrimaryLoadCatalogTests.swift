@@ -10,13 +10,16 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertFalse(PrimaryLoadCatalog.defaultSelectable.title.contains("HSR"))
     }
 
-    func testKneeOptionsAreOnlySeatedExtensionAndLegPress() {
-        let options = PrimaryLoadCatalog.options(for: .knee)
+    func testCatalogIsOnlySeatedExtensionAndLegPress() {
+        let options = PrimaryLoadCatalog.all
         XCTAssertEqual(options.map(\.id), ["seated-extension", "leg-press"])
         XCTAssertEqual(options.map(\.title), ["Seated extension", "Leg press"])
         XCTAssertFalse(options.contains { $0.title.contains("HSR") })
-        XCTAssertFalse(PrimaryLoadCatalog.contains("spanish-squat", on: .knee))
-        XCTAssertFalse(PrimaryLoadCatalog.contains("wall-sit", on: .knee))
+        XCTAssertFalse(PrimaryLoadCatalog.contains("spanish-squat"))
+        XCTAssertFalse(PrimaryLoadCatalog.contains("wall-sit"))
+        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-hip-thrust"))
+        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-side-bend"))
+        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-walk"))
     }
 
     func testRetiredKneePrimariesRemapToSeatedExtension() {
@@ -24,10 +27,19 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(PrimaryLoadCatalog.normalizedID("wall-sit"), PrimaryLoadCatalog.seatedExtension.id)
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "spanish-squat").id, PrimaryLoadCatalog.seatedExtension.id)
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "wall-sit").id, PrimaryLoadCatalog.seatedExtension.id)
-        XCTAssertTrue(PrimaryLoadCatalog.needsRemap("spanish-squat", track: .knee))
-        XCTAssertTrue(PrimaryLoadCatalog.needsRemap("wall-sit", track: .knee))
-        XCTAssertFalse(PrimaryLoadCatalog.needsRemap("seated-extension", track: .knee))
-        XCTAssertFalse(PrimaryLoadCatalog.needsRemap("leg-press", track: .knee))
+        XCTAssertTrue(PrimaryLoadCatalog.needsRemap("spanish-squat"))
+        XCTAssertTrue(PrimaryLoadCatalog.needsRemap("wall-sit"))
+        XCTAssertFalse(PrimaryLoadCatalog.needsRemap("seated-extension"))
+        XCTAssertFalse(PrimaryLoadCatalog.needsRemap("leg-press"))
+    }
+
+    func testRemovedQLLoadsRemapToSeatedExtension() {
+        for retired in ["ql-hip-thrust", "ql-side-bend", "ql-walk"] {
+            XCTAssertEqual(PrimaryLoadCatalog.normalizedID(retired), PrimaryLoadCatalog.seatedExtension.id, retired)
+            XCTAssertTrue(PrimaryLoadCatalog.needsRemap(retired), retired)
+        }
+        XCTAssertFalse(SessionPreset.all.contains { $0.id.hasPrefix("ql-") })
+        XCTAssertFalse(SessionPreset.all.contains { $0.label.localizedCaseInsensitiveContains("walk") })
     }
 
     func testUnknownIdFallsBackToSeatedExtension() {
@@ -117,13 +129,6 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertFalse(phaseE.contains { $0.id == "bike" || $0.id == "custom" })
     }
 
-    func testQLChipsDoNotIncludeBikeOrCustom() {
-        for phase in RehabPhase.allCases {
-            let chips = SessionPreset.forPhase(phase, primaryLoadID: PrimaryLoadCatalog.hipThrust.id)
-            XCTAssertEqual(chips.map(\.id), ["ql-ht", "ql-sb", "ql-walk"], "\(phase)")
-        }
-    }
-
     func testChartLoadTitleKeepsSeatedExtensionLabel() {
         XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartLoadTitle, "Seated extension load")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.chartLoadTitle, "Leg press load")
@@ -143,59 +148,4 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(BrandCopy.privacyPoints.map(\.title), ["Completely private", "No ads", "On-device only"])
     }
 
-    func testQLOptionsAreHipThrustSideBendAndWalk() {
-        let options = PrimaryLoadCatalog.options(for: .ql)
-        XCTAssertEqual(options.map(\.id), ["ql-hip-thrust", "ql-side-bend", "ql-walk"])
-        XCTAssertEqual(PrimaryLoadCatalog.defaultID(for: .ql), "ql-hip-thrust")
-        XCTAssertTrue(PrimaryLoadCatalog.hipThrust.plotsLoad)
-        XCTAssertTrue(PrimaryLoadCatalog.standingSideBend.plotsLoad)
-        XCTAssertFalse(PrimaryLoadCatalog.walking.plotsLoad)
-        XCTAssertEqual(PrimaryLoadCatalog.walking.chartLoadTitle, "Walking")
-        XCTAssertTrue(PrimaryLoadCatalog.contains("ql-hip-thrust", on: .ql))
-        XCTAssertFalse(PrimaryLoadCatalog.contains("seated-extension", on: .ql))
-    }
-
-    func testTrackMismatchFallsBackToTrackDefault() {
-        XCTAssertEqual(
-            PrimaryLoadCatalog.normalizedID("seated-extension", track: .ql),
-            PrimaryLoadCatalog.hipThrust.id
-        )
-        XCTAssertEqual(
-            PrimaryLoadCatalog.normalizedID("ql-hip-thrust", track: .knee),
-            PrimaryLoadCatalog.seatedExtension.id
-        )
-    }
-
-    func testQLPresetsMapAndWalkingIsNotHard() {
-        let hip = SessionPreset.preferred(for: .bIsometrics, primaryLoadID: PrimaryLoadCatalog.hipThrust.id)
-        XCTAssertEqual(hip.id, "ql-ht")
-        XCTAssertEqual(hip.sessionType, .hsrStrength)
-        XCTAssertEqual(hip.loadRegion, .ql)
-        XCTAssertTrue(SessionSpacing.isHard(hip.sessionType))
-
-        let side = SessionPreset.preferred(for: .cHeavySlowResistance, primaryLoadID: PrimaryLoadCatalog.standingSideBend.id)
-        XCTAssertEqual(side.id, "ql-sb")
-        XCTAssertTrue(SessionSpacing.isHard(side.sessionType))
-
-        let walk = SessionPreset.preferred(for: .bIsometrics, primaryLoadID: PrimaryLoadCatalog.walking.id)
-        XCTAssertEqual(walk.id, "ql-walk")
-        XCTAssertEqual(walk.sessionType, .other)
-        XCTAssertFalse(walk.tracksResistance)
-        XCTAssertFalse(SessionSpacing.isHard(walk.sessionType))
-    }
-
-    func testQLPhaseChipsStayOnQLTrack() {
-        let chips = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.hipThrust.id)
-        XCTAssertEqual(chips.first?.id, "ql-ht")
-        XCTAssertTrue(chips.allSatisfy { $0.tracks.contains(.ql) })
-        XCTAssertFalse(chips.contains { $0.id == "ext" })
-        XCTAssertTrue(chips.contains { $0.id == "ql-walk" })
-    }
-
-    func testKneePhaseChipsStayOnKneeTrack() {
-        let chips = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
-        XCTAssertEqual(chips.first?.id, "ext")
-        XCTAssertTrue(chips.allSatisfy { $0.tracks.contains(.knee) })
-        XCTAssertFalse(chips.contains { $0.id == "ql-ht" })
-    }
 }

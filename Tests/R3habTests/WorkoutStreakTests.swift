@@ -78,25 +78,24 @@ final class WorkoutStreakTests: XCTestCase {
         XCTAssertEqual(result.best, 1)
     }
 
-    func testWalkingDoesNotCountAsHardFor48hStreak() {
+    func testOtherSessionsDoNotCountAsHardFor48hStreak() {
         let now = Date(timeIntervalSince1970: 1_700_000_000)
-        XCTAssertEqual(SessionPreset.all.first { $0.id == "ql-walk" }?.sessionType, .other)
         XCTAssertFalse(SessionSpacing.isHard(.other))
 
-        let walkThenThrust = [
+        let easyThenLift = [
             snap(createdAt: now.addingTimeInterval(-20 * 3600), type: .other),
             snap(createdAt: now.addingTimeInterval(-6 * 3600), type: .hsrStrength)
         ]
-        let result = WorkoutStreak.evaluate(sessions: walkThenThrust, now: now)
-        XCTAssertEqual(result.current, 1, "Walking is easy work — only hip thrusts / side bends link the chain.")
+        let result = WorkoutStreak.evaluate(sessions: easyThenLift, now: now)
+        XCTAssertEqual(result.current, 1, "Easy work is not a link — only loaded sessions keep the chain.")
 
-        let walksOnly = [
+        let easyOnly = [
             snap(createdAt: now.addingTimeInterval(-10 * 3600), type: .other),
             snap(createdAt: now.addingTimeInterval(-2 * 3600), type: .other)
         ]
-        let walkStreak = WorkoutStreak.evaluate(sessions: walksOnly, now: now)
-        XCTAssertEqual(walkStreak.current, 0)
-        XCTAssertNil(walkStreak.lastHardAt)
+        let easyStreak = WorkoutStreak.evaluate(sessions: easyOnly, now: now)
+        XCTAssertEqual(easyStreak.current, 0)
+        XCTAssertNil(easyStreak.lastHardAt)
     }
 
     func testSameDayDoublesEachCountAsALink() {

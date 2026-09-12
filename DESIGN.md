@@ -1421,8 +1421,8 @@ Only non-blocking user preferences remain. Clinical/control-flow items closed in
 | D | energyStorage | Low landings | Low-volume landings / small jumps |
 | E | tennisSport | Short hitting | Tennis: short hitting session |
 | E | tennisSport | Match play | Tennis: match play |
-| * | other | Easy bike | Easy bike 5–10 min |
-| * | other | Custom… | (empty focus text field) |
+
+Knee chip row is the two loaders (seated extension / leg press) only; "Easy bike" and "Custom…" presets were removed (PR #18). Other session types remain reachable via the Type picker and free-text "What I did".
 
 ---
 

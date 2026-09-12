@@ -70,8 +70,14 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertTrue(BrandCopy.privacyPoints[2].body.contains("this iPhone"))
     }
 
-    func testInjuryTitleIsPlainLanguage() {
-        XCTAssertEqual(BrandCopy.injuryTitle, "Which injury are you tracking?")
+    func testInjuryCopyIsKneeOnlyPlainLanguage() {
+        XCTAssertEqual(BrandCopy.injuryTitle, "Built for the patellar tendon.")
         XCTAssertFalse(BrandCopy.injuryTitle.localizedCaseInsensitiveContains("loading"))
+        for line in [BrandCopy.injuryTitle, BrandCopy.injuryLead, BrandCopy.injuryDiagnosisNote, BrandCopy.primaryLiftLead] {
+            XCTAssertFalse(line.contains("QL"), line)
+            XCTAssertFalse(line.localizedCaseInsensitiveContains("hip thrust"), line)
+            XCTAssertFalse(line.localizedCaseInsensitiveContains("side bend"), line)
+        }
+        XCTAssertTrue(BrandCopy.injuryLead.contains("patellar tendinopathy"))
     }
 }
