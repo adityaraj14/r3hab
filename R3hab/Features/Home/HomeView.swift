@@ -1,7 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today dashboard — checklist, pending 24h, session CTA.
+/// Today — one bright next action, three quiet entry rows, one streak line.
+/// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
@@ -39,10 +40,8 @@ struct HomeView: View {
             }
     }
 
-    private var todayPending: [TrainingSession] {
-        let ids = Set(PendingQueue.todayPending(sessions: sessionSnaps, now: Date(), calendar: calendar).map(\.id))
-        return sessions.filter { ids.contains($0.id) }
-            .sorted { $0.createdAt < $1.createdAt }
+    private var todaySessions: [TrainingSession] {
+        sessions.filter { calendar.isDate($0.date, inSameDayAs: today) }
     }
 
     private var phaseAStatus: PhaseAExitStatus? {
@@ -55,14 +54,6 @@ struct HomeView: View {
         )
     }
 
-    private var missingAfterPain: [TrainingSession] {
-        sessions
-            .filter { !$0.hasLoggedPainAfter }
-            .sorted { $0.createdAt > $1.createdAt }
-    }
-
-    private var pendingBadge: Int { overduePending.count }
-
     private var streak: WorkoutStreak.Snapshot {
         WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date())
     }
@@ -74,61 +65,57 @@ struct HomeView: View {
         )
     }
 
-    private var hasMorningPain: Bool {
-        todayCheckIn?.restingPainAM != nil
-    }
-
-    private var hasEveningPain: Bool {
-        todayCheckIn?.dailyPainPM != nil
-    }
+    private var hasMorningPain: Bool { todayCheckIn?.restingPainAM != nil }
+    private var hasEveningPain: Bool { todayCheckIn?.dailyPainPM != nil }
 
     private var activeTrack: RehabTrackID {
         settings?.protocolTrack ?? .knee
-    }
-
-    private var activeTemplate: RehabTemplate {
-        RehabTemplate.template(for: activeTrack)
     }
 
     private var activePrimaryLoad: PrimaryLoadOption {
         settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: activeTrack)
     }
 
+    private var nextAction: TodayNextAction {
+        let now = Date()
+        return TodayPlanner.nextAction(
+            TodayPlannerInput(
+                hasMorningPain: hasMorningPain,
+                hasEveningPain: hasEveningPain,
+                overduePending: overduePending.map(\.id),
+                missingAfterPain: TodayPlanner.recentMissingAfterPain(sessions: sessionSnaps, now: now),
+                trainedToday: !todaySessions.isEmpty,
+                isEvening: TodayPlanner.isEvening(
+                    now: now,
+                    pmReminderHour: settings?.pmReminderHour ?? 18,
+                    pmReminderMinute: settings?.pmReminderMinute ?? 30,
+                    calendar: calendar
+                )
+            )
+        )
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
+                let action = nextAction
+                VStack(alignment: .leading, spacing: 14) {
                     header
-                    streakAndQuote
-
-                    if let miss = WorkoutStreak.copy(for: streak.miss, lastChain: streak.lastChain) {
-                        missCue(miss)
-                    }
-
-                    if !overduePending.isEmpty {
-                        pendingSection
-                    }
-
+                    nextUpCard(action)
                     if let phaseAStatus {
-                        phaseABanner(phaseAStatus)
+                        phaseALine(phaseAStatus)
                     }
-
-                    checklist
-
-                    if !missingAfterPain.isEmpty {
-                        afterPainSection
-                    }
-
-                    if !todayPending.isEmpty {
-                        todaySessionPending
-                    }
-
-                    actions
-                    guide
+                    entryRows
+                    streakLine
                 }
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 4)
+                .padding(.bottom, 12)
             }
+            .scrollBounceBehavior(.basedOnSize)
+            .appCanvas()
             .navigationTitle("Today")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
@@ -136,6 +123,7 @@ struct HomeView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
+                    .tint(AppTheme.quiet)
                 }
             }
             .sheet(isPresented: $showAM) {
@@ -190,323 +178,289 @@ struct HomeView: View {
         }
     }
 
+    // MARK: Header
+
     private var header: some View {
         HStack {
-            PhaseChip(phase: settings?.currentPhase ?? .aFlareDeLoad)
-            Spacer()
-            if pendingBadge > 0 {
-                Text("\(pendingBadge) pending")
-                    .font(.caption.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color.orange.opacity(0.25), in: Capsule())
+            NavigationLink {
+                PhaseGuideView()
+            } label: {
+                PhaseChip(phase: settings?.currentPhase ?? .aFlareDeLoad)
             }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the phase guide")
+            Spacer()
             Text(today.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
     }
 
-    private var streakAndQuote: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                    .font(.title)
-                    .foregroundStyle(Color.accentColor)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WorkoutStreak.sessionWord(streak.current))
-                        .font(.title.monospacedDigit().weight(.bold))
-                        .foregroundStyle(Color.accentColor)
-                    Text(streakSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+    // MARK: Next up — the only gold on the screen
+
+    private func nextUpCard(_ action: TodayNextAction) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(nextUpEyebrow(for: action).uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(1.1)
+                .foregroundStyle(AppTheme.quiet)
+
+            Text(nextUpLine(for: action))
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(2)
+
+            switch action {
+            case .resolvePending(let id, _):
+                Button {
+                    resolveTargetId = id
+                } label: {
+                    Label("Resolve 24h response", systemImage: "checkmark.circle.fill")
                 }
+                .buttonStyle(.primaryAction)
+
+                if let session = sessions.first(where: { $0.id == id }) {
+                    HStack(spacing: 8) {
+                        if session.snoozedUntil == nil {
+                            Button("Snooze to morning") { snooze(session) }
+                                .buttonStyle(.quietCompact)
+                        }
+                        Button("Mark rest") { restConfirmId = session.id }
+                            .buttonStyle(.quietCompact)
+                    }
+                }
+
+            case .logMorning:
+                Button { showAM = true } label: {
+                    Label("Log morning pain", systemImage: "sun.max.fill")
+                }
+                .buttonStyle(.primaryAction)
+
+            case .logAfterPain(let id):
+                Button {
+                    afterPainTargetId = id
+                } label: {
+                    Label("Log pain after", systemImage: "bolt.heart.fill")
+                }
+                .buttonStyle(.primaryAction)
+
+            case .logSession:
+                Button { showSession = true } label: {
+                    Label(activePrimaryLoad.logCTA, systemImage: activeTrack.systemImage)
+                }
+                .buttonStyle(.primaryAction)
+
+            case .logEvening:
+                Button { showPM = true } label: {
+                    Label("Log evening pain", systemImage: "moon.stars.fill")
+                }
+                .buttonStyle(.primaryAction)
+
+            case .allDone:
+                Label("Today is logged", systemImage: "checkmark.seal.fill")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.vertical, 6)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.surface)
+        )
+    }
+
+    private func nextUpEyebrow(for action: TodayNextAction) -> String {
+        switch action {
+        case .resolvePending: return "Needs your 24h call"
+        case .allDone: return "Today"
+        default: return "Next up"
+        }
+    }
+
+    private func nextUpLine(for action: TodayNextAction) -> String {
+        switch action {
+        case .resolvePending(let id, let remaining):
+            let session = sessions.first { $0.id == id }
+            let title = session?.displayTitle ?? "Last session"
+            let day = session?.date.formatted(date: .abbreviated, time: .omitted) ?? ""
+            let more = remaining > 0 ? " · \(remaining) more waiting" : ""
+            return "\(title) · \(day)\(more). Better, same, or worse the morning after?"
+        case .logMorning:
+            return "Resting pain before the day starts. It is the score the plan is judged on."
+        case .logAfterPain(let id):
+            let session = sessions.first { $0.id == id }
+            return "\(session?.displayTitle ?? "Last session") · pain during \(session?.painDuring ?? 0). How does it feel now?"
+        case .logSession:
+            return activePrimaryLoad.homeObjective
+        case .logEvening:
+            return "Pain during today’s activities, plus steps."
+        case .allDone:
+            return "Morning, load, and evening are in. Judge it by tomorrow morning."
+        }
+    }
+
+    // MARK: Phase A (only while in Phase A)
+
+    private func phaseALine(_ status: PhaseAExitStatus) -> some View {
+        Label(status.message, systemImage: status.isReadyToAdvance ? "checkmark.seal.fill" : "flag")
+            .font(.footnote)
+            .foregroundStyle(status.isReadyToAdvance ? Color.green : Color.secondary)
+            .lineLimit(2)
+            .padding(.horizontal, 4)
+            .accessibilityLabel("Phase A exit. \(status.message)")
+    }
+
+    // MARK: Entry rows — quiet, one tap each
+
+    private var entryRows: some View {
+        VStack(spacing: 0) {
+            entryRow(
+                icon: "sun.max",
+                title: "Morning pain",
+                value: todayCheckIn?.restingPainAM.map(String.init),
+                logged: hasMorningPain
+            ) { showAM = true }
+            Divider().overlay(AppTheme.quietStroke)
+            entryRow(
+                icon: activeTrack.systemImage,
+                title: activePrimaryLoad.title,
+                value: sessionRowValue,
+                logged: !todaySessions.isEmpty
+            ) { showSession = true }
+            Divider().overlay(AppTheme.quietStroke)
+            entryRow(
+                icon: "moon.stars",
+                title: "Evening pain",
+                value: eveningRowValue,
+                logged: hasEveningPain
+            ) { showPM = true }
+        }
+        .padding(.horizontal, 16)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.surface)
+        )
+    }
+
+    private var sessionRowValue: String? {
+        let count = todaySessions.count
+        guard count > 0 else { return nil }
+        if let pending = todaySessions.first(where: { !$0.hasLoggedPainAfter }) {
+            return "During \(pending.painDuring) · after not logged"
+        }
+        return count == 1 ? "Logged" : "\(count) logged"
+    }
+
+    private var eveningRowValue: String? {
+        guard let c = todayCheckIn else { return nil }
+        let pain = c.dailyPainPM.map(String.init)
+        let steps = c.steps.map { "\($0.formatted()) steps" }
+        switch (pain, steps) {
+        case let (p?, s?): return "\(p) · \(s)"
+        case let (p?, nil): return p
+        case let (nil, s?): return s
+        case (nil, nil): return nil
+        }
+    }
+
+    private func entryRow(
+        icon: String,
+        title: String,
+        value: String?,
+        logged: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Image(systemName: logged ? "checkmark.circle.fill" : icon)
+                    .font(.body)
+                    .foregroundStyle(logged ? Color.green : AppTheme.quiet)
+                    .frame(width: 22)
+                Text(title)
+                    .font(.body)
+                    .foregroundStyle(.primary)
+                Spacer(minLength: 8)
+                Text(value ?? "Not logged")
+                    .font(.subheadline.monospacedDigit())
+                    .foregroundStyle(value == nil ? Color.secondary.opacity(0.7) : Color.secondary)
+                    .lineLimit(1)
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("\(title), \(value ?? "not logged")")
+        .accessibilityHint(logged ? "Edit" : "Log")
+    }
+
+    // MARK: Streak + one line
+
+    private var streakLine: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.quiet)
+                    .accessibilityHidden(true)
+                Text(WorkoutStreak.sessionWord(streak.current))
+                    .font(.subheadline.monospacedDigit().weight(.semibold))
+                Text("· \(streakSubtitle)")
+                    .font(.caption)
+                    .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
+                    .lineLimit(1)
                 Spacer(minLength: 0)
             }
             Button {
                 quoteTapOffset += 1
                 Haptics.light()
             } label: {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(todayQuote.text)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(.primary)
-                        .multilineTextAlignment(.leading)
-                    if let attribution = todayQuote.attribution {
-                        Text(attribution)
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Text(quoteLine)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.leading)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
             .buttonStyle(.plain)
             .accessibilityHint("Tap for another line")
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color(.secondarySystemBackground))
-        )
+        .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Hard session streak \(WorkoutStreak.sessionWord(streak.current)). \(streakSubtitle). \(todayQuote.text)"
+            "Hard session chain \(WorkoutStreak.sessionWord(streak.current)). \(streakSubtitle). \(todayQuote.text)"
         )
+    }
+
+    private var quoteLine: String {
+        if let attribution = todayQuote.attribution {
+            return "“\(todayQuote.text)” — \(attribution)"
+        }
+        return todayQuote.text
     }
 
     private var streakSubtitle: String {
+        if let miss = WorkoutStreak.copy(for: streak.miss, lastChain: streak.lastChain) {
+            return miss.title
+        }
         if streak.best == 0 {
-            return "Hard session chain · tap the line for another"
+            return "hard-session chain, 48h window"
         }
         if streak.current == 0, streak.lastChain > 0 {
-            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
+            return "last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
         }
         if streak.best > streak.current {
-            return "Best \(WorkoutStreak.sessionWord(streak.best))"
+            return "best \(WorkoutStreak.sessionWord(streak.best))"
         }
-        return "Keep the chain · 48 hours"
+        return "keep the chain · 48 hours"
     }
 
-    private func missCue(_ copy: (title: String, body: String)) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Label(copy.title, systemImage: streak.miss == .twoMiss ? "exclamationmark.triangle.fill" : "link")
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.accentColor)
-            Text(copy.body)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(streak.miss == .twoMiss ? Color.orange.opacity(0.12) : Color.accentColor.opacity(0.10))
-        )
-        .accessibilityElement(children: .combine)
-    }
-
-    private var pendingSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Needs 24h response", systemImage: "exclamationmark.bubble.fill")
-                .font(.headline)
-                .foregroundStyle(.orange)
-
-            ForEach(overduePending, id: \.id) { session in
-                pendingCard(session, early: false)
-            }
-        }
-    }
-
-    private var afterPainSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Label("Log pain after", systemImage: "clock.badge.exclamationmark")
-                .font(.headline)
-                .foregroundStyle(Color.accentColor)
-
-            ForEach(missingAfterPain, id: \.id) { session in
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(session.displayTitle)
-                        .font(.subheadline.weight(.semibold))
-                        .lineLimit(2)
-                    if let resistance = session.resistanceSummary {
-                        Text(resistance)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2)
-                    }
-                    Text("During \(session.painDuring) · after not logged yet")
-                        .font(.caption)
-                        .foregroundStyle(.tertiary)
-
-                    Button("Log after-pain") {
-                        afterPainTargetId = session.id
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-                .padding()
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(Color.accentColor.opacity(0.12))
-                )
-            }
-        }
-    }
-
-    private var todaySessionPending: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Today’s sessions")
-                .font(.headline)
-            ForEach(todayPending, id: \.id) { session in
-                pendingCard(session, early: true)
-            }
-        }
-    }
-
-    private func pendingCard(_ session: TrainingSession, early: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(session.displayTitle)
-                .font(.subheadline.weight(.semibold))
-                .lineLimit(2)
-            if let resistance = session.resistanceSummary {
-                Text(resistance)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            }
-            Text(pendingSubtitle(session))
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-
-            HStack {
-                Button(early ? "Resolve early" : "Resolve") {
-                    resolveTargetId = session.id
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                if session.snoozedUntil == nil {
-                    Button("Snooze") { snooze(session) }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                }
-
-                Button("Rest") { restConfirmId = session.id }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .tint(.orange)
-            }
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.orange.opacity(0.12))
-        )
-    }
-
-    private func pendingSubtitle(_ session: TrainingSession) -> String {
-        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.displayPainAfter) after"
-    }
-
-    private func phaseABanner(_ status: PhaseAExitStatus) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label(
-                status.isReadyToAdvance ? "Phase A exit looking good" : "Phase A progress",
-                systemImage: status.isReadyToAdvance ? "checkmark.seal.fill" : "flag"
-            )
-            .font(.subheadline.weight(.semibold))
-            Text(status.message)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-        )
-    }
-
-    private var checklist: some View {
-        let c = todayCheckIn
-        return VStack(alignment: .leading, spacing: 12) {
-            Text("Today")
-                .font(.title3.weight(.semibold))
-            checkRow(
-                title: "Morning pain",
-                done: c?.restingPainAM != nil,
-                detail: morningPainDetail(c)
-            )
-            checkRow(
-                title: "Evening pain",
-                done: c?.dailyPainPM != nil,
-                detail: eveningPainDetail(c)
-            )
-            checkRow(title: "Steps", done: c?.steps != nil, detail: c?.steps.map { "\($0)" })
-        }
-    }
-
-    private func morningPainDetail(_ c: DailyCheckIn?) -> String? {
-        c?.restingPainAM.map(String.init)
-    }
-
-    private func eveningPainDetail(_ c: DailyCheckIn?) -> String? {
-        c?.dailyPainPM.map(String.init)
-    }
-
-    private func checkRow(title: String, done: Bool, detail: String?) -> some View {
-        HStack {
-            Image(systemName: done ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(done ? Color.green : Color.secondary)
-            Text(title)
-            Spacer()
-            Text(detail ?? "Missing")
-                .foregroundStyle(done ? Color.primary : Color.secondary)
-                .font(.subheadline.monospacedDigit())
-        }
-        .padding(.vertical, 4)
-    }
-
-    private var actions: some View {
-        VStack(spacing: 12) {
-            Button { showAM = true } label: {
-                Label(hasMorningPain ? "Edit morning" : "Log morning", systemImage: "sun.max.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-
-            Button { showPM = true } label: {
-                Label(hasEveningPain ? "Edit evening" : "Log evening", systemImage: "moon.stars.fill")
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
-            .controlSize(.large)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Label(activeTemplate.name, systemImage: activeTrack.systemImage)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(PainChartColors.knee)
-                Text(activeTemplate.objective(for: activePrimaryLoad))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Button { showSession = true } label: {
-                    Text(activePrimaryLoad.logCTA)
-                        .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
-            }
-            .padding()
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(Color(.secondarySystemBackground))
-            )
-        }
-    }
-
-    private var guide: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("Phase")
-                .font(.headline)
-            Text(PhaseGuideCopy.summary(
-                for: settings?.currentPhase ?? .aFlareDeLoad,
-                primaryLift: activePrimaryLoad.title,
-                track: activeTrack
-            ))
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            Text(PhaseGuideCopy.redFlags)
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-        }
-        .padding(.top, 8)
-    }
+    // MARK: Actions
 
     private func snooze(_ session: TrainingSession) {
         guard session.snoozedUntil == nil else { return }
@@ -547,8 +501,6 @@ struct HomeView: View {
         router.requestNotificationSync()
     }
 }
-
-// TrainingSession already has `id: UUID` for Identifiable via SwiftData usage in ForEach
 
 #Preview {
     HomeView()
