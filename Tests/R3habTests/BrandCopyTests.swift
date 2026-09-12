@@ -2,12 +2,48 @@ import XCTest
 @testable import R3hab
 
 final class BrandCopyTests: XCTestCase {
-    func testQuoteCycleStaysTenAndDropsTheBatmanBeginsLine() {
+    func testQuoteCycleStaysTenAndHasNoFranchiseLines() {
         XCTAssertEqual(MotivationalQuotes.all.count, 10)
-        XCTAssertFalse(MotivationalQuotes.all.contains { $0.attribution == "Batman Begins" })
-        XCTAssertFalse(MotivationalQuotes.all.contains { $0.text.contains("Why do we fall") })
-        XCTAssertTrue(MotivationalQuotes.all.contains { $0.text == "Load a little. Judge it tomorrow morning." })
         XCTAssertEqual(Set(MotivationalQuotes.all.map(\.text)).count, 10)
+        XCTAssertTrue(MotivationalQuotes.all.contains { $0.text == "Load a little. Judge it tomorrow morning." })
+
+        let franchise = [
+            "Batman Begins", "The Dark Knight", "The Empire Strikes Back", "Finding Nemo",
+            "Rocky", "Captain America", "Journey", "Ted Lasso", "The Lion King"
+        ]
+        let flaggedLines = ["Why do we fall", "Do or do not", "There is no try", "Hakuna", "keep swimming"]
+        for quote in MotivationalQuotes.all {
+            if let attribution = quote.attribution {
+                XCTAssertFalse(franchise.contains(attribution), attribution)
+            }
+            for flagged in flaggedLines {
+                XCTAssertFalse(quote.text.contains(flagged), quote.text)
+            }
+        }
+        // Only the proverb keeps an attribution; every other line is R3hab’s own voice.
+        XCTAssertEqual(MotivationalQuotes.all.compactMap(\.attribution), ["Japanese proverb"])
+    }
+
+    func testQuotesStayShortEnoughForTheTodayStreakLine() {
+        for quote in MotivationalQuotes.all {
+            XCTAssertLessThanOrEqual(quote.text.count, 45, quote.text)
+        }
+    }
+
+    func testWelcomeBenefitBodiesFitOnOneFootnoteLine() {
+        // ~313pt of footnote text on a 6.1" phone is ~55 characters; keep headroom.
+        for habit in BrandCopy.habits {
+            XCTAssertLessThanOrEqual(habit.body.count, 46, habit.body)
+            XCTAssertFalse(habit.body.contains("…"), habit.body)
+        }
+        XCTAssertEqual(
+            BrandCopy.habits.map(\.body),
+            [
+                "Pain, sessions, and load in one place.",
+                "Small, honest logs — enough to keep going.",
+                "Decide from your numbers, not the messy week."
+            ]
+        )
     }
 
     func testQuoteCycleHasNoAtomicHabitsProcessCopy() {

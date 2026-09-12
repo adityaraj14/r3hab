@@ -151,22 +151,22 @@ final class WorkoutStreakTests: XCTestCase {
 
         let first = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 0)
         let next = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 1)
-        XCTAssertEqual(first.text, "Just keep swimming.")
-        XCTAssertEqual(first.attribution, "Finding Nemo")
-        XCTAssertEqual(next.text, "Get up.")
+        XCTAssertEqual(first.text, "Show up. Log it. Move on.")
+        XCTAssertNil(first.attribution)
+        XCTAssertEqual(next.text, "Calm mornings are the win.")
         XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 0, tapOffset: 10).text, first.text)
         XCTAssertEqual(MotivationalQuotes.all.count, 10)
         XCTAssertEqual(MotivationalQuotes.all.map(\.attribution), [
-            "Finding Nemo",
-            "Rocky",
-            "Japanese proverb",
-            "Captain America",
             nil,
-            "The Empire Strikes Back",
-            "Journey",
-            "Ted Lasso",
-            "The Lion King",
-            "The Dark Knight"
+            nil,
+            "Japanese proverb",
+            nil,
+            nil,
+            nil,
+            nil,
+            nil,
+            nil,
+            nil
         ])
         XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in
             quote.text.count < 160

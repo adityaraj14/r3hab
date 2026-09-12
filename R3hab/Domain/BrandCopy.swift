@@ -22,17 +22,19 @@ enum BrandCopy {
     """
 
     static let habits: [BrandHabit] = [
+        // Bodies stay under ~45 characters so each is one line at footnote
+        // size on a 6.1" phone — the Welcome page is laid out to fit, not scroll.
         BrandHabit(
             title: "Track the journey",
-            body: "Pain, sessions, and load in one place, not just how today felt."
+            body: "Pain, sessions, and load in one place."
         ),
         BrandHabit(
             title: "Stay accountable",
-            body: "Small, honest logs. Enough to keep going without making rehab a second job."
+            body: "Small, honest logs — enough to keep going."
         ),
         BrandHabit(
             title: "Trust the data",
-            body: "A quiet system that helps you decide. You don’t have to re-argue the plan every time the week feels messy."
+            body: "Decide from your numbers, not the messy week."
         )
     ]
 
@@ -104,20 +106,21 @@ enum BrandCopy {
     ]
 }
 
-/// Short Today lines. Adi’s 10-item cycle — no R3hab / Atomic Habits process copy.
-/// Slot 5 is a neutral rehab-owned line (the Batman Begins quote read off-tone).
+/// Short Today lines. 10-item cycle in R3hab’s own voice — short, neutral,
+/// rehab-owned. No franchise memes, no Atomic Habits process copy. The one
+/// attributed line is a proverb, not a film.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
-        MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
-        MotivationalQuote(text: "Get up.", attribution: "Rocky"),
+        MotivationalQuote(text: "Show up. Log it. Move on.", attribution: nil),
+        MotivationalQuote(text: "Calm mornings are the win.", attribution: nil),
         MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
-        MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
+        MotivationalQuote(text: "Consistency beats intensity.", attribution: nil),
         MotivationalQuote(text: "Load a little. Judge it tomorrow morning.", attribution: nil),
-        MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
-        MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
-        MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),
-        MotivationalQuote(text: "Hakuna matata.", attribution: "The Lion King"),
-        MotivationalQuote(text: "The night is darkest just before the dawn.", attribution: "The Dark Knight")
+        MotivationalQuote(text: "Tendons adapt slowly. So do habits.", attribution: nil),
+        MotivationalQuote(text: "Trust the numbers, not the mood.", attribution: nil),
+        MotivationalQuote(text: "One session at a time.", attribution: nil),
+        MotivationalQuote(text: "A flat week is still a week logged.", attribution: nil),
+        MotivationalQuote(text: "Progress hides in ordinary days.", attribution: nil)
     ]
 
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {
