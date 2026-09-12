@@ -27,6 +27,13 @@ final class SettingsSeedPolicyTests: XCTestCase {
         )
     }
 
+    func testQLTrackIsAlreadyNormalized() {
+        XCTAssertFalse(SettingsSeedPolicy.shouldNormalizeActiveTracks("ql"))
+        XCTAssertFalse(
+            SettingsSeedPolicy.shouldNormalizeActiveTracks(RehabTrackID.ql.rawValue)
+        )
+    }
+
     func testLeftoverDualTrackCSVNeedsWrite() {
         XCTAssertTrue(SettingsSeedPolicy.shouldNormalizeActiveTracks("knee,lowerBack"))
         XCTAssertTrue(SettingsSeedPolicy.shouldNormalizeActiveTracks("lowerBack"))

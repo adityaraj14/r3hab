@@ -97,7 +97,7 @@ struct OnboardingView: View {
         if isBusy { return "Saving…" }
         switch page {
         case 1: return "That's my injury"
-        case 2: return "That's my lift"
+        case 2: return selectedTrack == .ql ? "That's my work" : "That's my lift"
         case 4: return "Let's load"
         default: return "Continue"
         }
@@ -128,6 +128,8 @@ struct OnboardingView: View {
                     .font(.body)
                     .foregroundStyle(.secondary)
 
+                privacyPitch
+
                 VStack(spacing: 10) {
                     ForEach(BrandCopy.habits) { habit in
                         habitCard(habit)
@@ -153,7 +155,7 @@ struct OnboardingView: View {
                     eyebrow: "Injury",
                     title: "What are you loading?"
                 )
-                Text("All three use the same knee / patellar tendon protocol. Your primary lift is next. More injuries can land here later.")
+                Text(BrandCopy.injuryLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
 
@@ -164,7 +166,7 @@ struct OnboardingView: View {
                             subtitle: injury.subtitle,
                             selected: selectedInjuryID == injury.id
                         ) {
-                            selectedInjuryID = injury.id
+                            selectInjury(injury.id)
                         }
                     }
                 }
@@ -182,14 +184,14 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
                     eyebrow: "Process",
-                    title: "Your primary lift"
+                    title: selectedTrack == .ql ? "Your primary work" : "Your primary lift"
                 )
-                Text("Seated leg extension is the default — the same machine iso/HSR most patellar-tendon protocols use. Pick another if that’s what you actually have.")
+                Text(primaryLiftLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
 
                 VStack(spacing: 10) {
-                    ForEach(PrimaryLoadCatalog.all) { option in
+                    ForEach(PrimaryLoadCatalog.options(for: selectedTrack)) { option in
                         phaseChoice(
                             title: option.title,
                             subtitle: option.subtitle,
@@ -238,7 +240,7 @@ struct OnboardingView: View {
             Toggle(isOn: $wantNotifications) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Local notifications")
-                    Text("Morning and evening check-ins, plus overdue 24h pending. Off anytime in Settings.")
+                    Text("Morning and evening check-ins, plus overdue 24h pending. Local only — they never leave this phone. Off anytime in Settings.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -286,6 +288,71 @@ struct OnboardingView: View {
                 .foregroundStyle(.white)
                 .fixedSize(horizontal: false, vertical: true)
                 .accessibilityAddTraits(.isHeader)
+        }
+    }
+
+    private var selectedTrack: RehabTrackID {
+        InjuryCatalog.definition(for: selectedInjuryID).protocolTrack
+    }
+
+    private var primaryLiftLead: String {
+        selectedTrack == .ql ? BrandCopy.qlPrimaryWorkLead : BrandCopy.primaryLiftLead
+    }
+
+    private var privacyPitch: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(BrandCopy.privacyEyebrow.uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(1.2)
+                .foregroundStyle(OnboardingTheme.gold)
+
+            Text(BrandCopy.privacyTitle)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.white)
+
+            Text(BrandCopy.privacyLead)
+                .font(.subheadline)
+                .foregroundStyle(Color.white.opacity(0.72))
+                .fixedSize(horizontal: false, vertical: true)
+
+            ForEach(BrandCopy.privacyPoints) { point in
+                HStack(alignment: .top, spacing: 10) {
+                    Image(systemName: "lock.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(OnboardingTheme.gold)
+                        .frame(width: 16)
+                        .padding(.top, 2)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(point.title)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.white)
+                        Text(point.body)
+                            .font(.caption)
+                            .foregroundStyle(Color.white.opacity(0.65))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(OnboardingTheme.gold.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(OnboardingTheme.gold.opacity(0.28), lineWidth: 1)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Private. No ads. On this iPhone.")
+    }
+
+    private func selectInjury(_ id: String) {
+        selectedInjuryID = id
+        let track = InjuryCatalog.definition(for: id).protocolTrack
+        if !PrimaryLoadCatalog.contains(selectedPrimaryLoadID, on: track) {
+            selectedPrimaryLoadID = PrimaryLoadCatalog.defaultID(for: track)
         }
     }
 
@@ -396,7 +463,10 @@ struct OnboardingView: View {
     }
 }
 
-/// Applies first-run choices. Skip uses Phase B + notifications off + default injury + seated extension.
+/// Applies first-run choices.
+/// Skip: Phase B, notifications off. Keep a chosen injury. Page-0 skip still has
+/// the catalog default (knee + seated extension). A later skip after picking QL
+/// keeps QL and remaps the primary movement onto that track.
 enum OnboardingCompletion {
     static let defaultPhase: RehabPhase = .bIsometrics
 
@@ -407,22 +477,24 @@ enum OnboardingCompletion {
         injuryID: String,
         primaryLoadID: String
     ) -> OnboardingChoices {
+        let injury = InjuryCatalog.definition(for: injuryID)
+        let track = injury.protocolTrack
+        let loadID = PrimaryLoadCatalog.normalizedID(primaryLoadID, track: track)
         if skipped {
             return OnboardingChoices(
                 phase: defaultPhase,
                 notificationsEnabled: false,
-                injuryID: InjuryCatalog.defaultSelectable.id,
-                protocolTrack: InjuryCatalog.defaultSelectable.protocolTrack,
-                primaryLoadID: PrimaryLoadCatalog.defaultID
+                injuryID: injury.id,
+                protocolTrack: track,
+                primaryLoadID: loadID
             )
         }
-        let injury = InjuryCatalog.definition(for: injuryID)
         return OnboardingChoices(
             phase: phase,
             notificationsEnabled: notificationsEnabled,
             injuryID: injury.id,
-            protocolTrack: injury.protocolTrack,
-            primaryLoadID: PrimaryLoadCatalog.normalizedID(primaryLoadID)
+            protocolTrack: track,
+            primaryLoadID: loadID
         )
     }
 

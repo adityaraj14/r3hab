@@ -95,9 +95,15 @@ enum SetLaterality: String, CaseIterable, Identifiable, Sendable {
     var id: String { rawValue }
 
     var title: String {
-        switch self {
-        case .bilateral: return "Both legs"
-        case .unilateral: return "Each leg"
+        title(for: .knee)
+    }
+
+    func title(for track: RehabTrackID) -> String {
+        switch (self, track) {
+        case (.bilateral, .knee): return "Both legs"
+        case (.unilateral, .knee): return "Each leg"
+        case (.bilateral, .ql): return "Both sides"
+        case (.unilateral, .ql): return "Each side"
         }
     }
 }

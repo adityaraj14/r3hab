@@ -33,8 +33,15 @@ struct R3habApp: App {
                 .environment(router)
                 .preferredColorScheme(.dark)
                 .task {
-                    AppServices.shared.notificationDelegate.onOpenSession = { [router] id in
-                        router.openResolve(sessionId: id)
+                    AppServices.shared.notificationDelegate.onOpenNotification = { [router] id, kind in
+                        switch kind {
+                        case .painAfter:
+                            if let id { router.openAfterPain(sessionId: id) }
+                        case .pending:
+                            if let id { router.openResolve(sessionId: id) }
+                        case .hardOverdue:
+                            router.openToday()
+                        }
                     }
                 }
                 .onOpenURL { url in
@@ -45,18 +52,28 @@ struct R3habApp: App {
 
     private func handleDeepLink(_ url: URL) {
         // r3hab://resolve?sessionId=<uuid>
-        // also accept r3hab://resolve/<uuid>
+        // r3hab://after?sessionId=<uuid>
         guard url.scheme?.lowercased() == "r3hab" else { return }
         let host = url.host?.lowercased() ?? ""
-        if host == "resolve" || url.path.contains("resolve") {
-            if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
-               let raw = comps.queryItems?.first(where: { $0.name == "sessionId" })?.value,
-               let id = UUID(uuidString: raw) {
+        let isAfter = host == "after" || url.path.contains("after")
+        let isResolve = host == "resolve" || url.path.contains("resolve")
+        guard isAfter || isResolve else { return }
+
+        if let comps = URLComponents(url: url, resolvingAgainstBaseURL: false),
+           let raw = comps.queryItems?.first(where: { $0.name == "sessionId" })?.value,
+           let id = UUID(uuidString: raw) {
+            if isAfter {
+                router.openAfterPain(sessionId: id)
+            } else {
                 router.openResolve(sessionId: id)
-                return
             }
-            let pathId = url.pathComponents.filter { $0 != "/" }.last ?? ""
-            if let id = UUID(uuidString: pathId) {
+            return
+        }
+        let pathId = url.pathComponents.filter { $0 != "/" }.last ?? ""
+        if let id = UUID(uuidString: pathId) {
+            if isAfter {
+                router.openAfterPain(sessionId: id)
+            } else {
                 router.openResolve(sessionId: id)
             }
         }

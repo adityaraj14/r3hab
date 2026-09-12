@@ -17,13 +17,13 @@ final class AppSettings {
     var hasCompletedOnboarding: Bool
     var protocolRevision: String
     var faceIDLockEnabled: Bool
-    /// Legacy dual-track CSV. Forced to knee-only; kept for SwiftData schema stability.
+    /// Stored track id (`knee` or `ql`). Leftover dual-track CSV is migrated once.
     var activeTracksCSV: String = "knee"
     /// Unused. Kept for SwiftData schema stability.
     var backTrackStageRaw: String = ""
     /// Onboarding injury id from `InjuryCatalog`. Default is lightweight-migration safe.
     var selectedInjuryID: String = "patellar-tendinopathy"
-    /// Primary tendon-loading lift from `PrimaryLoadCatalog`. Default is seated leg extension.
+    /// Primary movement from `PrimaryLoadCatalog`. Default is seated leg extension (knee).
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {
@@ -35,17 +35,33 @@ final class AppSettings {
     }
 
     var activeTracks: [RehabTrackID] {
-        get { [.knee] }
-        set { activeTracksCSV = RehabTrackID.knee.rawValue }
+        get {
+            let parsed = activeTracksCSV
+                .split(separator: ",")
+                .compactMap { RehabTrackID(rawValue: String($0)) }
+            if parsed.isEmpty { return [protocolTrack] }
+            return parsed
+        }
+        set {
+            let tracks = newValue.isEmpty ? [protocolTrack] : newValue
+            activeTracksCSV = tracks.map(\.rawValue).joined(separator: ",")
+        }
+    }
+
+    var protocolTrack: RehabTrackID {
+        selectedInjury.protocolTrack
     }
 
     var selectedInjury: InjuryDefinition {
         get { InjuryCatalog.definition(for: selectedInjuryID) }
-        set { selectedInjuryID = newValue.id }
+        set {
+            selectedInjuryID = newValue.id
+            activeTracks = [newValue.protocolTrack]
+        }
     }
 
     var primaryLoad: PrimaryLoadOption {
-        get { PrimaryLoadCatalog.option(for: primaryLoadID) }
+        get { PrimaryLoadCatalog.option(for: primaryLoadID, track: protocolTrack) }
         set { primaryLoadID = newValue.id }
     }
 

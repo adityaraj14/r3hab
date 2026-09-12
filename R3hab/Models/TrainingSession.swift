@@ -9,6 +9,7 @@ final class TrainingSession {
     var typeRaw: String
     var whatIDid: String
     var painDuring: Int
+    /// 0–10 when logged. `PainScore.notLogged` (−1) means after-pain is still outstanding.
     var painAfter: Int
     /// Legacy single-block fields (kept for migration / old rows).
     var sets: Int?
@@ -21,9 +22,9 @@ final class TrainingSession {
     var warmupLoadLbs: Double?
     /// JSON array of `ResistanceSet` — preferred source for multi-set logging.
     var resistanceSetsJSON: String?
-    /// Stored region string. Knee-only in UI; leftover `lowerBack` values map to knee.
+    /// Stored region string. Unknown leftover values (e.g. `lowerBack`) map to knee.
     var loadRegionRaw: String?
-    /// Stored track string. Knee-only in UI; leftover `lowerBack` values map to knee.
+    /// Stored track string (`knee` or `ql`). Unknown leftover values map to knee.
     var trackRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
@@ -66,16 +67,19 @@ final class TrainingSession {
     }
 
     var track: RehabTrackID {
-        get { .knee }
+        get { RehabTrackID(rawValue: trackRaw ?? "") ?? .knee }
         set {
-            trackRaw = RehabTrackID.knee.rawValue
-            loadRegionRaw = LoadRegion.knee.rawValue
+            trackRaw = newValue.rawValue
+            loadRegionRaw = newValue.loadRegion.rawValue
         }
     }
 
     /// Region used for Progress load series. Legacy rows with load but no region map to knee.
     var effectiveLoadRegion: LoadRegion? {
         if let loadRegion { return loadRegion }
+        if let trackRaw, let stored = RehabTrackID(rawValue: trackRaw) {
+            return stored.loadRegion
+        }
         if hasResistanceLog { return .knee }
         return nil
     }
@@ -87,7 +91,7 @@ final class TrainingSession {
         sessionType: SessionType,
         whatIDid: String,
         painDuring: Int,
-        painAfter: Int,
+        painAfter: Int = PainScore.notLogged,
         sets: Int? = nil,
         reps: Int? = nil,
         loadLbs: Double? = nil,
@@ -114,8 +118,9 @@ final class TrainingSession {
         self.warmupReps = warmupReps
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
-        self.loadRegionRaw = LoadRegion.knee.rawValue
-        self.trackRaw = RehabTrackID.knee.rawValue
+        let resolvedTrack = track ?? .knee
+        self.trackRaw = resolvedTrack.rawValue
+        self.loadRegionRaw = (loadRegion ?? resolvedTrack.loadRegion).rawValue
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
@@ -247,5 +252,17 @@ final class TrainingSession {
             return String(Int(lbs))
         }
         return String(format: "%g", lbs)
+    }
+
+    var hasLoggedPainAfter: Bool {
+        PainScore.isLogged(painAfter)
+    }
+
+    var loggedPainAfter: Int? {
+        PainScore.optional(painAfter)
+    }
+
+    var displayPainAfter: String {
+        PainScore.display(painAfter)
     }
 }

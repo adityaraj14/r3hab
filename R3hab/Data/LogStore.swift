@@ -13,6 +13,8 @@ enum LogStore {
         var pmHour: Int
         var pmMinute: Int
         var pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)]
+        var painAfterSessions: [(id: UUID, createdAt: Date)]
+        var lastHardCreatedAt: Date?
         var overdueCount: Int
     }
 
@@ -26,8 +28,9 @@ enum LogStore {
         for s in sessions { context.delete(s) }
         try context.save()
         for id in sessionIds {
-            NotificationScheduler.cancelPending(sessionId: id)
+            NotificationScheduler.cancelSessionNotifications(sessionId: id)
         }
+        NotificationScheduler.cancelHardOverdue()
         NotificationScheduler.updateBadge(count: 0)
         return (dailies.count, sessions.count)
     }
@@ -37,6 +40,13 @@ enum LogStore {
         sessions
             .filter { $0.response24h == .pending }
             .map { (id: $0.id, date: $0.date, snoozedUntil: $0.snoozedUntil) }
+    }
+
+    @MainActor
+    static func painAfterSessionTuples(from sessions: [TrainingSession]) -> [(id: UUID, createdAt: Date)] {
+        sessions
+            .filter { !$0.hasLoggedPainAfter }
+            .map { (id: $0.id, createdAt: $0.createdAt) }
     }
 
     @MainActor
@@ -52,8 +62,18 @@ enum LogStore {
             pmHour: settings.pmReminderHour,
             pmMinute: settings.pmReminderMinute,
             pendingSessions: pendingSessionTuples(from: sessions),
+            painAfterSessions: painAfterSessionTuples(from: sessions),
+            lastHardCreatedAt: lastHardCreatedAt(from: sessions),
             overdueCount: PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: now).count
         )
+    }
+
+    @MainActor
+    static func lastHardCreatedAt(from sessions: [TrainingSession]) -> Date? {
+        sessions
+            .filter { SessionSpacing.isHard($0.sessionType) }
+            .map(\.createdAt)
+            .max()
     }
 
     static func reconcileNotifications(_ snapshot: NotificationSnapshot) async {
@@ -66,7 +86,9 @@ enum LogStore {
             amMinute: snapshot.amMinute,
             pmHour: snapshot.pmHour,
             pmMinute: snapshot.pmMinute,
-            pendingSessions: snapshot.pendingSessions
+            pendingSessions: snapshot.pendingSessions,
+            painAfterSessions: snapshot.painAfterSessions,
+            lastHardCreatedAt: snapshot.lastHardCreatedAt
         )
         NotificationScheduler.updateBadge(count: snapshot.overdueCount)
     }

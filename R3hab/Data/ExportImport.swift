@@ -166,7 +166,7 @@ struct SessionDTO: Codable {
         type = try c.decode(String.self, forKey: .type)
         whatIDid = try c.decode(String.self, forKey: .whatIDid)
         painDuring = try c.decode(Int.self, forKey: .painDuring)
-        painAfter = try c.decode(Int.self, forKey: .painAfter)
+        painAfter = try c.decodeIfPresent(Int.self, forKey: .painAfter) ?? PainScore.notLogged
         sets = try c.decodeIfPresent(Int.self, forKey: .sets)
         reps = try c.decodeIfPresent(Int.self, forKey: .reps)
         loadLbs = try c.decodeIfPresent(Double.self, forKey: .loadLbs)
@@ -346,10 +346,15 @@ enum ExportImportService {
         settings.notificationsEnabled = dto.notificationsEnabled
         settings.protocolRevision = dto.protocolRevision
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
-            settings.selectedInjuryID = InjuryCatalog.normalizedID(injuryID)
+            settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }
         if let loadID = dto.primaryLoadID, !loadID.isEmpty {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID, track: settings.protocolTrack)
+        } else {
+            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                settings.primaryLoadID,
+                track: settings.protocolTrack
+            )
         }
     }
 

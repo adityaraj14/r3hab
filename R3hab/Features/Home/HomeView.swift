@@ -13,7 +13,9 @@ struct HomeView: View {
     @State private var showPM = false
     @State private var showSession = false
     @State private var resolveTargetId: UUID?
+    @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    @AppStorage("quoteTapOffset") private var quoteTapOffset = 0
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -53,33 +55,24 @@ struct HomeView: View {
         )
     }
 
-    private var metrics: [DailyMetricSnapshot] {
-        checkIns.map {
-            DailyMetricSnapshot(
-                date: $0.date,
-                restingPainAM: $0.restingPainAM,
-                dailyPainPM: $0.dailyPainPM,
-                steps: $0.steps
-            )
-        }
-    }
-
-    private var explorePoints: [DayExplorePoint] {
-        ChartMetricBuilder.explorePoints(
-            checkIns: metrics,
-            sideLoads: sessions.map {
-                SessionSideLoadSnapshot(
-                    date: $0.date,
-                    leftMaxLbs: $0.chartMaxLoadLeft,
-                    rightMaxLbs: $0.chartMaxLoadRight,
-                    unspecifiedMaxLbs: $0.chartMaxLoad
-                )
-            },
-            dayCount: 7
-        )
+    private var missingAfterPain: [TrainingSession] {
+        sessions
+            .filter { !$0.hasLoggedPainAfter }
+            .sorted { $0.createdAt > $1.createdAt }
     }
 
     private var pendingBadge: Int { overduePending.count }
+
+    private var streak: WorkoutStreak.Snapshot {
+        WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date())
+    }
+
+    private var todayQuote: MotivationalQuote {
+        MotivationalQuotes.quote(
+            dayIndex: MotivationalQuotes.dailyIndex(on: today, calendar: calendar),
+            tapOffset: quoteTapOffset
+        )
+    }
 
     private var hasMorningPain: Bool {
         todayCheckIn?.restingPainAM != nil
@@ -89,11 +82,28 @@ struct HomeView: View {
         todayCheckIn?.dailyPainPM != nil
     }
 
+    private var activeTrack: RehabTrackID {
+        settings?.protocolTrack ?? .knee
+    }
+
+    private var activeTemplate: RehabTemplate {
+        RehabTemplate.template(for: activeTrack)
+    }
+
+    private var activePrimaryLoad: PrimaryLoadOption {
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: activeTrack)
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
+                    streakAndQuote
+
+                    if let miss = WorkoutStreak.copy(for: streak.miss, lastChain: streak.lastChain) {
+                        missCue(miss)
+                    }
 
                     if !overduePending.isEmpty {
                         pendingSection
@@ -105,22 +115,8 @@ struct HomeView: View {
 
                     checklist
 
-                    if explorePoints.contains(where: \.hasValues) {
-                        VStack(alignment: .leading, spacing: 10) {
-                            Text("Last 7 days")
-                                .font(.subheadline.weight(.semibold))
-                            KneeExploreChart(
-                                points: explorePoints,
-                                height: 110,
-                                visibleDays: 7,
-                                loadTitle: (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).chartLoadTitle
-                            )
-                        }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(Color(.secondarySystemBackground))
-                        )
+                    if !missingAfterPain.isEmpty {
+                        afterPainSection
                     }
 
                     if !todayPending.isEmpty {
@@ -164,6 +160,14 @@ struct HomeView: View {
                     Resolve24hSheet(session: session)
                 }
             }
+            .sheet(isPresented: Binding(
+                get: { afterPainTargetId != nil },
+                set: { if !$0 { afterPainTargetId = nil } }
+            )) {
+                if let id = afterPainTargetId, let session = sessions.first(where: { $0.id == id }) {
+                    AfterPainSheet(session: session)
+                }
+            }
             .confirmationDialog(
                 "Close without 24h judgment?",
                 isPresented: Binding(
@@ -203,6 +207,86 @@ struct HomeView: View {
         }
     }
 
+    private var streakAndQuote: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 14) {
+                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
+                    .font(.title)
+                    .foregroundStyle(Color.accentColor)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WorkoutStreak.sessionWord(streak.current))
+                        .font(.title.monospacedDigit().weight(.bold))
+                        .foregroundStyle(Color.accentColor)
+                    Text(streakSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            Button {
+                quoteTapOffset += 1
+                Haptics.light()
+            } label: {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(todayQuote.text)
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                        .multilineTextAlignment(.leading)
+                    if let attribution = todayQuote.attribution {
+                        Text(attribution)
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+            .accessibilityHint("Tap for another line")
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color(.secondarySystemBackground))
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Hard session streak \(WorkoutStreak.sessionWord(streak.current)). \(streakSubtitle). \(todayQuote.text)"
+        )
+    }
+
+    private var streakSubtitle: String {
+        if streak.best == 0 {
+            return "Hard rehab chain · tap the line for another"
+        }
+        if streak.current == 0, streak.lastChain > 0 {
+            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
+        }
+        if streak.best > streak.current {
+            return "Best \(WorkoutStreak.sessionWord(streak.best))"
+        }
+        return "Keep the chain · 48 hours"
+    }
+
+    private func missCue(_ copy: (title: String, body: String)) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label(copy.title, systemImage: streak.miss == .twoMiss ? "exclamationmark.triangle.fill" : "link")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.accentColor)
+            Text(copy.body)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding()
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(streak.miss == .twoMiss ? Color.orange.opacity(0.12) : Color.accentColor.opacity(0.10))
+        )
+        .accessibilityElement(children: .combine)
+    }
+
     private var pendingSection: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Needs 24h response", systemImage: "exclamationmark.bubble.fill")
@@ -211,6 +295,43 @@ struct HomeView: View {
 
             ForEach(overduePending, id: \.id) { session in
                 pendingCard(session, early: false)
+            }
+        }
+    }
+
+    private var afterPainSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Log pain after", systemImage: "clock.badge.exclamationmark")
+                .font(.headline)
+                .foregroundStyle(Color.accentColor)
+
+            ForEach(missingAfterPain, id: \.id) { session in
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(session.displayTitle)
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                    if let resistance = session.resistanceSummary {
+                        Text(resistance)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
+                    Text("During \(session.painDuring) · after not logged yet")
+                        .font(.caption)
+                        .foregroundStyle(.tertiary)
+
+                    Button("Log after-pain") {
+                        afterPainTargetId = session.id
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color.accentColor.opacity(0.12))
+                )
             }
         }
     }
@@ -268,7 +389,7 @@ struct HomeView: View {
     }
 
     private func pendingSubtitle(_ session: TrainingSession) -> String {
-        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.painAfter) after"
+        "\(session.date.formatted(date: .abbreviated, time: .omitted)) · pain \(session.painDuring) during / \(session.displayPainAfter) after"
     }
 
     private func phaseABanner(_ status: PhaseAExitStatus) -> some View {
@@ -347,14 +468,14 @@ struct HomeView: View {
             .controlSize(.large)
 
             VStack(alignment: .leading, spacing: 8) {
-                Label("Patellar tendon", systemImage: "figure.strengthtraining.traditional")
+                Label(activeTemplate.name, systemImage: activeTrack.systemImage)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(PainChartColors.knee)
-                Text(RehabTemplate.knee.objective(for: settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable))
+                Text(activeTemplate.objective(for: activePrimaryLoad))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Button { showSession = true } label: {
-                    Text(settings?.primaryLoad.logCTA ?? PrimaryLoadCatalog.defaultSelectable.logCTA)
+                    Text(activePrimaryLoad.logCTA)
                         .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.bordered)
@@ -375,7 +496,8 @@ struct HomeView: View {
                 .font(.headline)
             Text(PhaseGuideCopy.summary(
                 for: settings?.currentPhase ?? .aFlareDeLoad,
-                primaryLift: settings?.primaryLoad.title ?? PrimaryLoadCatalog.defaultSelectable.title
+                primaryLift: activePrimaryLoad.title,
+                track: activeTrack
             ))
                 .font(.footnote)
                 .foregroundStyle(.secondary)

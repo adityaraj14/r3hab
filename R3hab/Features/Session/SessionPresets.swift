@@ -8,6 +8,8 @@ struct SessionPreset: Identifiable, Hashable {
     let phases: Set<RehabPhase>?
     let tracksResistance: Bool
     let loadRegion: LoadRegion
+    /// Tracks this preset belongs to. `custom` is on every track.
+    let tracks: Set<RehabTrackID>
     /// Prefer multi-set editor (HSR seated extension).
     let usesPerSetLogging: Bool
     /// Prefer isometric hold fields (reps × time × load).
@@ -21,6 +23,7 @@ struct SessionPreset: Identifiable, Hashable {
         phases: Set<RehabPhase>? = nil,
         tracksResistance: Bool = false,
         loadRegion: LoadRegion = .knee,
+        tracks: Set<RehabTrackID> = [.knee],
         usesPerSetLogging: Bool = false,
         usesIsoHoldLogging: Bool = false
     ) {
@@ -31,6 +34,7 @@ struct SessionPreset: Identifiable, Hashable {
         self.phases = phases
         self.tracksResistance = tracksResistance
         self.loadRegion = loadRegion
+        self.tracks = tracks
         self.usesPerSetLogging = usesPerSetLogging
         self.usesIsoHoldLogging = usesIsoHoldLogging
     }
@@ -63,7 +67,46 @@ struct SessionPreset: Identifiable, Hashable {
         .init(id: "hit", label: "Short hitting", sessionType: .tennisSport, whatIDid: "Tennis: short hitting session", phases: [.eReturnToSport]),
         .init(id: "match", label: "Match play", sessionType: .tennisSport, whatIDid: "Tennis: match play", phases: [.eReturnToSport]),
         .init(id: "bike", label: "Easy bike", sessionType: .other, whatIDid: "Easy bike 5–10 min", phases: nil),
-        .init(id: "custom", label: "Custom…", sessionType: .other, whatIDid: "", phases: nil)
+        .init(
+            id: "ql-ht",
+            label: "Hip thrusts",
+            sessionType: .hsrStrength,
+            whatIDid: "Hip thrusts",
+            phases: [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
+            tracksResistance: true,
+            loadRegion: .ql,
+            tracks: [.ql],
+            usesPerSetLogging: true
+        ),
+        .init(
+            id: "ql-sb",
+            label: "Standing side bends",
+            sessionType: .hsrStrength,
+            whatIDid: "Standing side bends",
+            phases: [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
+            tracksResistance: true,
+            loadRegion: .ql,
+            tracks: [.ql],
+            usesPerSetLogging: true
+        ),
+        .init(
+            id: "ql-walk",
+            label: "Walking",
+            sessionType: .other,
+            whatIDid: "Easy walk 10–20 min",
+            phases: [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
+            tracksResistance: false,
+            loadRegion: .ql,
+            tracks: [.ql]
+        ),
+        .init(
+            id: "custom",
+            label: "Custom…",
+            sessionType: .other,
+            whatIDid: "",
+            phases: nil,
+            tracks: [.knee, .ql]
+        )
     ]
 
     static let seatedExtensionIsometricId = "ext"
@@ -86,6 +129,7 @@ struct SessionPreset: Identifiable, Hashable {
             presetID = option.hsrPresetID
         }
         return all.first { $0.id == presetID }
+            ?? all.first { $0.tracks.contains(option.track) && $0.id != "custom" }
             ?? all.first { $0.id == seatedExtensionIsometricId }
             ?? all[0]
     }
@@ -102,7 +146,9 @@ struct SessionPreset: Identifiable, Hashable {
         _ phase: RehabPhase,
         primaryLoadID: String = PrimaryLoadCatalog.defaultID
     ) -> [SessionPreset] {
+        let track = PrimaryLoadCatalog.option(for: primaryLoadID).track
         let filtered = all.enumerated().filter { _, preset in
+            guard preset.tracks.contains(track) else { return false }
             guard let phases = preset.phases else { return true }
             return phases.contains(phase)
         }

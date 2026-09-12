@@ -157,6 +157,29 @@ private struct RootTabContent: View {
                 .preferredColorScheme(.dark)
             }
         }
+        .sheet(isPresented: Binding(
+            get: { router.afterPainSessionId != nil },
+            set: { if !$0 { router.afterPainSessionId = nil } }
+        )) {
+            if let id = router.afterPainSessionId,
+               let session = sessions.first(where: { $0.id == id }) {
+                AfterPainSheet(session: session)
+            } else {
+                NavigationStack {
+                    ContentUnavailableView(
+                        "Session not found",
+                        systemImage: "questionmark.circle",
+                        description: Text("This workout may have been deleted.")
+                    )
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close") { router.afterPainSessionId = nil }
+                        }
+                    }
+                }
+                .preferredColorScheme(.dark)
+            }
+        }
     }
 
     @MainActor

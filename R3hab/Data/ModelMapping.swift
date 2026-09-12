@@ -17,7 +17,9 @@ extension TrainingSession {
             decision: decision,
             resolvedAt: resolvedAt,
             snoozedUntil: snoozedUntil,
-            phase: phase
+            phase: phase,
+            painDuring: painDuring,
+            painAfter: painAfter
         )
     }
 }
