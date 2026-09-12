@@ -70,7 +70,7 @@ enum InjuryCatalog {
 
     static func definition(for id: String) -> InjuryDefinition {
         let resolved = remappedID(id)
-        all.first { $0.id == resolved } ?? defaultSelectable
+        return all.first { $0.id == resolved } ?? defaultSelectable
     }
 
     static func normalizedID(_ id: String) -> String {
