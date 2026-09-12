@@ -80,12 +80,9 @@ struct SessionEditor: View {
                         .foregroundStyle(.secondary)
                 }
                 ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
+                    HStack(spacing: 8) {
                         ForEach(presetsForPhase) { preset in
-                            Button(preset.label) { applyPreset(preset) }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .tint(selectedPresetId == preset.id ? .accentColor : nil)
+                            exercisePill(preset, selected: selectedPresetId == preset.id)
                         }
                     }
                 }
@@ -100,6 +97,30 @@ struct SessionEditor: View {
                 }
                 TextField("What I did", text: $whatIDid, axis: .vertical)
                     .lineLimit(2...4)
+            }
+
+            // Pain sits directly under Exercise so the required score is on
+            // screen before the sets push it below the fold. Save still blocks
+            // with the banner if it is empty.
+            Section {
+                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
+                if isEditing {
+                    PainScoreControl(
+                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
+                        value: $painAfter,
+                        allowsClear: !afterPainAlreadyLogged
+                    )
+                }
+            } header: {
+                Text("Pain")
+            } footer: {
+                if isEditing {
+                    Text(afterPainAlreadyLogged
+                         ? "Both sides share this score and one 24h resolve."
+                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
+                } else {
+                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
+                }
             }
 
             if showsResistance {
@@ -123,27 +144,6 @@ struct SessionEditor: View {
 
             if !isEditing, let last = lastSessionContext {
                 lastSessionSection(last)
-            }
-
-            Section {
-                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
-                if isEditing {
-                    PainScoreControl(
-                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
-                        value: $painAfter,
-                        allowsClear: !afterPainAlreadyLogged
-                    )
-                }
-            } header: {
-                Text("Pain")
-            } footer: {
-                if isEditing {
-                    Text(afterPainAlreadyLogged
-                         ? "Both sides share this score and one 24h resolve."
-                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
-                } else {
-                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
-                }
             }
 
             Section("Notes") {
@@ -170,7 +170,9 @@ struct SessionEditor: View {
                 Button("Cancel") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }.fontWeight(.semibold)
+                Button("Save") { save() }
+                    .fontWeight(.semibold)
+                    .tint(AppTheme.gold)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -199,6 +201,28 @@ struct SessionEditor: View {
 
     private var afterPainAlreadyLogged: Bool {
         existing?.hasLoggedPainAfter == true
+    }
+
+    /// Selected: solid white fill, ink text. Unselected: faint fill, white text.
+    /// Tinted `.bordered` read like a disabled gold button.
+    private func exercisePill(_ preset: SessionPreset, selected: Bool) -> some View {
+        Button {
+            applyPreset(preset)
+        } label: {
+            Text(preset.label)
+                .font(.subheadline.weight(selected ? .bold : .medium))
+                .foregroundStyle(selected ? AppTheme.ink : Color.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule().fill(selected ? Color.white : AppTheme.quietFill)
+                )
+                .overlay(
+                    Capsule().strokeBorder(selected ? Color.white : AppTheme.quietStroke, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
     private var lastSessionContext: TrainingSession? {
@@ -464,11 +488,14 @@ struct SessionEditor: View {
         )
     }
 
+    /// Caption carries the label; the field placeholder is a neutral dash so
+    /// "Load (lbs)" is not printed twice per column.
     private func labeledIntField(title: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            TextField(title, text: value)
+            TextField("—", text: value)
                 .keyboardType(.numberPad)
+                .accessibilityLabel(title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -476,8 +503,9 @@ struct SessionEditor: View {
     private func labeledLoadField(title: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            TextField(title, text: value)
+            TextField("—", text: value)
                 .keyboardType(.decimalPad)
+                .accessibilityLabel(title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
