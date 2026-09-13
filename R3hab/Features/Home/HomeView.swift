@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 
 /// Today — one quiet streak count, one bright next action, three quiet entry
-/// rows, one line from the quote cycle at the bottom.
+/// rows. `MotivationalQuotes` stays defined but does not render here until
+/// Adi has reviewed the list.
 /// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -21,7 +22,6 @@ struct HomeView: View {
     /// Set on background so the next `.active` can drop any sheet that was
     /// mid-flight over models SwiftData may have invalidated.
     @State private var didLeaveToBackground = false
-    @AppStorage("quoteTapOffset") private var quoteTapOffset = 0
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -61,13 +61,6 @@ struct HomeView: View {
 
     private var streak: WorkoutStreak.Snapshot {
         WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date(), calendar: calendar)
-    }
-
-    private var todayQuote: MotivationalQuote {
-        MotivationalQuotes.quote(
-            dayIndex: MotivationalQuotes.dailyIndex(on: today, calendar: calendar),
-            tapOffset: quoteTapOffset
-        )
     }
 
     private var hasMorningPain: Bool { todayCheckIn?.restingPainAM != nil }
@@ -114,7 +107,6 @@ struct HomeView: View {
                         phaseALine(phaseAStatus)
                     }
                     entryRows
-                    quoteFooter
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)
@@ -474,33 +466,6 @@ struct HomeView: View {
             return "Best \(WorkoutStreak.sessionWord(streak.best))"
         }
         return nil
-    }
-
-    // MARK: Quote cycle — last thing on the screen
-
-    private var quoteFooter: some View {
-        Button {
-            quoteTapOffset += 1
-            Haptics.light()
-        } label: {
-            Text(quoteLine)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(3)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .buttonStyle(.plain)
-        .padding(.horizontal, 4)
-        .accessibilityLabel(todayQuote.text)
-        .accessibilityHint("Tap for another line")
-    }
-
-    private var quoteLine: String {
-        if let attribution = todayQuote.attribution {
-            return "“\(todayQuote.text)” — \(attribution)"
-        }
-        return todayQuote.text
     }
 
     // MARK: Actions

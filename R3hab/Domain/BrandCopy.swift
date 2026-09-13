@@ -106,9 +106,9 @@ enum BrandCopy {
     static let privacySummary = "No account · No ads · Stored entirely on your iPhone"
 }
 
-/// Short Today lines. 10-item cycle in R3hab’s own voice — short, neutral,
-/// rehab-owned. No franchise memes. Two attributed lines: a proverb and
-/// Adi’s Atomic Habits paraphrase (slot 10).
+/// 10-item cycle in R3hab’s own voice — short, neutral, rehab-owned. No
+/// franchise memes. Two attributed lines: a proverb and Adi’s Atomic Habits
+/// paraphrase (slot 10). Defined for review; not rendered on Today yet.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
         MotivationalQuote(text: "Show up. Log it. Move on.", attribution: nil),
