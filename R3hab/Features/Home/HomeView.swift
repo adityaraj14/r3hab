@@ -236,18 +236,14 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
+    /// Eyebrow + the one action. No explanatory line under it; the sheets
+    /// carry their own context.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(nextUpEyebrow(for: action).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
-
-            Text(nextUpLine(for: action))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .lineLimit(2)
 
             switch action {
             case .resolvePending(let id, _):
@@ -322,30 +318,6 @@ struct HomeView: View {
         case .restDay: return "Rest day"
         case .allDone: return "Today"
         default: return "Next up"
-        }
-    }
-
-    private func nextUpLine(for action: TodayNextAction) -> String {
-        switch action {
-        case .resolvePending(let id, let remaining):
-            let session = sessions.first { $0.id == id }
-            let title = session?.displayTitle ?? "Last session"
-            let day = session?.date.formatted(date: .abbreviated, time: .omitted) ?? ""
-            let more = remaining > 0 ? " · \(remaining) more waiting" : ""
-            return "\(title) · \(day)\(more). Better, same, or worse the morning after?"
-        case .logMorning:
-            return "Resting pain before the day starts. It is the score the plan is judged on."
-        case .logAfterPain(let id):
-            let session = sessions.first { $0.id == id }
-            return "\(session?.displayTitle ?? "Last session") · pain during \(session?.painDuring ?? 0). How does it feel now?"
-        case .logSession:
-            return activePrimaryLoad.homeObjective
-        case .logEvening:
-            return "Pain during today’s activities, plus steps."
-        case .restDay:
-            return "Off day between sessions. Next lift is due tomorrow — logging one anyway is fine."
-        case .allDone:
-            return "Morning, load, and evening are in. Judge it by tomorrow morning."
         }
     }
 
