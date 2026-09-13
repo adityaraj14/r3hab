@@ -1,9 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today — one quiet streak count, one bright next action, three quiet entry
-/// rows. `MotivationalQuotes` stays defined but does not render here until
-/// Adi has reviewed the list.
+/// Today — one quiet streak count with the day's line under it, one bright
+/// next action, three quiet entry rows.
 /// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -416,26 +415,35 @@ struct HomeView: View {
 
     // MARK: Streak — first thing on the screen
 
-    /// Count plus at most one short status word. The flame is the one place
-    /// gold appears outside the next-up button, and only while the chain is live.
+    /// Count, at most one short status word, and the day's line. The flame is
+    /// the one place gold appears outside the next-up button, and only while
+    /// the chain is live. Nothing here is tappable.
     private var streakCard: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                .font(.title)
-                .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(WorkoutStreak.sessionWord(streak.current))
-                    .font(.title.monospacedDigit().weight(.bold))
-                    .foregroundStyle(.primary)
-                if let streakStatus {
-                    Text(streakStatus)
-                        .font(.caption)
-                        .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
-                        .lineLimit(1)
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 14) {
+                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
+                    .font(.title)
+                    .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WorkoutStreak.sessionWord(streak.current))
+                        .font(.title.monospacedDigit().weight(.bold))
+                        .foregroundStyle(.primary)
+                    if let streakStatus {
+                        Text(streakStatus)
+                            .font(.caption)
+                            .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
+                            .lineLimit(1)
+                    }
                 }
+                Spacer(minLength: 0)
             }
-            Spacer(minLength: 0)
+            Text(quoteLine)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -448,9 +456,24 @@ struct HomeView: View {
     }
 
     private var streakAccessibilityLabel: String {
-        let count = "Streak \(WorkoutStreak.sessionWord(streak.current))"
-        guard let streakStatus else { return count }
-        return "\(count). \(streakStatus)"
+        var parts = ["Streak \(WorkoutStreak.sessionWord(streak.current))"]
+        if let streakStatus {
+            parts.append(streakStatus)
+        }
+        parts.append(todayQuote.text)
+        return parts.joined(separator: ". ")
+    }
+
+    /// One line per calendar day; changes overnight, never on tap.
+    private var todayQuote: MotivationalQuote {
+        MotivationalQuotes.quote(on: today, calendar: calendar)
+    }
+
+    private var quoteLine: String {
+        if let attribution = todayQuote.attribution {
+            return "“\(todayQuote.text)” — \(attribution)"
+        }
+        return todayQuote.text
     }
 
     /// Miss state first (due today / missed), then the off day, then the

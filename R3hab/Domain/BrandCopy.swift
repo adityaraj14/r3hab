@@ -106,34 +106,34 @@ enum BrandCopy {
     static let privacySummary = "No account · No ads · Stored entirely on your iPhone"
 }
 
-/// 10-item cycle in R3hab’s own voice — short, neutral, rehab-owned. No
-/// franchise memes. Two attributed lines: a proverb and Adi’s Atomic Habits
-/// paraphrase (slot 10). Defined for review; not rendered on Today yet.
+/// Adi’s signed-off cycle: the 10 attributed lines from PR 14, wording
+/// unchanged, plus his later Atomic Habits paraphrase as slot 11. One line
+/// per calendar day, no tap-to-cycle. No R3hab-voice process copy.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
-        MotivationalQuote(text: "Show up. Log it. Move on.", attribution: nil),
-        MotivationalQuote(text: "Calm mornings are the win.", attribution: nil),
+        MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
+        MotivationalQuote(text: "Get up.", attribution: "Rocky"),
         MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
-        MotivationalQuote(text: "Consistency beats intensity.", attribution: nil),
-        MotivationalQuote(text: "Load a little. Judge it tomorrow morning.", attribution: nil),
-        MotivationalQuote(text: "Every other day. Keep showing up.", attribution: nil),
-        MotivationalQuote(text: "Trust the numbers, not the mood.", attribution: nil),
-        MotivationalQuote(text: "One session at a time.", attribution: nil),
-        MotivationalQuote(text: "A flat week is still a week logged.", attribution: nil),
+        MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
+        MotivationalQuote(text: "Why do we fall? So we can learn to pick ourselves up.", attribution: "Batman Begins"),
+        MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
+        MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
+        MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),
+        MotivationalQuote(text: "Hakuna matata.", attribution: "The Lion King"),
+        MotivationalQuote(text: "The night is darkest just before the dawn.", attribution: "The Dark Knight"),
         MotivationalQuote(
             text: "The greatest threat to success is not failure but boredom. Keep going.",
             attribution: "Inspired by Atomic Habits"
         )
     ]
 
+    /// Day-of-year walk through the list. Advances once per calendar day.
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {
         let day = calendar.ordinality(of: .day, in: .year, for: date) ?? 1
         return (day - 1) % all.count
     }
 
-    static func quote(dayIndex: Int, tapOffset: Int) -> MotivationalQuote {
-        let count = all.count
-        let index = ((dayIndex + tapOffset) % count + count) % count
-        return all[index]
+    static func quote(on date: Date, calendar: Calendar = .current) -> MotivationalQuote {
+        all[dailyIndex(on: date, calendar: calendar)]
     }
 }

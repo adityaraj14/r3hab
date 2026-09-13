@@ -267,31 +267,31 @@ final class WorkoutStreakTests: XCTestCase {
         )
     }
 
-    func testQuoteRotatesByDayAndTap() {
+    func testQuoteRotatesByCalendarDayOnly() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day1 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!
         let day2 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2))!
+        let day12 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 12))!
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day1, calendar: calendar), 0)
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day2, calendar: calendar), 1)
+        XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day12, calendar: calendar), 0, "wraps after 11")
 
-        let first = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 0)
-        let next = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 1)
-        XCTAssertEqual(first.text, "Show up. Log it. Move on.")
-        XCTAssertNil(first.attribution)
-        XCTAssertEqual(next.text, "Calm mornings are the win.")
-        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 0, tapOffset: 10).text, first.text)
-        XCTAssertEqual(MotivationalQuotes.all.count, 10)
+        let first = MotivationalQuotes.quote(on: day1, calendar: calendar)
+        XCTAssertEqual(first.text, "Just keep swimming.")
+        XCTAssertEqual(first.attribution, "Finding Nemo")
+        XCTAssertEqual(MotivationalQuotes.all.count, 11)
         XCTAssertEqual(MotivationalQuotes.all.map(\.attribution), [
-            nil,
-            nil,
+            "Finding Nemo",
+            "Rocky",
             "Japanese proverb",
-            nil,
-            nil,
-            nil,
-            nil,
-            nil,
-            nil,
+            "Captain America",
+            "Batman Begins",
+            "The Empire Strikes Back",
+            "Journey",
+            "Ted Lasso",
+            "The Lion King",
+            "The Dark Knight",
             "Inspired by Atomic Habits"
         ])
         XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in
