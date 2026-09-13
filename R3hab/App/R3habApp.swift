@@ -26,8 +26,8 @@ struct R3habApp: App {
             // `WindowGroup`. Scene-level attachment is a known SwiftData/SwiftUI
             // crash path after long background / background relaunch — see
             // Apple Forums thread 744194 / 761637 and SO 78265564.
-            // Resume after a long suspend is handled in RootView: snapshot
-            // notification work before any `await`, and remount @Query.
+            // Suspension is handled in RootView: flush before background and
+            // snapshot notification work before any `await`.
             RootView()
                 .modelContainer(container)
                 .environment(router)
