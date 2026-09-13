@@ -90,8 +90,11 @@ final class BrandCopyTests: XCTestCase {
         }
     }
 
-    func testInjuryPageIsAPickerWithOneEnabledCardAndAComingSoonCard() {
-        XCTAssertEqual(BrandCopy.injuryTitle, "Select your injury")
+    func testInjuryPageConfirmsOneInjuryAndTeasesMore() {
+        XCTAssertEqual(BrandCopy.injuryTitle, "Confirm your injury")
+        for rejected in ["Select your injury", "What’s your injury", "Choose your starting injury"] {
+            XCTAssertNotEqual(BrandCopy.injuryTitle, rejected)
+        }
         XCTAssertEqual(
             InjuryCatalog.patellarTendinopathy.title,
             "Jumper’s knee / patellar tendinopathy / patellar tendonitis"

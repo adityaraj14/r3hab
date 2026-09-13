@@ -49,7 +49,9 @@ enum BrandCopy {
         )
     ]
 
-    static let injuryTitle = "Select your injury"
+    /// One injury ships today, so this page confirms and teases more — it is
+    /// not a picker.
+    static let injuryTitle = "Confirm your injury"
     static let injuryComingSoonTitle = "More injuries coming soon"
     static let injuryComingSoonBody = "We’ll add more tracks over time."
 
