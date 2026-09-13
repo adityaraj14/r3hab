@@ -2,6 +2,23 @@ import XCTest
 @testable import R3hab
 
 final class WorkoutStreakTests: XCTestCase {
+    /// Fixed local calendar so day boundaries in these tests never depend on
+    /// the machine running them.
+    private let calendar: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "America/New_York")!
+        return calendar
+    }()
+
+    /// Local wall-clock moment on a Monday (2026-03-02) plus `day` days.
+    private func at(day: Int, hour: Int, minute: Int = 0) -> Date {
+        let base = calendar.date(from: DateComponents(year: 2026, month: 3, day: 2))!
+        let dayStart = calendar.date(byAdding: .day, value: day, to: base)!
+        return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: dayStart)!
+    }
+
+    /// Mirrors `TrainingSession.init`: `date` is the start of the trained day,
+    /// `createdAt` is the clock moment the session was logged.
     private func snap(
         createdAt: Date,
         type: SessionType = .isometrics,
@@ -9,7 +26,7 @@ final class WorkoutStreakTests: XCTestCase {
     ) -> TrainingSessionSnapshot {
         TrainingSessionSnapshot(
             id: UUID(),
-            date: date ?? createdAt,
+            date: calendar.startOfDay(for: date ?? createdAt),
             createdAt: createdAt,
             sessionType: type,
             response24h: .pending,
@@ -20,124 +37,197 @@ final class WorkoutStreakTests: XCTestCase {
         )
     }
 
+    private func evaluate(_ sessions: [TrainingSessionSnapshot], now: Date) -> WorkoutStreak.Snapshot {
+        WorkoutStreak.evaluate(sessions: sessions, now: now, calendar: calendar)
+    }
+
     func testEmptyHasZeroStreakAndNoMiss() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let result = WorkoutStreak.evaluate(sessions: [], now: now)
+        let result = evaluate([], now: at(day: 0, hour: 12))
         XCTAssertEqual(result.current, 0)
         XCTAssertEqual(result.lastChain, 0)
         XCTAssertEqual(result.best, 0)
         XCTAssertEqual(result.miss, .none)
-        XCTAssertNil(result.lastHardAt)
+        XCTAssertNil(result.lastHardDay)
+        XCTAssertNil(result.daysSinceLastHard)
     }
 
-    func testSingleHardSessionIsLiveWithin48h() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let created = now.addingTimeInterval(-10 * 3600)
-        let result = WorkoutStreak.evaluate(sessions: [snap(createdAt: created)], now: now)
+    func testSingleHardSessionIsLiveOnTheDayAfter() {
+        let result = evaluate([snap(createdAt: at(day: 0, hour: 7))], now: at(day: 1, hour: 20))
         XCTAssertEqual(result.current, 1)
         XCTAssertEqual(result.lastChain, 1)
         XCTAssertEqual(result.best, 1)
+        XCTAssertEqual(result.daysSinceLastHard, 1)
         XCTAssertEqual(result.miss, .none)
     }
 
-    func testWithin48hChainCountsSuccessiveHardSessions() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let sessions = [
-            snap(createdAt: now.addingTimeInterval(-70 * 3600)),
-            snap(createdAt: now.addingTimeInterval(-30 * 3600)),
-            snap(createdAt: now.addingTimeInterval(-4 * 3600))
-        ]
-        let result = WorkoutStreak.evaluate(sessions: sessions, now: now)
-        XCTAssertEqual(result.current, 3)
-        XCTAssertEqual(result.lastChain, 3)
-        XCTAssertEqual(result.best, 3)
-        XCTAssertEqual(result.miss, .none)
-    }
+    // MARK: Calendar-day grace on the due day
 
-    func testGapGreaterThan48hBreaksTheChain() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
+    /// Adi’s case: 7 AM two days ago, 5 PM today. 58 hours on the clock, but the
+    /// workout landed on the due calendar day — not a miss, chain unbroken.
+    func testSevenAMThenFivePMOnDueDayIsNotAMiss() {
         let sessions = [
-            snap(createdAt: now.addingTimeInterval(-100 * 3600)),
-            snap(createdAt: now.addingTimeInterval(-60 * 3600)),
-            snap(createdAt: now.addingTimeInterval(-10 * 3600))
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 2, hour: 17))
         ]
-        let result = WorkoutStreak.evaluate(sessions: sessions, now: now)
-        XCTAssertEqual(result.current, 1)
-        XCTAssertEqual(result.lastChain, 1)
+        let gapHours = sessions[1].createdAt.timeIntervalSince(sessions[0].createdAt) / 3600
+        XCTAssertEqual(gapHours, 58, accuracy: 0.01, "Sanity: this gap would have broken a strict 48h rule.")
+
+        let result = evaluate(sessions, now: at(day: 2, hour: 17, minute: 5))
+        XCTAssertEqual(result.current, 2, "Both sessions are one chain.")
+        XCTAssertEqual(result.lastChain, 2)
         XCTAssertEqual(result.best, 2)
+        XCTAssertEqual(result.miss, .none)
     }
+
+    func testWholeDueDayStaysLiveBeforeAnyWorkout() {
+        let sessions = [snap(createdAt: at(day: 0, hour: 7))]
+
+        let morning = evaluate(sessions, now: at(day: 2, hour: 6))
+        XCTAssertEqual(morning.current, 1, "Due-day morning: chain still live.")
+        XCTAssertEqual(morning.miss, .approaching)
+
+        let lateNight = evaluate(sessions, now: at(day: 2, hour: 23, minute: 59))
+        XCTAssertEqual(lateNight.current, 1, "One minute before the due day ends: still live, still not a miss.")
+        XCTAssertEqual(lateNight.daysSinceLastHard, 2)
+        XCTAssertEqual(lateNight.miss, .approaching)
+    }
+
+    func testMissStartsOnlyWhenTheDueDayHasEnded() {
+        let sessions = [snap(createdAt: at(day: 0, hour: 7))]
+
+        let justAfterMidnight = evaluate(sessions, now: at(day: 3, hour: 0, minute: 1))
+        XCTAssertEqual(justAfterMidnight.current, 0)
+        XCTAssertEqual(justAfterMidnight.lastChain, 1)
+        XCTAssertEqual(justAfterMidnight.daysSinceLastHard, 3)
+        XCTAssertEqual(justAfterMidnight.miss, .oneMiss)
+
+        let secondDueDayGone = evaluate(sessions, now: at(day: 5, hour: 9))
+        XCTAssertEqual(secondDueDayGone.miss, .twoMiss)
+    }
+
+    func testThreeCalendarDayGapBreaksTheChain() {
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 3, hour: 7)),
+            snap(createdAt: at(day: 5, hour: 7))
+        ]
+        let result = evaluate(sessions, now: at(day: 5, hour: 9))
+        XCTAssertEqual(result.current, 2, "Day 3 started a new chain; day 5 continued it.")
+        XCTAssertEqual(result.lastChain, 2)
+        XCTAssertEqual(result.best, 2)
+        XCTAssertEqual(result.miss, .none)
+    }
+
+    func testLateNightThenEarlyMorningTwoDaysLaterKeepsTheChain() {
+        // 23:00 on day 0 → 06:00 on day 2 is only 31 hours but spans two day
+        // boundaries; the calendar rule still treats it as on-time.
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 23)),
+            snap(createdAt: at(day: 2, hour: 6))
+        ]
+        let result = evaluate(sessions, now: at(day: 2, hour: 7))
+        XCTAssertEqual(result.current, 2)
+        XCTAssertEqual(result.miss, .none)
+    }
+
+    func testBackfilledSessionCountsForTheDayTrained() {
+        // Trained on day 2 but only logged it on day 3: `date` is day 2, so the
+        // chain from day 0 is kept and nothing is missed on day 3.
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 3, hour: 9), date: at(day: 2, hour: 0))
+        ]
+        let result = evaluate(sessions, now: at(day: 3, hour: 10))
+        XCTAssertEqual(result.current, 2)
+        XCTAssertEqual(result.daysSinceLastHard, 1)
+        XCTAssertEqual(result.miss, .none)
+        XCTAssertEqual(result.lastHardDay, at(day: 2, hour: 0))
+    }
+
+    // MARK: Existing chain semantics
 
     func testOtherSessionsAreIgnored() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
         let sessions = [
-            snap(createdAt: now.addingTimeInterval(-20 * 3600), type: .other),
-            snap(createdAt: now.addingTimeInterval(-6 * 3600), type: .hsrStrength)
+            snap(createdAt: at(day: 0, hour: 8), type: .other),
+            snap(createdAt: at(day: 1, hour: 8), type: .hsrStrength)
         ]
-        let result = WorkoutStreak.evaluate(sessions: sessions, now: now)
+        let result = evaluate(sessions, now: at(day: 1, hour: 12))
         XCTAssertEqual(result.current, 1)
         XCTAssertEqual(result.best, 1)
     }
 
-    func testOtherSessionsDoNotCountAsHardFor48hStreak() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
+    func testOtherSessionsDoNotCountAsHardForTheChain() {
         XCTAssertFalse(SessionSpacing.isHard(.other))
 
         let easyThenLift = [
-            snap(createdAt: now.addingTimeInterval(-20 * 3600), type: .other),
-            snap(createdAt: now.addingTimeInterval(-6 * 3600), type: .hsrStrength)
+            snap(createdAt: at(day: 0, hour: 8), type: .other),
+            snap(createdAt: at(day: 1, hour: 8), type: .hsrStrength)
         ]
-        let result = WorkoutStreak.evaluate(sessions: easyThenLift, now: now)
+        let result = evaluate(easyThenLift, now: at(day: 1, hour: 12))
         XCTAssertEqual(result.current, 1, "Easy work is not a link — only loaded sessions keep the chain.")
 
         let easyOnly = [
-            snap(createdAt: now.addingTimeInterval(-10 * 3600), type: .other),
-            snap(createdAt: now.addingTimeInterval(-2 * 3600), type: .other)
+            snap(createdAt: at(day: 0, hour: 8), type: .other),
+            snap(createdAt: at(day: 0, hour: 18), type: .other)
         ]
-        let easyStreak = WorkoutStreak.evaluate(sessions: easyOnly, now: now)
+        let easyStreak = evaluate(easyOnly, now: at(day: 0, hour: 20))
         XCTAssertEqual(easyStreak.current, 0)
-        XCTAssertNil(easyStreak.lastHardAt)
+        XCTAssertNil(easyStreak.lastHardDay)
     }
 
     func testSameDayDoublesEachCountAsALink() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
-        let morning = now.addingTimeInterval(-8 * 3600)
-        let evening = now.addingTimeInterval(-3 * 3600)
+        let morning = at(day: 0, hour: 8)
+        let evening = at(day: 0, hour: 13)
         let sessions = [
             snap(createdAt: morning, type: .isometrics, date: morning),
             snap(createdAt: evening, type: .hsrStrength, date: morning)
         ]
-        let result = WorkoutStreak.evaluate(sessions: sessions, now: now)
+        let result = evaluate(sessions, now: at(day: 0, hour: 16))
         XCTAssertEqual(result.current, 2, "Two hard sessions the same day are two Process votes.")
     }
 
-    func testLiveStreakDropsWhenNowIsPast48h() {
-        let now = Date(timeIntervalSince1970: 1_700_000_000)
+    func testLiveStreakDropsAfterTheDueDayAndRemembersTheChain() {
         let sessions = [
-            snap(createdAt: now.addingTimeInterval(-90 * 3600)),
-            snap(createdAt: now.addingTimeInterval(-50 * 3600))
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 2, hour: 7))
         ]
-        let result = WorkoutStreak.evaluate(sessions: sessions, now: now)
+        let result = evaluate(sessions, now: at(day: 5, hour: 9))
         XCTAssertEqual(result.current, 0)
         XCTAssertEqual(result.lastChain, 2)
         XCTAssertEqual(result.miss, .oneMiss)
     }
 
-    func testMissStates() {
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 10), .none)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 40), .approaching)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 48), .approaching)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 48.01), .oneMiss)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 72), .oneMiss)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 96), .oneMiss)
-        XCTAssertEqual(WorkoutStreak.missState(hoursSinceLastHard: 96.01), .twoMiss)
+    func testMissStatesByCalendarDay() {
+        XCTAssertEqual(SessionSpacing.hardCadenceDays, 2)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 0), .none)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 1), .none)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 2), .approaching)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 3), .oneMiss)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 4), .oneMiss)
+        XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 5), .twoMiss)
     }
 
-    func testOneMissCopyMentionsDontMissTwice() {
-        let copy = WorkoutStreak.copy(for: .oneMiss, lastChain: 3)
-        XCTAssertEqual(copy?.title, "One miss is alright")
-        XCTAssertTrue(copy?.body.contains("Don’t miss twice") == true)
-        XCTAssertTrue(copy?.body.contains("3 sessions") == true)
-        XCTAssertTrue(copy?.body.contains("Inspired by Atomic Habits") == true)
+    func testCalendarDaysIgnoresClockTime() {
+        XCTAssertEqual(
+            SessionSpacing.calendarDays(from: at(day: 0, hour: 7), to: at(day: 2, hour: 17), calendar: calendar),
+            2
+        )
+        XCTAssertEqual(
+            SessionSpacing.calendarDays(from: at(day: 0, hour: 23, minute: 59), to: at(day: 1, hour: 0), calendar: calendar),
+            1
+        )
+    }
+
+    func testOneMissCopyMatchesTheNotification() {
+        let copy = WorkoutStreak.copy(for: .oneMiss)
+        XCTAssertEqual(copy?.title, "Don’t miss twice")
+        XCTAssertEqual(
+            copy?.body,
+            "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
+        )
+        XCTAssertEqual(copy?.title, WorkoutStreak.missTwiceTitle)
+        XCTAssertEqual(copy?.body, WorkoutStreak.missTwiceBody)
+        XCTAssertNil(WorkoutStreak.copy(for: .none))
     }
 
     func testQuoteRotatesByDayAndTap() {

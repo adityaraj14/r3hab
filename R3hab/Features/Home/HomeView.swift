@@ -59,7 +59,7 @@ struct HomeView: View {
     }
 
     private var streak: WorkoutStreak.Snapshot {
-        WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date())
+        WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date(), calendar: calendar)
     }
 
     private var todayQuote: MotivationalQuote {
@@ -477,11 +477,11 @@ struct HomeView: View {
     }
 
     private var streakSubtitle: String {
-        if let miss = WorkoutStreak.copy(for: streak.miss, lastChain: streak.lastChain) {
+        if let miss = WorkoutStreak.copy(for: streak.miss) {
             return miss.title
         }
         if streak.best == 0 {
-            return "hard-session chain, 48h window"
+            return "hard-session chain, every other day"
         }
         if streak.current == 0, streak.lastChain > 0 {
             return "last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
@@ -489,7 +489,7 @@ struct HomeView: View {
         if streak.best > streak.current {
             return "best \(WorkoutStreak.sessionWord(streak.best))"
         }
-        return "keep the chain · 48 hours"
+        return "keep the chain · every other day"
     }
 
     // MARK: Actions
