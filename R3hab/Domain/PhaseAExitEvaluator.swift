@@ -63,8 +63,7 @@ enum PhaseAExitEvaluator {
         } else if stable >= required && needsSteps {
             message = "\(stable)/\(required) stable · steps still low — aim ~6–8k when pain stays ≤\(painMax)"
         } else {
-            let stepHint = needsSteps ? " · Need a ~\(stepMin / 1000)k+ step day in the streak" : ""
-            message = "Stable mornings: \(stable)/\(required)\(stepHint)"
+            message = "Stable mornings: \(stable)/\(required)"
         }
 
         return PhaseAExitStatus(

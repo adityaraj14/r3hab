@@ -334,7 +334,8 @@ enum ExportImportService {
     }
 
     private static func applySettings(_ dto: SettingsDTO, to settings: AppSettings) {
-        settings.currentPhaseRaw = dto.currentPhase
+        // Old backups may carry the removed phases D / E; they read as C.
+        settings.currentPhaseRaw = RehabPhase.normalizedRawValue(dto.currentPhase)
         settings.phaseChangedAt = dto.phaseChangedAt
         settings.phaseAPainThreshold = dto.phaseAPainThreshold
         settings.phaseAStableDaysRequired = dto.phaseAStableDaysRequired
@@ -397,7 +398,7 @@ enum ExportImportService {
     }
 
     private static func makeDaily(from dto: DailyDTO) -> DailyCheckIn {
-        let row = DailyCheckIn(date: dto.date, phase: RehabPhase(rawValue: dto.phase) ?? .aFlareDeLoad)
+        let row = DailyCheckIn(date: dto.date, phase: RehabPhase.normalized(rawValue: dto.phase))
         updateDaily(row, from: dto)
         return row
     }
@@ -410,7 +411,7 @@ enum ExportImportService {
         row.lowerBackPainAM = dto.lowerBackPainAM
         row.lowerBackPainPM = dto.lowerBackPainPM
         row.steps = dto.steps
-        row.phaseRaw = dto.phase
+        row.phaseRaw = RehabPhase.normalizedRawValue(dto.phase)
         row.notes = dto.notes
         row.declineSquatL = dto.declineSquatL
         row.declineSquatR = dto.declineSquatR
@@ -421,7 +422,7 @@ enum ExportImportService {
         let s = TrainingSession(
             id: dto.id,
             date: dto.date,
-            phase: RehabPhase(rawValue: dto.phase) ?? .aFlareDeLoad,
+            phase: RehabPhase.normalized(rawValue: dto.phase),
             sessionType: SessionType(rawValue: dto.type) ?? .other,
             whatIDid: dto.whatIDid,
             painDuring: dto.painDuring,
@@ -433,7 +434,7 @@ enum ExportImportService {
 
     private static func updateSession(_ s: TrainingSession, from dto: SessionDTO) {
         s.date = Calendar.current.startOfDay(for: dto.date)
-        s.phaseRaw = dto.phase
+        s.phaseRaw = RehabPhase.normalizedRawValue(dto.phase)
         s.typeRaw = dto.type
         s.whatIDid = dto.whatIDid
         s.painDuring = dto.painDuring

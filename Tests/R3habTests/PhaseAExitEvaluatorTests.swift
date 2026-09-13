@@ -29,6 +29,20 @@ final class PhaseAExitEvaluatorTests: XCTestCase {
         let status = PhaseAExitEvaluator.evaluate(checkIns: [], settings: settings, today: today, calendar: calendar)
         XCTAssertEqual(status.stableDaysCount, 0)
         XCTAssertFalse(status.isReadyToAdvance)
+        XCTAssertEqual(status.message, "Stable mornings: 0/3")
+    }
+
+    func testProgressLineDropsTheStepsClause() {
+        let today = Date(timeIntervalSince1970: 1_700_000_000)
+        let checkIns = [
+            snap(dayOffset: -1, from: today, am: 2, steps: 3000),
+            snap(dayOffset: 0, from: today, am: 1, steps: nil)
+        ]
+        let status = PhaseAExitEvaluator.evaluate(checkIns: checkIns, settings: settings, today: today, calendar: calendar)
+        XCTAssertEqual(status.stableDaysCount, 2)
+        XCTAssertTrue(status.needsNearNormalSteps)
+        XCTAssertEqual(status.message, "Stable mornings: 2/3")
+        XCTAssertFalse(status.message.contains("step day"))
     }
 
     func testF3_classicReady() {

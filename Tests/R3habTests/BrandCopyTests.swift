@@ -2,49 +2,54 @@ import XCTest
 @testable import R3hab
 
 final class BrandCopyTests: XCTestCase {
-    func testQuoteCycleStaysTenAndHasNoFranchiseLines() {
-        XCTAssertEqual(MotivationalQuotes.all.count, 10)
-        XCTAssertEqual(Set(MotivationalQuotes.all.map(\.text)).count, 10)
-        XCTAssertTrue(MotivationalQuotes.all.contains { $0.text == "Load a little. Judge it tomorrow morning." })
-
-        let franchise = [
-            "Batman Begins", "The Dark Knight", "The Empire Strikes Back", "Finding Nemo",
-            "Rocky", "Captain America", "Journey", "Ted Lasso", "The Lion King"
-        ]
-        let flaggedLines = ["Why do we fall", "Do or do not", "There is no try", "Hakuna", "keep swimming"]
-        for quote in MotivationalQuotes.all {
-            if let attribution = quote.attribution {
-                XCTAssertFalse(franchise.contains(attribution), attribution)
-            }
-            for flagged in flaggedLines {
-                XCTAssertFalse(quote.text.contains(flagged), quote.text)
-            }
-        }
-        // Two attributed lines: the proverb and Adi’s Atomic Habits paraphrase.
+    func testQuoteCycleIsAdisSignedOffListFromPR14PlusAtomicHabits() {
+        // Wording and order exactly as merged in PR 14 (build 19); slot 11 is
+        // the later-approved Atomic Habits paraphrase.
         XCTAssertEqual(
-            MotivationalQuotes.all.compactMap(\.attribution),
-            ["Japanese proverb", "Inspired by Atomic Habits"]
+            MotivationalQuotes.all.map { ($0.text, $0.attribution ?? "") }.map { "\($0.0) — \($0.1)" },
+            [
+                "Just keep swimming. — Finding Nemo",
+                "Get up. — Rocky",
+                "Fall down seven times, stand up eight. — Japanese proverb",
+                "I can do this all day. — Captain America",
+                "Why do we fall? So we can learn to pick ourselves up. — Batman Begins",
+                "Do or do not. There is no try. — The Empire Strikes Back",
+                "Don't stop believing. — Journey",
+                "Believe. — Ted Lasso",
+                "Hakuna matata. — The Lion King",
+                "The night is darkest just before the dawn. — The Dark Knight",
+                "The greatest threat to success is not failure but boredom. Keep going. — Inspired by Atomic Habits"
+            ]
         )
+        XCTAssertEqual(MotivationalQuotes.all.count, 11)
+        XCTAssertEqual(Set(MotivationalQuotes.all.map(\.text)).count, 11)
+        XCTAssertTrue(MotivationalQuotes.all.allSatisfy { $0.attribution != nil }, "every line is attributed")
     }
 
-    func testTendonsAdaptSlowlyLineIsRetired() {
+    func testR3habVoiceProcessLinesAreGone() {
+        let retired = [
+            "Every other day. Keep showing up.",
+            "Show up. Log it. Move on.",
+            "Load a little. Judge it tomorrow morning.",
+            "Tendons adapt slowly"
+        ]
         for quote in MotivationalQuotes.all {
-            XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("Tendons adapt slowly"), quote.text)
-            XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("So do habits"), quote.text)
+            for line in retired {
+                XCTAssertFalse(quote.text.localizedCaseInsensitiveContains(line), quote.text)
+            }
+            XCTAssertNotEqual(quote.attribution, "R3hab")
         }
-        XCTAssertEqual(MotivationalQuotes.all[5].text, "Every other day. Keep showing up.")
-        XCTAssertNil(MotivationalQuotes.all[5].attribution)
     }
 
-    func testAdisAtomicHabitsLineIsInSlotTen() {
-        let last = MotivationalQuotes.all[9]
+    func testAdisAtomicHabitsLineIsInSlotEleven() {
+        let last = MotivationalQuotes.all[10]
         XCTAssertEqual(last.text, "The greatest threat to success is not failure but boredom. Keep going.")
         XCTAssertEqual(last.attribution, "Inspired by Atomic Habits")
         XCTAssertFalse(last.text.contains("strength"), "Adi asked for the threat/boredom wording")
     }
 
     func testQuotesStayShortEnoughForTheTodayStreakLine() {
-        // Rendered as “text” — attribution at footnote size, lineLimit(3) on Today.
+        // Rendered as “text” — attribution at footnote size, lineLimit(2) on Today.
         for quote in MotivationalQuotes.all {
             XCTAssertLessThanOrEqual(quote.text.count, 80, quote.text)
         }
@@ -159,10 +164,23 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(bookLines.count, 1)
     }
 
-    func testQuoteIndexWrapsAcrossTenSlots() {
-        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 4, tapOffset: 0).text, "Load a little. Judge it tomorrow morning.")
-        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 9, tapOffset: 1).text, MotivationalQuotes.all[0].text)
-        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 0, tapOffset: -1).text, MotivationalQuotes.all[9].text)
+    func testQuoteAdvancesOncePerCalendarDayAndWrapsAcrossElevenSlots() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        func day(_ d: Int) -> Date {
+            calendar.date(from: DateComponents(year: 2026, month: 1, day: d))!
+        }
+
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(1), calendar: calendar).text, "Just keep swimming.")
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(2), calendar: calendar).text, "Get up.")
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(11), calendar: calendar).attribution, "Inspired by Atomic Habits")
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(12), calendar: calendar).text, "Just keep swimming.")
+
+        // Same calendar day, any hour → same line. No tap offset exists.
+        let morning = calendar.date(byAdding: .hour, value: 7, to: day(5))!
+        let night = calendar.date(byAdding: .hour, value: 23, to: day(5))!
+        XCTAssertEqual(MotivationalQuotes.quote(on: morning, calendar: calendar), MotivationalQuotes.quote(on: night, calendar: calendar))
+        XCTAssertEqual(MotivationalQuotes.quote(on: morning, calendar: calendar).attribution, "Batman Begins")
     }
 
     func testPrivacyCopyNeverNamesTheStorageFramework() {

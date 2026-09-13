@@ -241,43 +241,57 @@ final class WorkoutStreakTests: XCTestCase {
         )
     }
 
-    func testOneMissCopyMatchesTheNotification() {
-        let copy = WorkoutStreak.copy(for: .oneMiss)
-        XCTAssertEqual(copy?.title, "Don’t miss twice")
-        XCTAssertEqual(
-            copy?.body,
-            "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
-        )
-        XCTAssertEqual(copy?.title, WorkoutStreak.missTwiceTitle)
-        XCTAssertEqual(copy?.body, WorkoutStreak.missTwiceBody)
-        XCTAssertNil(WorkoutStreak.copy(for: .none))
+    func testStreakStatusIsOneShortWordPerMissState() {
+        XCTAssertNil(WorkoutStreak.statusLabel(for: .none))
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .approaching), "Due today")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), "Don’t miss twice")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), WorkoutStreak.missTwiceTitle)
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .twoMiss), "Missed twice")
+
+        // The card is count + status only; the explanatory bodies stay in the
+        // notification and the quote cycle, never on the streak card.
+        for miss in [WorkoutStreak.MissState.approaching, .oneMiss, .twoMiss] {
+            let label = WorkoutStreak.statusLabel(for: miss) ?? ""
+            XCTAssertLessThanOrEqual(label.count, 20, label)
+            XCTAssertFalse(label.contains("every other day"), label)
+            XCTAssertFalse(label.contains("chain"), label)
+            XCTAssertNotEqual(label, WorkoutStreak.missTwiceBody)
+        }
     }
 
-    func testQuoteRotatesByDayAndTap() {
+    func testNotificationBodyIsUnchangedByTheCardCleanup() {
+        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Don’t miss twice")
+        XCTAssertEqual(
+            WorkoutStreak.missTwiceBody,
+            "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
+        )
+    }
+
+    func testQuoteRotatesByCalendarDayOnly() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day1 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!
         let day2 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2))!
+        let day12 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 12))!
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day1, calendar: calendar), 0)
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day2, calendar: calendar), 1)
+        XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day12, calendar: calendar), 0, "wraps after 11")
 
-        let first = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 0)
-        let next = MotivationalQuotes.quote(dayIndex: 0, tapOffset: 1)
-        XCTAssertEqual(first.text, "Show up. Log it. Move on.")
-        XCTAssertNil(first.attribution)
-        XCTAssertEqual(next.text, "Calm mornings are the win.")
-        XCTAssertEqual(MotivationalQuotes.quote(dayIndex: 0, tapOffset: 10).text, first.text)
-        XCTAssertEqual(MotivationalQuotes.all.count, 10)
+        let first = MotivationalQuotes.quote(on: day1, calendar: calendar)
+        XCTAssertEqual(first.text, "Just keep swimming.")
+        XCTAssertEqual(first.attribution, "Finding Nemo")
+        XCTAssertEqual(MotivationalQuotes.all.count, 11)
         XCTAssertEqual(MotivationalQuotes.all.map(\.attribution), [
-            nil,
-            nil,
+            "Finding Nemo",
+            "Rocky",
             "Japanese proverb",
-            nil,
-            nil,
-            nil,
-            nil,
-            nil,
-            nil,
+            "Captain America",
+            "Batman Begins",
+            "The Empire Strikes Back",
+            "Journey",
+            "Ted Lasso",
+            "The Lion King",
+            "The Dark Knight",
             "Inspired by Atomic Habits"
         ])
         XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in

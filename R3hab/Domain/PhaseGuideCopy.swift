@@ -15,10 +15,6 @@ enum PhaseGuideCopy {
             return "Primary load is \(lift) holds. Start 3–4×20–30s, 2×/week, ≥48h apart. Build holds before adding days."
         case .cHeavySlowResistance:
             return "Heavy slow \(lift), slow tempo (3-1-3), 2–3×/week. Main capacity phase — often months."
-        case .dEnergyStorage:
-            return "Add low-volume landings and light plyos while keeping some \(lift) strength work. Quality over volume."
-        case .eReturnToSport:
-            return "Gradual tennis return. Keep 1–2 \(lift) days/week. Don’t jump gym load and tennis volume the same week."
         }
     }
 

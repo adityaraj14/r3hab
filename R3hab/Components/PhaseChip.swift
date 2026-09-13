@@ -26,8 +26,6 @@ struct PhaseChip: View {
         case .aFlareDeLoad: return .red
         case .bIsometrics: return .orange
         case .cHeavySlowResistance: return .green
-        case .dEnergyStorage: return .blue
-        case .eReturnToSport: return .purple
         }
     }
 }

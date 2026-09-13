@@ -1,12 +1,11 @@
 import Foundation
 
-/// Rehab phase ladder A → E (user-owned; app only suggests).
+/// Rehab phase ladder A → C (user-owned; app only suggests). Matches the
+/// onboarding choices: Flare / Isometrics / Heavy slow resistance.
 enum RehabPhase: String, Codable, CaseIterable, Identifiable, Sendable {
     case aFlareDeLoad = "A"
     case bIsometrics = "B"
     case cHeavySlowResistance = "C"
-    case dEnergyStorage = "D"
-    case eReturnToSport = "E"
 
     var id: String { rawValue }
 
@@ -15,12 +14,33 @@ enum RehabPhase: String, Codable, CaseIterable, Identifiable, Sendable {
         case .aFlareDeLoad: return "A · Flare de-load"
         case .bIsometrics: return "B · Isometrics"
         case .cHeavySlowResistance: return "C · Heavy slow resistance"
-        case .dEnergyStorage: return "D · Energy storage"
-        case .eReturnToSport: return "E · Return to sport"
         }
     }
 
     var shortTitle: String { rawValue }
+
+    /// Phases D (energy storage) and E (return to sport) were removed. Rows
+    /// and settings that still carry them read as C, the last phase that
+    /// exists, so nothing in the ladder moves backwards on upgrade.
+    static let retiredRawValues: Set<String> = ["D", "E"]
+    static let retiredRemapTarget: RehabPhase = .cHeavySlowResistance
+
+    /// Stored raw → phase. Retired raws land on C; anything else unknown
+    /// falls back to A, the same default as a fresh install.
+    static func normalized(rawValue: String) -> RehabPhase {
+        if retiredRawValues.contains(rawValue) {
+            return retiredRemapTarget
+        }
+        return RehabPhase(rawValue: rawValue) ?? .aFlareDeLoad
+    }
+
+    static func normalizedRawValue(_ rawValue: String) -> String {
+        normalized(rawValue: rawValue).rawValue
+    }
+
+    static func needsRemap(_ rawValue: String) -> Bool {
+        normalizedRawValue(rawValue) != rawValue
+    }
 }
 
 enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {

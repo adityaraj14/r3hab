@@ -25,6 +25,12 @@ enum SettingsSeedPolicy {
     static func shouldRemapInjury(_ id: String) -> Bool {
         InjuryCatalog.needsRemap(id)
     }
+
+    /// Removed phases D / E rewrite to C. Check-in and session rows remap
+    /// lazily through `RehabPhase.normalized`; only settings are rewritten here.
+    static func shouldRemapPhase(_ raw: String) -> Bool {
+        RehabPhase.needsRemap(raw)
+    }
 }
 
 enum AppBootstrap {
@@ -49,6 +55,11 @@ enum AppBootstrap {
             }
             if SettingsSeedPolicy.shouldRemapInjury(existing.selectedInjuryID) {
                 existing.selectedInjuryID = InjuryCatalog.normalizedID(existing.selectedInjuryID)
+                changed = true
+            }
+            if SettingsSeedPolicy.shouldRemapPhase(existing.currentPhaseRaw) {
+                // Direct raw write: the `currentPhase` setter would also bump phaseChangedAt.
+                existing.currentPhaseRaw = RehabPhase.normalizedRawValue(existing.currentPhaseRaw)
                 changed = true
             }
             if changed {

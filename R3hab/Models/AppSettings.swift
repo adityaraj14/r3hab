@@ -27,7 +27,7 @@ final class AppSettings {
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {
-        get { RehabPhase(rawValue: currentPhaseRaw) ?? .aFlareDeLoad }
+        get { RehabPhase.normalized(rawValue: currentPhaseRaw) }
         set {
             currentPhaseRaw = newValue.rawValue
             phaseChangedAt = Date()

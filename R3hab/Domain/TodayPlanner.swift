@@ -35,6 +35,10 @@ enum TodayPlanner {
     /// It stays reachable from History (swipe → After).
     static let afterPainWindowHours: Double = 48
 
+    /// Done-state line under “Today is logged”. The only Next up variant
+    /// that keeps a line under its title — it is a status, not a prompt.
+    static let allDoneLine = "All done for the day. Let’s pick it back up tomorrow."
+
     /// Priority: the forced 24h loop first, then the morning score (it is the
     /// protocol’s judge), then a fresh after-pain, then the day’s one load
     /// (evening pain wins once the evening reminder hour has passed). On a rest

@@ -43,7 +43,7 @@ final class DailyCheckInMergeTests: XCTestCase {
     }
 
     func testFullFocusReplacesEverything() {
-        let draft = DailyCheckInValues(restingPainAM: 0, dailyPainPM: 0, steps: nil, phase: .dEnergyStorage, notes: "")
+        let draft = DailyCheckInValues(restingPainAM: 0, dailyPainPM: 0, steps: nil, phase: .cHeavySlowResistance, notes: "")
         let merged = DailyCheckInMerge.merge(existing: existingRow, draft: draft, focus: .full)
         XCTAssertEqual(merged, draft)
     }

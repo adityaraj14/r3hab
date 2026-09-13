@@ -1,7 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today — one bright next action, three quiet entry rows, one streak line.
+/// Today — one quiet streak count with the day's line under it, one bright
+/// next action, three quiet entry rows.
 /// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -20,7 +21,6 @@ struct HomeView: View {
     /// Set on background so the next `.active` can drop any sheet that was
     /// mid-flight over models SwiftData may have invalidated.
     @State private var didLeaveToBackground = false
-    @AppStorage("quoteTapOffset") private var quoteTapOffset = 0
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -60,13 +60,6 @@ struct HomeView: View {
 
     private var streak: WorkoutStreak.Snapshot {
         WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date(), calendar: calendar)
-    }
-
-    private var todayQuote: MotivationalQuote {
-        MotivationalQuotes.quote(
-            dayIndex: MotivationalQuotes.dailyIndex(on: today, calendar: calendar),
-            tapOffset: quoteTapOffset
-        )
     }
 
     private var hasMorningPain: Bool { todayCheckIn?.restingPainAM != nil }
@@ -236,18 +229,14 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
+    /// Eyebrow + the one action. No explanatory line under a prompt; the
+    /// sheets carry their own context. Only the done state keeps a status line.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(nextUpEyebrow(for: action).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
-
-            Text(nextUpLine(for: action))
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-                .lineLimit(2)
 
             switch action {
             case .resolvePending(let id, _):
@@ -305,7 +294,11 @@ struct HomeView: View {
                 Label("Today is logged", systemImage: "checkmark.seal.fill")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .padding(.vertical, 6)
+                    .padding(.top, 6)
+                Text(TodayPlanner.allDoneLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(16)
@@ -322,30 +315,6 @@ struct HomeView: View {
         case .restDay: return "Rest day"
         case .allDone: return "Today"
         default: return "Next up"
-        }
-    }
-
-    private func nextUpLine(for action: TodayNextAction) -> String {
-        switch action {
-        case .resolvePending(let id, let remaining):
-            let session = sessions.first { $0.id == id }
-            let title = session?.displayTitle ?? "Last session"
-            let day = session?.date.formatted(date: .abbreviated, time: .omitted) ?? ""
-            let more = remaining > 0 ? " · \(remaining) more waiting" : ""
-            return "\(title) · \(day)\(more). Better, same, or worse the morning after?"
-        case .logMorning:
-            return "Resting pain before the day starts. It is the score the plan is judged on."
-        case .logAfterPain(let id):
-            let session = sessions.first { $0.id == id }
-            return "\(session?.displayTitle ?? "Last session") · pain during \(session?.painDuring ?? 0). How does it feel now?"
-        case .logSession:
-            return activePrimaryLoad.homeObjective
-        case .logEvening:
-            return "Pain during today’s activities, plus steps."
-        case .restDay:
-            return "Off day between sessions. Next lift is due tomorrow — logging one anyway is fine."
-        case .allDone:
-            return "Morning, load, and evening are in. Judge it by tomorrow morning."
         }
     }
 
@@ -450,8 +419,9 @@ struct HomeView: View {
 
     // MARK: Streak — first thing on the screen
 
-    /// The chain lives at the top of Today. The flame is the one place gold
-    /// appears outside the next-up button, and only while the chain is live.
+    /// Count, at most one short status word, and the day's line. The flame is
+    /// the one place gold appears outside the next-up button, and only while
+    /// the chain is live. Nothing here is tappable.
     private var streakCard: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .center, spacing: 14) {
@@ -463,32 +433,21 @@ struct HomeView: View {
                     Text(WorkoutStreak.sessionWord(streak.current))
                         .font(.title.monospacedDigit().weight(.bold))
                         .foregroundStyle(.primary)
-                    Text(streakSubtitle)
-                        .font(.caption)
-                        .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
-                        .lineLimit(1)
+                    if let streakStatus {
+                        Text(streakStatus)
+                            .font(.caption)
+                            .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 Spacer(minLength: 0)
             }
-            if let miss = WorkoutStreak.copy(for: streak.miss) {
-                Text(miss.body)
-                    .font(.footnote)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Button {
-                quoteTapOffset += 1
-                Haptics.light()
-            } label: {
-                Text(quoteLine)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Tap for another line")
+            Text(quoteLine)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -501,12 +460,17 @@ struct HomeView: View {
     }
 
     private var streakAccessibilityLabel: String {
-        var parts = ["Hard session chain \(WorkoutStreak.sessionWord(streak.current))", streakSubtitle]
-        if let miss = WorkoutStreak.copy(for: streak.miss) {
-            parts.append(miss.body)
+        var parts = ["Streak \(WorkoutStreak.sessionWord(streak.current))"]
+        if let streakStatus {
+            parts.append(streakStatus)
         }
         parts.append(todayQuote.text)
         return parts.joined(separator: ". ")
+    }
+
+    /// One line per calendar day; changes overnight, never on tap.
+    private var todayQuote: MotivationalQuote {
+        MotivationalQuotes.quote(on: today, calendar: calendar)
     }
 
     private var quoteLine: String {
@@ -516,20 +480,19 @@ struct HomeView: View {
         return todayQuote.text
     }
 
-    private var streakSubtitle: String {
-        if let miss = WorkoutStreak.copy(for: streak.miss) {
-            return miss.title
+    /// Miss state first (due today / missed), then the off day, then the
+    /// record when it beats the live count. Nothing when there is nothing to say.
+    private var streakStatus: String? {
+        if let status = WorkoutStreak.statusLabel(for: streak.miss) {
+            return status
         }
-        if streak.best == 0 {
-            return "Hard-session chain · every other day"
-        }
-        if streak.current == 0, streak.lastChain > 0 {
-            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
+        if streak.isRestDay {
+            return "Rest day"
         }
         if streak.best > streak.current {
             return "Best \(WorkoutStreak.sessionWord(streak.best))"
         }
-        return "Keep the chain · every other day"
+        return nil
     }
 
     // MARK: Actions

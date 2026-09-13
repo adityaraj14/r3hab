@@ -26,7 +26,7 @@ enum InjuryCatalog {
 
     /// Protocol identity shown in the Phase guide and Session editor header.
     static let protocolName = "Patellar tendinopathy"
-    static let protocolDescription = "Progressive loading A→E, pain-guided 24h decisions, one primary lift (default seated leg extension)."
+    static let protocolDescription = "Progressive loading A→C, pain-guided 24h decisions, one primary lift (default seated leg extension)."
     static let systemImage = "figure.strengthtraining.traditional"
 
     static func remappedID(_ id: String) -> String {
