@@ -100,13 +100,13 @@ struct HomeView: View {
             ScrollView {
                 let action = nextAction
                 VStack(alignment: .leading, spacing: 14) {
+                    streakCard
                     header
                     nextUpCard(action)
                     if let phaseAStatus {
                         phaseALine(phaseAStatus)
                     }
                     entryRows
-                    streakLine
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)
@@ -431,22 +431,33 @@ struct HomeView: View {
         .accessibilityHint(logged ? "Edit" : "Log")
     }
 
-    // MARK: Streak + one line
+    // MARK: Streak — first thing on the screen
 
-    private var streakLine: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 8) {
+    /// The chain lives at the top of Today. The flame is the one place gold
+    /// appears outside the next-up button, and only while the chain is live.
+    private var streakCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(alignment: .center, spacing: 14) {
                 Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                    .font(.subheadline)
-                    .foregroundStyle(AppTheme.quiet)
+                    .font(.title)
+                    .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
                     .accessibilityHidden(true)
-                Text(WorkoutStreak.sessionWord(streak.current))
-                    .font(.subheadline.monospacedDigit().weight(.semibold))
-                Text("· \(streakSubtitle)")
-                    .font(.caption)
-                    .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
-                    .lineLimit(1)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(WorkoutStreak.sessionWord(streak.current))
+                        .font(.title.monospacedDigit().weight(.bold))
+                        .foregroundStyle(.primary)
+                    Text(streakSubtitle)
+                        .font(.caption)
+                        .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
+                        .lineLimit(1)
+                }
                 Spacer(minLength: 0)
+            }
+            if let miss = WorkoutStreak.copy(for: streak.miss) {
+                Text(miss.body)
+                    .font(.footnote)
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Button {
                 quoteTapOffset += 1
@@ -462,11 +473,23 @@ struct HomeView: View {
             .buttonStyle(.plain)
             .accessibilityHint("Tap for another line")
         }
-        .padding(.horizontal, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Hard session chain \(WorkoutStreak.sessionWord(streak.current)). \(streakSubtitle). \(todayQuote.text)"
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(AppTheme.surface)
         )
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(streakAccessibilityLabel)
+    }
+
+    private var streakAccessibilityLabel: String {
+        var parts = ["Hard session chain \(WorkoutStreak.sessionWord(streak.current))", streakSubtitle]
+        if let miss = WorkoutStreak.copy(for: streak.miss) {
+            parts.append(miss.body)
+        }
+        parts.append(todayQuote.text)
+        return parts.joined(separator: ". ")
     }
 
     private var quoteLine: String {
@@ -481,15 +504,15 @@ struct HomeView: View {
             return miss.title
         }
         if streak.best == 0 {
-            return "hard-session chain, every other day"
+            return "Hard-session chain · every other day"
         }
         if streak.current == 0, streak.lastChain > 0 {
-            return "last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
+            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
         }
         if streak.best > streak.current {
-            return "best \(WorkoutStreak.sessionWord(streak.best))"
+            return "Best \(WorkoutStreak.sessionWord(streak.best))"
         }
-        return "keep the chain · every other day"
+        return "Keep the chain · every other day"
     }
 
     // MARK: Actions
