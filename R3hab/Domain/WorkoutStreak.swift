@@ -35,6 +35,15 @@ enum WorkoutStreak {
         /// Start of the last hard session’s day.
         var lastHardDay: Date?
         var miss: MissState
+
+        /// The off day between sessions: trained yesterday, nothing due until
+        /// the due day. Today should not push a lift (logging one stays allowed).
+        /// False when nothing has been trained yet, on the day of a session,
+        /// and from the due day onward.
+        var isRestDay: Bool {
+            guard let days = daysSinceLastHard else { return false }
+            return days >= 1 && days < SessionSpacing.hardCadenceDays
+        }
     }
 
     static func evaluate(
@@ -89,8 +98,8 @@ enum WorkoutStreak {
         )
     }
 
-    /// Day 0–1: nothing due yet. Day 2: due day, whole day open. Day 3–4: one
-    /// miss. Day 5+: two misses.
+    /// Day 0: trained. Day 1: rest day, nothing due. Day 2: due day, whole day
+    /// open. Day 3–4: one miss. Day 5+: two misses.
     static func missState(daysSinceLastHard days: Int) -> MissState {
         let cadence = SessionSpacing.hardCadenceDays
         if days < cadence {

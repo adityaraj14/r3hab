@@ -9,6 +9,9 @@ enum TodayNextAction: Equatable, Sendable {
     case logAfterPain(sessionID: UUID)
     case logSession
     case logEvening
+    /// Off day between sessions. Calm, no lift CTA; a session can still be
+    /// logged from the entry row.
+    case restDay
     /// Morning, session (or evening), and evening are in. Nothing to push.
     case allDone
 }
@@ -23,6 +26,8 @@ struct TodayPlannerInput: Equatable, Sendable {
     var missingAfterPain: [UUID] = []
     var trainedToday: Bool
     var isEvening: Bool
+    /// `WorkoutStreak.Snapshot.isRestDay` — the day between sessions.
+    var isRestDay: Bool = false
 }
 
 enum TodayPlanner {
@@ -32,7 +37,8 @@ enum TodayPlanner {
 
     /// Priority: the forced 24h loop first, then the morning score (it is the
     /// protocol’s judge), then a fresh after-pain, then the day’s one load
-    /// (evening pain wins once the evening reminder hour has passed).
+    /// (evening pain wins once the evening reminder hour has passed). On a rest
+    /// day the load is never pushed; the card goes calm until evening.
     static func nextAction(_ input: TodayPlannerInput) -> TodayNextAction {
         if let first = input.overduePending.first {
             return .resolvePending(sessionID: first, remaining: input.overduePending.count - 1)
@@ -47,6 +53,9 @@ enum TodayPlanner {
             return .logEvening
         }
         if !input.trainedToday {
+            if input.isRestDay {
+                return input.hasEveningPain ? .allDone : .restDay
+            }
             return .logSession
         }
         if !input.hasEveningPain {

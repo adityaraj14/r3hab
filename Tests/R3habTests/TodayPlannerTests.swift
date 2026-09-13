@@ -11,7 +11,8 @@ final class TodayPlannerTests: XCTestCase {
         overdue: [UUID] = [],
         afterPain: [UUID] = [],
         trained: Bool = false,
-        isEvening: Bool = false
+        isEvening: Bool = false,
+        restDay: Bool = false
     ) -> TodayPlannerInput {
         TodayPlannerInput(
             hasMorningPain: morning,
@@ -19,7 +20,8 @@ final class TodayPlannerTests: XCTestCase {
             overduePending: overdue,
             missingAfterPain: afterPain,
             trainedToday: trained,
-            isEvening: isEvening
+            isEvening: isEvening,
+            isRestDay: restDay
         )
     }
 
@@ -61,6 +63,40 @@ final class TodayPlannerTests: XCTestCase {
             TodayPlanner.nextAction(input(morning: true, evening: true, trained: true)),
             .allDone
         )
+    }
+
+    // MARK: Rest day
+
+    func testRestDayNeverPromotesTheLift() {
+        XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, restDay: true)), .restDay)
+        XCTAssertNotEqual(TodayPlanner.nextAction(input(morning: true, restDay: true)), .logSession)
+    }
+
+    func testRestDayStillRunsTheCheckInLoop() {
+        XCTAssertEqual(TodayPlanner.nextAction(input(restDay: true)), .logMorning)
+        XCTAssertEqual(
+            TodayPlanner.nextAction(input(overdue: [a], restDay: true)),
+            .resolvePending(sessionID: a, remaining: 0)
+        )
+        XCTAssertEqual(
+            TodayPlanner.nextAction(input(morning: true, afterPain: [b], restDay: true)),
+            .logAfterPain(sessionID: b)
+        )
+        XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, isEvening: true, restDay: true)), .logEvening)
+        XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, evening: true, restDay: true)), .allDone)
+    }
+
+    func testOptionalLiftOnARestDayFallsThroughLikeAnyTrainedDay() {
+        XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, trained: true, restDay: true)), .logEvening)
+        XCTAssertEqual(
+            TodayPlanner.nextAction(input(morning: true, evening: true, trained: true, restDay: true)),
+            .allDone
+        )
+    }
+
+    func testDueDayPromotesTheLiftAgain() {
+        // `isRestDay` is false from the due day onward, so the default returns.
+        XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, restDay: false)), .logSession)
     }
 
     func testIsEveningUsesReminderTime() {

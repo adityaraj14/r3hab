@@ -197,6 +197,29 @@ final class WorkoutStreakTests: XCTestCase {
         XCTAssertEqual(result.miss, .oneMiss)
     }
 
+    func testRestDayIsOnlyTheDayBetweenSessions() {
+        let sessions = [snap(createdAt: at(day: 0, hour: 7))]
+        XCTAssertFalse(evaluate([], now: at(day: 0, hour: 12)).isRestDay, "Nothing trained yet: the lift is due.")
+        XCTAssertFalse(evaluate(sessions, now: at(day: 0, hour: 12)).isRestDay, "Day of the session.")
+        XCTAssertTrue(evaluate(sessions, now: at(day: 1, hour: 6)).isRestDay)
+        XCTAssertTrue(evaluate(sessions, now: at(day: 1, hour: 23, minute: 59)).isRestDay, "Whole rest day.")
+        XCTAssertFalse(evaluate(sessions, now: at(day: 2, hour: 0, minute: 1)).isRestDay, "Due day: promote the lift.")
+        XCTAssertFalse(evaluate(sessions, now: at(day: 3, hour: 9)).isRestDay, "Missed: still not a rest day.")
+    }
+
+    func testOptionalLiftOnARestDayResetsTheCadence() {
+        // Trained day 0 and again on the rest day (day 1): day 2 becomes the
+        // new rest day and day 3 the due day.
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 1, hour: 18))
+        ]
+        XCTAssertFalse(evaluate(sessions, now: at(day: 1, hour: 19)).isRestDay)
+        XCTAssertTrue(evaluate(sessions, now: at(day: 2, hour: 9)).isRestDay)
+        XCTAssertEqual(evaluate(sessions, now: at(day: 3, hour: 9)).miss, .approaching)
+        XCTAssertEqual(evaluate(sessions, now: at(day: 3, hour: 9)).current, 2)
+    }
+
     func testMissStatesByCalendarDay() {
         XCTAssertEqual(SessionSpacing.hardCadenceDays, 2)
         XCTAssertEqual(WorkoutStreak.missState(daysSinceLastHard: 0), .none)

@@ -90,9 +90,15 @@ struct HomeView: View {
                     pmReminderHour: settings?.pmReminderHour ?? 18,
                     pmReminderMinute: settings?.pmReminderMinute ?? 30,
                     calendar: calendar
-                )
+                ),
+                isRestDay: streak.isRestDay
             )
         )
+    }
+
+    /// Rest-day framing for the lift row: nothing due, still tappable.
+    private var isRestDayRow: Bool {
+        streak.isRestDay && todaySessions.isEmpty
     }
 
     var body: some View {
@@ -289,6 +295,12 @@ struct HomeView: View {
                 }
                 .buttonStyle(.primaryAction)
 
+            case .restDay:
+                Label("Nothing to load today", systemImage: "leaf.fill")
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .padding(.vertical, 6)
+
             case .allDone:
                 Label("Today is logged", systemImage: "checkmark.seal.fill")
                     .font(.headline.weight(.semibold))
@@ -307,6 +319,7 @@ struct HomeView: View {
     private func nextUpEyebrow(for action: TodayNextAction) -> String {
         switch action {
         case .resolvePending: return "Needs your 24h call"
+        case .restDay: return "Rest day"
         case .allDone: return "Today"
         default: return "Next up"
         }
@@ -329,6 +342,8 @@ struct HomeView: View {
             return activePrimaryLoad.homeObjective
         case .logEvening:
             return "Pain during today’s activities, plus steps."
+        case .restDay:
+            return "Off day between sessions. Next lift is due tomorrow — logging one anyway is fine."
         case .allDone:
             return "Morning, load, and evening are in. Judge it by tomorrow morning."
         }
@@ -357,9 +372,10 @@ struct HomeView: View {
             ) { showAM = true }
             Divider().overlay(AppTheme.quietStroke)
             entryRow(
-                icon: InjuryCatalog.systemImage,
-                title: activePrimaryLoad.title,
+                icon: isRestDayRow ? "leaf" : InjuryCatalog.systemImage,
+                title: isRestDayRow ? "Rest day" : activePrimaryLoad.title,
                 value: sessionRowValue,
+                placeholder: isRestDayRow ? "Optional" : "Not logged",
                 logged: !todaySessions.isEmpty
             ) { showSession = true }
             Divider().overlay(AppTheme.quietStroke)
@@ -402,6 +418,7 @@ struct HomeView: View {
         icon: String,
         title: String,
         value: String?,
+        placeholder: String = "Not logged",
         logged: Bool,
         action: @escaping () -> Void
     ) -> some View {
@@ -415,7 +432,7 @@ struct HomeView: View {
                     .font(.body)
                     .foregroundStyle(.primary)
                 Spacer(minLength: 8)
-                Text(value ?? "Not logged")
+                Text(value ?? placeholder)
                     .font(.subheadline.monospacedDigit())
                     .foregroundStyle(value == nil ? Color.secondary.opacity(0.7) : Color.secondary)
                     .lineLimit(1)
@@ -427,7 +444,7 @@ struct HomeView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(title), \(value ?? "not logged")")
+        .accessibilityLabel("\(title), \(value ?? placeholder.lowercased())")
         .accessibilityHint(logged ? "Edit" : "Log")
     }
 
