@@ -6,7 +6,6 @@ import Foundation
 struct InjuryDefinition: Identifiable, Hashable, Sendable {
     var id: String
     var title: String
-    var subtitle: String
 }
 
 enum InjuryCatalog {
@@ -19,8 +18,7 @@ enum InjuryCatalog {
 
     static let patellarTendinopathy = InjuryDefinition(
         id: "patellar-tendinopathy",
-        title: "Jumper’s knee / patellar tendinopathy",
-        subtitle: "Also called patellar tendonitis · one knee protocol."
+        title: "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
     )
 
     static let all: [InjuryDefinition] = [patellarTendinopathy]

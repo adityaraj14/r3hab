@@ -14,7 +14,8 @@ enum LogStore {
         var pmMinute: Int
         var pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)]
         var painAfterSessions: [(id: UUID, createdAt: Date)]
-        var lastHardCreatedAt: Date?
+        /// Calendar day of the most recent hard session (drives the miss cue).
+        var lastHardDate: Date?
         var overdueCount: Int
     }
 
@@ -63,16 +64,18 @@ enum LogStore {
             pmMinute: settings.pmReminderMinute,
             pendingSessions: pendingSessionTuples(from: sessions),
             painAfterSessions: painAfterSessionTuples(from: sessions),
-            lastHardCreatedAt: lastHardCreatedAt(from: sessions),
+            lastHardDate: lastHardDate(from: sessions),
             overdueCount: PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: now).count
         )
     }
 
+    /// Uses `date` (the day trained), not `createdAt`, so a backfilled session
+    /// counts for the day it happened.
     @MainActor
-    static func lastHardCreatedAt(from sessions: [TrainingSession]) -> Date? {
+    static func lastHardDate(from sessions: [TrainingSession]) -> Date? {
         sessions
             .filter { SessionSpacing.isHard($0.sessionType) }
-            .map(\.createdAt)
+            .map(\.date)
             .max()
     }
 
@@ -88,7 +91,7 @@ enum LogStore {
             pmMinute: snapshot.pmMinute,
             pendingSessions: snapshot.pendingSessions,
             painAfterSessions: snapshot.painAfterSessions,
-            lastHardCreatedAt: snapshot.lastHardCreatedAt
+            lastHardDate: snapshot.lastHardDate
         )
         NotificationScheduler.updateBadge(count: snapshot.overdueCount)
     }

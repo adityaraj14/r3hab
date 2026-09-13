@@ -117,7 +117,7 @@ enum NotificationScheduler {
         pmMinute: Int,
         pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)],
         painAfterSessions: [(id: UUID, createdAt: Date)] = [],
-        lastHardCreatedAt: Date? = nil,
+        lastHardDate: Date? = nil,
         now: Date = Date(),
         calendar: Calendar = .current
     ) async {
@@ -194,8 +194,14 @@ enum NotificationScheduler {
         }
 
         await center.removePendingNotificationRequests(withIdentifiers: [hardOverdueId])
-        if let lastHardCreatedAt {
-            await scheduleHardOverdueAsync(lastHardAt: lastHardCreatedAt, now: now, calendar: calendar)
+        if let lastHardDate {
+            await scheduleHardOverdueAsync(
+                lastHardDate: lastHardDate,
+                amHour: amHour,
+                amMinute: amMinute,
+                now: now,
+                calendar: calendar
+            )
         }
     }
 
@@ -335,26 +341,56 @@ enum NotificationScheduler {
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
     }
 
-    static func hardOverdueFireDate(lastHardAt: Date, now: Date) -> Date? {
-        let intended = lastHardAt.addingTimeInterval(SessionSpacing.hardGap)
+    /// The due day is `lastHardDate + hardCadenceDays`; the whole of it is open,
+    /// so the miss cue fires the *morning after* at the AM reminder time (same
+    /// slot the 24h nag uses) — never at 48h on the clock. If that morning has
+    /// already passed, catch up once while still inside the one-miss days.
+    static func hardOverdueFireDate(
+        lastHardDate: Date,
+        amHour: Int,
+        amMinute: Int,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> Date? {
+        let lastDay = calendar.startOfDay(for: lastHardDate)
+        guard let dueDay = calendar.date(
+            byAdding: .day,
+            value: SessionSpacing.hardCadenceDays,
+            to: lastDay
+        ) else { return nil }
+        let intended = PendingQueue.notificationFireDate(
+            sessionDate: dueDay,
+            amHour: amHour,
+            amMinute: amMinute,
+            calendar: calendar
+        )
         if intended > now { return intended }
-        if now.timeIntervalSince(lastHardAt) <= SessionSpacing.hardGap * 2 {
+        let days = SessionSpacing.calendarDays(from: lastDay, to: now, calendar: calendar)
+        if WorkoutStreak.missState(daysSinceLastHard: days) == .oneMiss {
             return now.addingTimeInterval(painAfterCatchUpDelay)
         }
         return nil
     }
 
     static func scheduleHardOverdueAsync(
-        lastHardAt: Date,
+        lastHardDate: Date,
+        amHour: Int,
+        amMinute: Int,
         now: Date = Date(),
         calendar: Calendar = .current
     ) async {
-        guard let fire = hardOverdueFireDate(lastHardAt: lastHardAt, now: now) else { return }
+        guard let fire = hardOverdueFireDate(
+            lastHardDate: lastHardDate,
+            amHour: amHour,
+            amMinute: amMinute,
+            now: now,
+            calendar: calendar
+        ) else { return }
         guard PendingQueue.shouldScheduleNotification(fireAt: fire, now: now) else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Keep the chain"
-        content.body = "One miss is alright. Don’t miss twice — a hard session still counts. Inspired by Atomic Habits."
+        content.title = WorkoutStreak.missTwiceTitle
+        content.body = WorkoutStreak.missTwiceBody
         content.sound = .default
         content.userInfo = ["kind": NotificationOpenKind.hardOverdue.rawValue]
         content.categoryIdentifier = "HARD_OVERDUE"

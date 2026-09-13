@@ -4,7 +4,10 @@ import XCTest
 final class InjuryCatalogTests: XCTestCase {
     func testCatalogShipsOneKneeInjury() {
         XCTAssertEqual(InjuryCatalog.all.map(\.id), ["patellar-tendinopathy"])
-        XCTAssertEqual(InjuryCatalog.defaultSelectable.title, "Jumper’s knee / patellar tendinopathy")
+        XCTAssertEqual(
+            InjuryCatalog.defaultSelectable.title,
+            "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
+        )
         XCTAssertTrue(InjuryCatalog.contains("patellar-tendinopathy"))
         XCTAssertFalse(InjuryCatalog.contains("ql-strain"))
         XCTAssertFalse(InjuryCatalog.all.contains { $0.title.contains("QL") })
