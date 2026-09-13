@@ -114,7 +114,7 @@ final class BrandCopyTests: XCTestCase {
         }
     }
 
-    func testInjuryPageConfirmsOneInjuryAndTeasesMore() {
+    func testInjuryPageConfirmsOneInjuryWithNoComingSoonPromise() {
         XCTAssertEqual(BrandCopy.injuryTitle, "Confirm your injury")
         for rejected in ["Select your injury", "What’s your injury", "Choose your starting injury"] {
             XCTAssertNotEqual(BrandCopy.injuryTitle, rejected)
@@ -123,9 +123,12 @@ final class BrandCopyTests: XCTestCase {
             InjuryCatalog.patellarTendinopathy.title,
             "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
         )
-        XCTAssertEqual(BrandCopy.injuryComingSoonTitle, "More injuries coming soon")
-        XCTAssertEqual(BrandCopy.injuryComingSoonBody, "We’ll add more tracks over time.")
         XCTAssertTrue(BrandCopy.injuryDiagnosisNote.contains("professional diagnosis"))
+        // App Review: no placeholders that imply unfinished features.
+        for line in [BrandCopy.injuryTitle, BrandCopy.injuryDiagnosisNote, BrandCopy.settingsBlurb] {
+            XCTAssertFalse(line.localizedCaseInsensitiveContains("coming soon"), line)
+            XCTAssertFalse(line.localizedCaseInsensitiveContains("more tracks"), line)
+        }
     }
 
     func testPrimaryLiftCopyIsLabelsOnly() {
@@ -214,8 +217,6 @@ final class BrandCopyTests: XCTestCase {
         let lines = [
             BrandCopy.injuryTitle,
             InjuryCatalog.patellarTendinopathy.title,
-            BrandCopy.injuryComingSoonTitle,
-            BrandCopy.injuryComingSoonBody,
             BrandCopy.injuryDiagnosisNote,
             BrandCopy.primaryLiftLead,
             BrandCopy.primaryLiftTip
