@@ -105,7 +105,7 @@ final class BrandCopyTests: XCTestCase {
     }
 
     func testPrimaryLiftCopyIsLabelsOnly() {
-        XCTAssertEqual(BrandCopy.primaryLiftTitle, "Your primary lift")
+        XCTAssertEqual(BrandCopy.primaryLiftTitle, "Pick your resistance lift")
         XCTAssertEqual(
             BrandCopy.primaryLiftLead,
             "Choose the exercise you’ll use during the resistance training phase."

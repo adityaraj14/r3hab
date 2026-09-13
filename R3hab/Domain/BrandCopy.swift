@@ -59,7 +59,7 @@ enum BrandCopy {
     Getting a professional diagnosis first is recommended. R3hab helps you track and decide from your own numbers — it isn’t a diagnosis, and we don’t take on the risk if you move ahead without care.
     """
 
-    static let primaryLiftTitle = "Your primary lift"
+    static let primaryLiftTitle = "Pick your resistance lift"
     static let primaryLiftLead = "Choose the exercise you’ll use during the resistance training phase."
     static let primaryLiftTip = "Prefer something convenient and easy to stick with."
 
