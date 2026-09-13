@@ -27,7 +27,8 @@ struct R3habApp: App {
             // crash path after long background / background relaunch — see
             // Apple Forums thread 744194 / 761637 and SO 78265564.
             // Resume after a long suspend is handled in RootView: snapshot
-            // notification work before any `await`, and remount @Query.
+            // notification work before any `await`, flush under a background
+            // task, and pause autosave while suspended.
             RootView()
                 .modelContainer(container)
                 .environment(router)

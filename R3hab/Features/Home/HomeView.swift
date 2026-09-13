@@ -18,8 +18,8 @@ struct HomeView: View {
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
-    /// Set on background so the next `.active` can drop any sheet that was
-    /// mid-flight over models SwiftData may have invalidated.
+    /// Set on background so the next `.active` can drop the quick sheets that
+    /// were mid-flight over models SwiftData may have invalidated.
     @State private var didLeaveToBackground = false
 
     private var calendar: Calendar { .current }
@@ -182,9 +182,11 @@ struct HomeView: View {
 
     // MARK: Resume belt
 
-    /// After a real background, close any editor that was open. The editors
-    /// themselves no longer retain models, but a sheet that was half-filled
-    /// over a suspend is not worth trusting — the user re-opens from Today.
+    /// After a real background, close the quick sheets (check-ins, 24h
+    /// resolve, after-pain, rest confirm). They take seconds to redo and the
+    /// user re-opens them from Today. The session editor is not on this list:
+    /// a workout is logged across many background trips (leave to do a set,
+    /// come back to fill in the next one), so its draft must survive resume.
     private func handleScenePhase(_ phase: ScenePhase) {
         switch phase {
         case .background:
@@ -203,7 +205,6 @@ struct HomeView: View {
     private func dismissTransientSheets() {
         showAM = false
         showPM = false
-        showSession = false
         resolveTargetId = nil
         afterPainTargetId = nil
         restConfirmId = nil
