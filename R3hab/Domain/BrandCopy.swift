@@ -82,7 +82,7 @@ enum BrandCopy {
         ),
         SetupPhaseChoice(
             phase: .cHeavySlowResistance,
-            title: "Phase C · Heavy slow resistance",
+            title: "Phase C · Heavy slow resistance (HSR)",
             body: "The main phase for rebuilding the tendon."
         )
     ]

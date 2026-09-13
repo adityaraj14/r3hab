@@ -123,7 +123,7 @@ final class BrandCopyTests: XCTestCase {
         )
         XCTAssertEqual(
             BrandCopy.setupPhaseChoices.map(\.title),
-            ["Phase A · Flare", "Phase B · Isometrics", "Phase C · Heavy slow resistance"]
+            ["Phase A · Flare", "Phase B · Isometrics", "Phase C · Heavy slow resistance (HSR)"]
         )
         XCTAssertEqual(
             BrandCopy.setupPhaseChoices.map(\.body),
