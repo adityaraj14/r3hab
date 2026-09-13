@@ -83,8 +83,11 @@ private struct RootTabContent: View {
 
     var body: some View {
         @Bindable var router = router
+        // Tab bar is white (quiet chrome); each tab re-tints its own subtree so
+        // controls inside keep the single gold accent.
         TabView(selection: $router.selectedTab) {
             HomeView()
+                .tint(AppTheme.gold)
                 .tabItem {
                     Label("Today", systemImage: "sun.max.fill")
                 }
@@ -92,18 +95,20 @@ private struct RootTabContent: View {
                 .badge(overdueBadge > 0 ? overdueBadge : 0)
 
             HistoryView()
+                .tint(AppTheme.gold)
                 .tabItem {
-                    Label("Log", systemImage: "list.bullet.rectangle")
+                    Label("History", systemImage: "clock.arrow.circlepath")
                 }
                 .tag(1)
 
             RehabProgressView()
+                .tint(AppTheme.gold)
                 .tabItem {
                     Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
                 }
                 .tag(2)
         }
-        .tint(Color.accentColor)
+        .tint(.white)
         .preferredColorScheme(.dark)
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
@@ -142,50 +147,22 @@ private struct RootTabContent: View {
                 router.requestNotificationSync()
             }
         }
+        // Deep-link sheets take ids only; each sheet resolves (or reports
+        // "Session not found") against the current context itself.
         .sheet(isPresented: Binding(
             get: { router.resolveSessionId != nil },
             set: { if !$0 { router.resolveSessionId = nil } }
         )) {
-            if let id = router.resolveSessionId,
-               let session = sessions.first(where: { $0.id == id }) {
-                Resolve24hSheet(session: session)
-            } else {
-                NavigationStack {
-                    ContentUnavailableView(
-                        "Session not found",
-                        systemImage: "questionmark.circle",
-                        description: Text("This 24h item may have been deleted or already resolved.")
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { router.resolveSessionId = nil }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
+            if let id = router.resolveSessionId {
+                Resolve24hSheet(sessionId: id)
             }
         }
         .sheet(isPresented: Binding(
             get: { router.afterPainSessionId != nil },
             set: { if !$0 { router.afterPainSessionId = nil } }
         )) {
-            if let id = router.afterPainSessionId,
-               let session = sessions.first(where: { $0.id == id }) {
-                AfterPainSheet(session: session)
-            } else {
-                NavigationStack {
-                    ContentUnavailableView(
-                        "Session not found",
-                        systemImage: "questionmark.circle",
-                        description: Text("This workout may have been deleted.")
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { router.afterPainSessionId = nil }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
+            if let id = router.afterPainSessionId {
+                AfterPainSheet(sessionId: id)
             }
         }
     }

@@ -18,30 +18,30 @@ enum BrandCopy {
     static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    Rehab isn’t a straight line. Some weeks click; others leave you wondering if you’re on the right path, or if any of it is working. R3hab keeps the journey on this phone — so when doubt shows up, you look at your numbers instead of unpacking the whole story again.
+    Rehab isn’t a straight line. R3hab keeps the journey on this phone, so when doubt shows up you look at your numbers instead of re-telling the whole story.
     """
 
     static let habits: [BrandHabit] = [
+        // Bodies stay under ~45 characters so each is one line at footnote
+        // size on a 6.1" phone — the Welcome page is laid out to fit, not scroll.
         BrandHabit(
             title: "Track the journey",
-            body: "Pain, sessions, and load in one place, not just how today felt."
+            body: "Pain, sessions, and load in one place."
         ),
         BrandHabit(
             title: "Stay accountable",
-            body: "Small, honest logs. Enough to keep going without making rehab a second job."
+            body: "Small, honest logs — enough to keep going."
         ),
         BrandHabit(
             title: "Trust the data",
-            body: "A quiet system that helps you decide. You don’t have to re-argue the plan every time the week feels messy."
+            body: "Decide from your numbers, not the messy week."
         )
     ]
 
-    static let onboardingFootnote = """
-    Log what you did. Check how you feel next. The pattern lives here so you can trust the path you’re on.
-    """
+    static let injuryTitle = "Built for the patellar tendon."
 
     static let injuryLead = """
-    Two paths. Jumper’s knee and patellar tendinopathy share the same knee diary. QL strain is its own template: hip thrusts, side bends, and walking.
+    Jumper’s knee and patellar tendinopathy (also called patellar tendonitis) are the same injury and share one knee protocol: progressive loading, judged by the next morning.
     """
 
     static let injuryDiagnosisNote = """
@@ -49,8 +49,6 @@ enum BrandCopy {
     """
 
     static let primaryLiftLead = "This is the lift you dose the same way. Switch later in Settings."
-
-    static let qlPrimaryWorkLead = "Hip thrusts and side bends carry weight. Walking is time and steps — not fake lbs."
 
     static let setupEyebrow = "Setup"
     static let setupTitle = "Where are you right now?"
@@ -87,6 +85,8 @@ enum BrandCopy {
     static let privacyEyebrow = "Private"
     static let privacyTitle = "Yours. On this phone."
     static let privacyLead = "A diary, not a product that sells you."
+    /// One-line version for the compact Welcome card.
+    static let privacySummary = "No account · No ads · Stored on this iPhone only"
 
     static let privacyPoints: [BrandHabit] = [
         BrandHabit(
@@ -99,24 +99,29 @@ enum BrandCopy {
         ),
         BrandHabit(
             title: "On-device only",
-            body: "SwiftData on your iPhone. Export a file if you want a backup — we don’t host one."
+            body: "Stored on this iPhone only. Export a file if you want a backup — we don’t host one."
         )
     ]
 }
 
-/// Short Today lines. Adi’s 10 attributed cycle — no R3hab / Atomic Habits process copy.
+/// Short Today lines. 10-item cycle in R3hab’s own voice — short, neutral,
+/// rehab-owned. No franchise memes. Two attributed lines: a proverb and
+/// Adi’s Atomic Habits paraphrase (slot 10).
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
-        MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
-        MotivationalQuote(text: "Get up.", attribution: "Rocky"),
+        MotivationalQuote(text: "Show up. Log it. Move on.", attribution: nil),
+        MotivationalQuote(text: "Calm mornings are the win.", attribution: nil),
         MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
-        MotivationalQuote(text: "I can do this all day.", attribution: "Captain America"),
-        MotivationalQuote(text: "Why do we fall? So we can learn to pick ourselves up.", attribution: "Batman Begins"),
-        MotivationalQuote(text: "Do or do not. There is no try.", attribution: "The Empire Strikes Back"),
-        MotivationalQuote(text: "Don't stop believing.", attribution: "Journey"),
-        MotivationalQuote(text: "Believe.", attribution: "Ted Lasso"),
-        MotivationalQuote(text: "Hakuna matata.", attribution: "The Lion King"),
-        MotivationalQuote(text: "The night is darkest just before the dawn.", attribution: "The Dark Knight")
+        MotivationalQuote(text: "Consistency beats intensity.", attribution: nil),
+        MotivationalQuote(text: "Load a little. Judge it tomorrow morning.", attribution: nil),
+        MotivationalQuote(text: "Tendons adapt slowly. So do habits.", attribution: nil),
+        MotivationalQuote(text: "Trust the numbers, not the mood.", attribution: nil),
+        MotivationalQuote(text: "One session at a time.", attribution: nil),
+        MotivationalQuote(text: "A flat week is still a week logged.", attribution: nil),
+        MotivationalQuote(
+            text: "The greatest threat to success is not failure but boredom. Keep going.",
+            attribution: "Inspired by Atomic Habits"
+        )
     ]
 
     static func dailyIndex(on date: Date, calendar: Calendar = .current) -> Int {

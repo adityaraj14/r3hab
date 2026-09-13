@@ -17,13 +17,13 @@ final class AppSettings {
     var hasCompletedOnboarding: Bool
     var protocolRevision: String
     var faceIDLockEnabled: Bool
-    /// Stored track id (`knee` or `ql`). Leftover dual-track CSV is migrated once.
+    /// Unused since the QL track was removed. Kept for SwiftData schema stability.
     var activeTracksCSV: String = "knee"
     /// Unused. Kept for SwiftData schema stability.
     var backTrackStageRaw: String = ""
-    /// Onboarding injury id from `InjuryCatalog`. Default is lightweight-migration safe.
+    /// Injury id from `InjuryCatalog`. Retired ids (incl. `ql-strain`) remap on launch.
     var selectedInjuryID: String = "patellar-tendinopathy"
-    /// Primary movement from `PrimaryLoadCatalog`. Default is seated extension (knee).
+    /// Primary movement from `PrimaryLoadCatalog`. Default is seated extension.
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {
@@ -34,34 +34,13 @@ final class AppSettings {
         }
     }
 
-    var activeTracks: [RehabTrackID] {
-        get {
-            let parsed = activeTracksCSV
-                .split(separator: ",")
-                .compactMap { RehabTrackID(rawValue: String($0)) }
-            if parsed.isEmpty { return [protocolTrack] }
-            return parsed
-        }
-        set {
-            let tracks = newValue.isEmpty ? [protocolTrack] : newValue
-            activeTracksCSV = tracks.map(\.rawValue).joined(separator: ",")
-        }
-    }
-
-    var protocolTrack: RehabTrackID {
-        selectedInjury.protocolTrack
-    }
-
     var selectedInjury: InjuryDefinition {
         get { InjuryCatalog.definition(for: selectedInjuryID) }
-        set {
-            selectedInjuryID = newValue.id
-            activeTracks = [newValue.protocolTrack]
-        }
+        set { selectedInjuryID = newValue.id }
     }
 
     var primaryLoad: PrimaryLoadOption {
-        get { PrimaryLoadCatalog.option(for: primaryLoadID, track: protocolTrack) }
+        get { PrimaryLoadCatalog.option(for: primaryLoadID) }
         set { primaryLoadID = newValue.id }
     }
 
@@ -80,7 +59,7 @@ final class AppSettings {
         self.hasCompletedOnboarding = false
         self.protocolRevision = "v1"
         self.faceIDLockEnabled = false
-        self.activeTracksCSV = RehabTrackID.knee.rawValue
+        self.activeTracksCSV = "knee"
         self.backTrackStageRaw = ""
         self.selectedInjuryID = InjuryCatalog.defaultSelectable.id
         self.primaryLoadID = PrimaryLoadCatalog.defaultID

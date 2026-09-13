@@ -1,13 +1,11 @@
 import SwiftUI
 import SwiftData
 
-enum DailyCheckInFocus: Equatable, Sendable {
-    case morning
-    case evening
-    case full
-}
-
 /// Create/edit one daily check-in (partial AM/PM save OK).
+///
+/// Holds only value state. The row is read into fields on appear and written
+/// back with fetch-or-insert by dayKey on the current context, so a long
+/// background between open and Save never touches a stale `DailyCheckIn`.
 struct DailyCheckInEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -25,7 +23,10 @@ struct DailyCheckInEditor: View {
     @State private var notes: String = ""
     @State private var declineL: Int?
     @State private var declineR: Int?
-    @State private var existing: DailyCheckIn?
+    /// What the row held when the editor opened — drives titles and the nudge.
+    @State private var hadRowOnLoad = false
+    @State private var morningPainOnLoad: Int?
+    @State private var eveningPainOnLoad: Int?
     @State private var errorMessage: String?
     @State private var didLoad = false
     @State private var isLoadingSteps = false
@@ -144,11 +145,11 @@ struct DailyCheckInEditor: View {
     private var navigationTitleText: String {
         switch focus {
         case .morning:
-            return (existing?.restingPainAM != nil) ? "Edit morning" : "Log morning"
+            return morningPainOnLoad != nil ? "Edit morning" : "Log morning"
         case .evening:
-            return (existing?.dailyPainPM != nil) ? "Edit evening" : "Log evening"
+            return eveningPainOnLoad != nil ? "Edit evening" : "Log evening"
         case .full:
-            return existing == nil ? "New check-in" : "Edit check-in"
+            return hadRowOnLoad ? "Edit check-in" : "New check-in"
         }
     }
 
@@ -163,31 +164,30 @@ struct DailyCheckInEditor: View {
         """
     }
 
+    /// Reads the day into value fields. The fetched model is not retained.
     private func loadIfNeeded() {
         guard !didLoad else { return }
         didLoad = true
-        let day = calendar.startOfDay(for: targetDate)
-        let key = DailyCheckIn.dayKey(for: day, calendar: calendar)
 
         if let settings = try? AppBootstrap.ensureSettings(context: modelContext) {
             phase = settings.currentPhase
         }
 
-        let predicate = #Predicate<DailyCheckIn> { $0.dayKey == key }
-        var descriptor = FetchDescriptor(predicate: predicate)
-        descriptor.fetchLimit = 1
-        if let row = try? modelContext.fetch(descriptor).first {
-            existing = row
-            restingPainAM = row.restingPainAM
-            dailyPainPM = row.dailyPainPM
-            stepsText = row.steps.map(String.init) ?? ""
-            phase = row.phase
-            notes = row.notes
-            declineL = row.declineSquatL
-            declineR = row.declineSquatR
-            if row.steps != nil {
-                stepsSourceNote = "Saved value — tap Health to refresh from Apple Watch."
-            }
+        guard let values = try? DailyCheckInStore.values(forDay: targetDate, context: modelContext, calendar: calendar) else {
+            return
+        }
+        hadRowOnLoad = true
+        morningPainOnLoad = values.restingPainAM
+        eveningPainOnLoad = values.dailyPainPM
+        restingPainAM = values.restingPainAM
+        dailyPainPM = values.dailyPainPM
+        stepsText = values.steps.map(String.init) ?? ""
+        phase = values.phase
+        notes = values.notes
+        declineL = values.declineSquatL
+        declineR = values.declineSquatR
+        if values.steps != nil {
+            stepsSourceNote = "Saved value — tap Health to refresh from Apple Watch."
         }
     }
 
@@ -217,64 +217,43 @@ struct DailyCheckInEditor: View {
         }
     }
 
+    /// Validate the draft, then fetch-or-insert by dayKey on the *current*
+    /// context. Fields the focused editor did not show are preserved from the
+    /// row as it is now — not as it was when the sheet opened.
     private func save() {
         errorMessage = nil
-        if showsEvening, let stepsText = stepsText.trimmingCharacters(in: .whitespacesAndNewlines).nilIfEmpty {
-            guard let steps = Int(stepsText), steps >= 0 else {
+
+        var steps: Int?
+        if showsEvening {
+            switch DailyCheckInMerge.steps(from: stepsText) {
+            case .empty: steps = nil
+            case .value(let value): steps = value
+            case .invalid:
                 errorMessage = "Steps must be a whole number ≥ 0."
                 return
             }
-            applySave(steps: steps)
-        } else if showsEvening {
-            applySave(steps: nil)
-        } else {
-            applySave(steps: existing?.steps)
-        }
-    }
-
-    private func applySave(steps: Int?) {
-        let scoresToValidate: [Int?]
-        switch focus {
-        case .morning:
-            scoresToValidate = [restingPainAM]
-        case .evening:
-            scoresToValidate = [dailyPainPM, declineL, declineR]
-        case .full:
-            scoresToValidate = [restingPainAM, dailyPainPM, declineL, declineR]
-        }
-        for score in scoresToValidate {
-            if let score, !(0...10).contains(score) {
-                errorMessage = "Pain scores must be 0–10."
-                return
-            }
         }
 
-        let day = calendar.startOfDay(for: targetDate)
-        let previousMorningPain = existing?.restingPainAM
-        let row: DailyCheckIn
-        if let existing {
-            row = existing
-        } else {
-            row = DailyCheckIn(date: day, calendar: calendar, phase: phase)
-            modelContext.insert(row)
+        let draft = DailyCheckInValues(
+            restingPainAM: restingPainAM,
+            dailyPainPM: dailyPainPM,
+            steps: steps,
+            phase: phase,
+            notes: notes,
+            declineSquatL: declineL,
+            declineSquatR: declineR
+        )
+        if let issue = DailyCheckInMerge.validationError(draft: draft, focus: focus) {
+            errorMessage = issue
+            return
         }
-
-        if showsMorning {
-            row.restingPainAM = restingPainAM
-            row.phase = phase
-        }
-        if showsEvening {
-            row.dailyPainPM = dailyPainPM
-            row.steps = steps
-            row.declineSquatL = declineL
-            row.declineSquatR = declineR
-        }
-        row.notes = notes
-        row.updatedAt = Date()
 
         do {
-            try modelContext.save()
+            let current = try DailyCheckInStore.values(forDay: targetDate, context: modelContext, calendar: calendar)
+            let merged = DailyCheckInMerge.merge(existing: current, draft: draft, focus: focus)
+            try DailyCheckInStore.upsert(day: targetDate, values: merged, context: modelContext, calendar: calendar)
             Haptics.success()
+            let previousMorningPain = current?.restingPainAM
             if showsMorning, previousMorningPain != restingPainAM, let nudge = morningNudge() {
                 loadNudge = nudge
             } else {
@@ -293,12 +272,6 @@ struct DailyCheckInEditor: View {
             sessions: sessions.map(\.snapshot),
             calendar: calendar
         )
-    }
-}
-
-private extension String {
-    var nilIfEmpty: String? {
-        isEmpty ? nil : self
     }
 }
 

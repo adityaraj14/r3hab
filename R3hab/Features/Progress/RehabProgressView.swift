@@ -87,7 +87,7 @@ struct RehabProgressView: View {
     }
 
     private var primaryLoad: PrimaryLoadOption {
-        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable(for: settings?.protocolTrack ?? .knee)
+        settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
     }
 
     var body: some View {
@@ -96,7 +96,7 @@ struct RehabProgressView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if !hasAnyData {
                         ContentUnavailableView(
-                            "Your first votes are still coming",
+                            "No pain logs or sessions yet",
                             systemImage: "chart.line.uptrend.xyaxis",
                             description: Text(progressEmptyDescription)
                         )
@@ -133,7 +133,6 @@ struct RehabProgressView: View {
                                 // Must match the picker. Capping at 7 kept 28-day on a 7-day domain.
                                 visibleDays: range.rawValue,
                                 loadTitle: primaryLoad.chartLoadTitle,
-                                showsLoad: primaryLoad.plotsLoad,
                                 emptyDescription: progressEmptyDescription
                             )
                             .id(range.rawValue)
@@ -150,18 +149,13 @@ struct RehabProgressView: View {
                 }
                 .padding()
             }
+            .appCanvas()
             .navigationTitle("Progress")
         }
     }
 
     private var progressEmptyDescription: String {
-        if primaryLoad.track == .ql {
-            if primaryLoad.plotsLoad {
-                return "Log morning or evening pain or a \(primaryLoad.title.lowercased()) session. Progress is the diary filling in — not a grade."
-            }
-            return "Log morning or evening pain or a walk. Walking stays time-based — no fake lbs."
-        }
-        return "Log morning or evening pain or a seated-extension session. Progress is the diary filling in — not a grade."
+        "Your first morning pain log or first \(primaryLoad.title.lowercased()) session starts the charts. Progress is the diary filling in — not a grade."
     }
 
     private var heroRow: some View {
@@ -176,7 +170,7 @@ struct RehabProgressView: View {
         VStack(spacing: 4) {
             Text(value)
                 .font(.title3.monospacedDigit().weight(.bold))
-                .foregroundStyle(Color.accentColor)
+                .foregroundStyle(.primary)
             Text(title)
                 .font(.caption2)
                 .foregroundStyle(.secondary)

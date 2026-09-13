@@ -36,30 +36,15 @@ struct SettingsStubView: View {
                     }
                     Text(PhaseGuideCopy.summary(
                         for: settings.currentPhase,
-                        primaryLift: settings.primaryLoad.title,
-                        track: settings.protocolTrack
+                        primaryLift: settings.primaryLoad.title
                     ))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Injury") {
-                    Picker("Injury", selection: injuryBinding(settings)) {
-                        ForEach(InjuryCatalog.selectable) { injury in
-                            Text(injury.title).tag(injury.id)
-                        }
-                    }
-                    Text(settings.selectedInjury.subtitle)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
-
-                Section(settings.protocolTrack == .ql ? "Primary work" : "Primary lift") {
-                    Picker(
-                        settings.protocolTrack == .ql ? "Primary work" : "Primary lift",
-                        selection: primaryLoadBinding(settings)
-                    ) {
-                        ForEach(PrimaryLoadCatalog.options(for: settings.protocolTrack)) { option in
+                Section("Primary lift") {
+                    Picker("Primary lift", selection: primaryLoadBinding(settings)) {
+                        ForEach(PrimaryLoadCatalog.all) { option in
                             Text(option.title).tag(option.id)
                         }
                     }
@@ -136,6 +121,7 @@ struct SettingsStubView: View {
             }
 
             Section("Protocol") {
+                LabeledContent("Injury", value: InjuryCatalog.patellarTendinopathy.title)
                 NavigationLink {
                     PhaseGuideView()
                 } label: {
@@ -161,25 +147,25 @@ struct SettingsStubView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // TEMPORARY: remove this section before App Store / public release.
+            // TEMPORARY: one Debug section. "Simulate onboarding" ships in TestFlight
+            // until onboarding UX sign-off; "Seed sample week" is DEBUG-only.
+            // Remove the whole section before App Store / public release.
             Section {
                 Button("Simulate onboarding") {
                     simulateOnboarding()
                 }
-            } header: {
-                Text("Debug (temporary)")
-            } footer: {
-                Text("Re-opens first-launch onboarding without wiping logs. Remove before App Store.")
-            }
-
-            #if DEBUG
-            Section("Debug") {
+                #if DEBUG
                 Button("Seed sample week") {
                     seedSampleWeek()
                 }
+                #endif
+            } header: {
+                Text("Debug")
+            } footer: {
+                Text("Simulate onboarding re-opens first launch without wiping logs. Temporary — removed before App Store.")
             }
-            #endif
         }
+        .appListCanvas()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
         .task {
@@ -258,28 +244,11 @@ struct SettingsStubView: View {
         )
     }
 
-    private func injuryBinding(_ settings: AppSettings) -> Binding<String> {
-        Binding(
-            get: { InjuryCatalog.normalizedID(settings.selectedInjuryID) },
-            set: { newValue in
-                settings.selectedInjury = InjuryCatalog.definition(for: newValue)
-                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
-                    settings.primaryLoadID,
-                    track: settings.protocolTrack
-                )
-                try? modelContext.save()
-            }
-        )
-    }
-
     private func primaryLoadBinding(_ settings: AppSettings) -> Binding<String> {
         Binding(
-            get: { PrimaryLoadCatalog.normalizedID(settings.primaryLoadID, track: settings.protocolTrack) },
+            get: { PrimaryLoadCatalog.normalizedID(settings.primaryLoadID) },
             set: { newValue in
-                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(
-                    newValue,
-                    track: settings.protocolTrack
-                )
+                settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(newValue)
                 try? modelContext.save()
             }
         )
@@ -456,8 +425,7 @@ struct SettingsStubView: View {
                 sets: 3,
                 reps: 1,
                 loadLbs: 15,
-                holdSeconds: 30,
-                loadRegion: .knee
+                holdSeconds: 30
             )
             modelContext.insert(s)
         }

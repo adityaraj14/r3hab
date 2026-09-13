@@ -70,7 +70,7 @@ struct SessionEditor: View {
                     }
                 }
             } header: {
-                Text(activeTemplate.name)
+                Text(InjuryCatalog.protocolName)
             }
 
             Section("Exercise") {
@@ -79,16 +79,14 @@ struct SessionEditor: View {
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack {
-                        ForEach(presetsForPhase) { preset in
-                            Button(preset.label) { applyPreset(preset) }
-                                .buttonStyle(.bordered)
-                                .controlSize(.small)
-                                .tint(selectedPresetId == preset.id ? .accentColor : nil)
-                        }
+                // Wrapping chips: a horizontal ScrollView inside a Form row
+                // measured content at row width and clipped the overflow.
+                FlowLayout(spacing: 8, lineSpacing: 8) {
+                    ForEach(presetsForPhase) { preset in
+                        exercisePill(preset, selected: selectedPresetId == preset.id)
                     }
                 }
+                .padding(.vertical, 2)
                 Picker("Type", selection: $sessionType) {
                     ForEach(SessionType.allCases) { t in
                         Text(t.title).tag(t)
@@ -100,6 +98,30 @@ struct SessionEditor: View {
                 }
                 TextField("What I did", text: $whatIDid, axis: .vertical)
                     .lineLimit(2...4)
+            }
+
+            // Pain sits directly under Exercise so the required score is on
+            // screen before the sets push it below the fold. Save still blocks
+            // with the banner if it is empty.
+            Section {
+                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
+                if isEditing {
+                    PainScoreControl(
+                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
+                        value: $painAfter,
+                        allowsClear: !afterPainAlreadyLogged
+                    )
+                }
+            } header: {
+                Text("Pain")
+            } footer: {
+                if isEditing {
+                    Text(afterPainAlreadyLogged
+                         ? "Both sides share this score and one 24h resolve."
+                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
+                } else {
+                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
+                }
             }
 
             if showsResistance {
@@ -123,27 +145,6 @@ struct SessionEditor: View {
 
             if !isEditing, let last = lastSessionContext {
                 lastSessionSection(last)
-            }
-
-            Section {
-                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
-                if isEditing {
-                    PainScoreControl(
-                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
-                        value: $painAfter,
-                        allowsClear: !afterPainAlreadyLogged
-                    )
-                }
-            } header: {
-                Text("Pain")
-            } footer: {
-                if isEditing {
-                    Text(afterPainAlreadyLogged
-                         ? "Both sides share this score and one 24h resolve."
-                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
-                } else {
-                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
-                }
             }
 
             Section("Notes") {
@@ -170,7 +171,9 @@ struct SessionEditor: View {
                 Button("Cancel") { dismiss() }
             }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }.fontWeight(.semibold)
+                Button("Save") { save() }
+                    .fontWeight(.semibold)
+                    .tint(AppTheme.gold)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -193,12 +196,38 @@ struct SessionEditor: View {
         .onChange(of: painDuring) { _, _ in clearError() }
         .onChange(of: painAfter) { _, _ in clearError() }
         .sheet(isPresented: $showResolve) {
-            if let existing { Resolve24hSheet(session: existing) }
+            if let existing { Resolve24hSheet(sessionId: existing.id) }
         }
     }
 
     private var afterPainAlreadyLogged: Bool {
         existing?.hasLoggedPainAfter == true
+    }
+
+    /// Selected: solid white fill, ink text. Unselected: faint fill, white text.
+    /// Tinted `.bordered` read like a disabled gold button.
+    private func exercisePill(_ preset: SessionPreset, selected: Bool) -> some View {
+        Button {
+            applyPreset(preset)
+        } label: {
+            // fixedSize keeps the label at its ideal width; FlowLayout wraps
+            // chips to the next line instead of squeezing or clipping them.
+            Text(preset.label)
+                .font(.subheadline.weight(selected ? .bold : .medium))
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .foregroundStyle(selected ? AppTheme.ink : Color.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 8)
+                .background(
+                    Capsule().fill(selected ? Color.white : AppTheme.quietFill)
+                )
+                .overlay(
+                    Capsule().strokeBorder(selected ? Color.white : AppTheme.quietStroke, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
     private var lastSessionContext: TrainingSession? {
@@ -227,15 +256,7 @@ struct SessionEditor: View {
     }
 
     private var primaryLoadID: String {
-        settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID(for: protocolTrack)
-    }
-
-    private var protocolTrack: RehabTrackID {
-        settings?.protocolTrack ?? .knee
-    }
-
-    private var activeTemplate: RehabTemplate {
-        RehabTemplate.template(for: protocolTrack)
+        settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID
     }
 
     private var lateralityBinding: Binding<SetLaterality> {
@@ -256,9 +277,9 @@ struct SessionEditor: View {
 
     private var workSetsSection: some View {
         Section {
-            Picker(protocolTrack == .ql ? "Sides" : "Legs", selection: lateralityBinding) {
+            Picker("Legs", selection: lateralityBinding) {
                 ForEach(SetLaterality.allCases) { mode in
-                    Text(mode.title(for: protocolTrack)).tag(mode)
+                    Text(mode.title).tag(mode)
                 }
             }
             .pickerStyle(.segmented)
@@ -303,7 +324,7 @@ struct SessionEditor: View {
             Text(usesIsoHolds ? "Working holds" : "Working sets")
         } footer: {
             Text(laterality == .bilateral
-                 ? "One load for both \(protocolTrack.lateralityNoun). Switch to \(SetLaterality.unilateral.title(for: protocolTrack)) if left and right use different loads. One 24h resolve for the session."
+                 ? "One load for both knees. Switch to \(SetLaterality.unilateral.title) if left and right use different loads. One 24h resolve for the session."
                  : "Each set logs left and right separately so loads can differ. One 24h resolve for the session.")
         }
     }
@@ -343,7 +364,7 @@ struct SessionEditor: View {
         } header: {
             Text("Warm-up (isometric holds)")
         } footer: {
-            Text("Reps = holds · time per hold · load (lbs). Same load for both \(protocolTrack.lateralityNoun).")
+            Text("Reps = holds · time per hold · load (lbs). Same load for both knees.")
         }
     }
 
@@ -464,11 +485,14 @@ struct SessionEditor: View {
         )
     }
 
+    /// Caption carries the label; the field placeholder is a neutral dash so
+    /// "Load (lbs)" is not printed twice per column.
     private func labeledIntField(title: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            TextField(title, text: value)
+            TextField("—", text: value)
                 .keyboardType(.numberPad)
+                .accessibilityLabel(title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -476,8 +500,9 @@ struct SessionEditor: View {
     private func labeledLoadField(title: String, value: Binding<String>) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title).font(.caption).foregroundStyle(.secondary)
-            TextField(title, text: value)
+            TextField("—", text: value)
                 .keyboardType(.decimalPad)
+                .accessibilityLabel(title)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -636,7 +661,6 @@ struct SessionEditor: View {
             existing.painDuring = painDuring
             existing.painAfter = storedAfter
             existing.notes = notes
-            applyTrack(to: existing)
             existing.setResistanceSets(allSets)
             existing.updatedAt = Date()
             do {
@@ -659,8 +683,6 @@ struct SessionEditor: View {
             whatIDid: text,
             painDuring: painDuring,
             painAfter: storedAfter,
-            loadRegion: resolvedLoadRegion,
-            track: resolvedTrack,
             resistanceSets: allSets,
             calendar: calendar
         )
@@ -688,34 +710,6 @@ struct SessionEditor: View {
         } catch {
             presentError(error.localizedDescription)
         }
-    }
-
-    private var selectedPreset: SessionPreset? {
-        guard let selectedPresetId else { return nil }
-        return SessionPreset.all.first { $0.id == selectedPresetId }
-    }
-
-    private var resolvedTrack: RehabTrackID {
-        if let preset = selectedPreset, !preset.tracks.contains(protocolTrack) {
-            return preset.tracks.first ?? protocolTrack
-        }
-        return protocolTrack
-    }
-
-    private var resolvedLoadRegion: LoadRegion {
-        selectedPreset?.loadRegion ?? resolvedTrack.loadRegion
-    }
-
-    private func applyTrack(to session: TrainingSession) {
-        if isEditing {
-            if let preset = selectedPreset, !preset.tracks.contains(session.track) {
-                session.track = preset.tracks.first ?? session.track
-                session.loadRegion = preset.loadRegion
-            }
-            return
-        }
-        session.track = resolvedTrack
-        session.loadRegion = resolvedLoadRegion
     }
 
     private func resolvedPainAfter() -> Int {

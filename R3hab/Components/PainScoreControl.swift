@@ -31,9 +31,9 @@ struct PainScoreControl: View {
                             .padding(.vertical, 10)
                             .background(
                                 RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                    .fill(value == n ? Color.accentColor : Color(.secondarySystemFill))
+                                    .fill(value == n ? Color.white : Color(.secondarySystemFill))
                             )
-                            .foregroundStyle(value == n ? Color.white : Color.primary)
+                            .foregroundStyle(value == n ? AppTheme.ink : Color.primary)
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("\(title) \(n)")
@@ -76,7 +76,7 @@ struct FormErrorBanner: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(Color.accentColor)
+                .fill(Color.orange)
         )
         .padding(.horizontal)
         .padding(.top, 6)

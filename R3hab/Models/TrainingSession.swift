@@ -22,9 +22,10 @@ final class TrainingSession {
     var warmupLoadLbs: Double?
     /// JSON array of `ResistanceSet` — preferred source for multi-set logging.
     var resistanceSetsJSON: String?
-    /// Stored region string. Unknown leftover values (e.g. `lowerBack`) map to knee.
+    /// Unused since the QL track was removed (all loads are knee). Kept for
+    /// SwiftData schema stability and backup round-trips.
     var loadRegionRaw: String?
-    /// Stored track string (`knee` or `ql`). Unknown leftover values map to knee.
+    /// Unused since the QL track was removed. Kept for schema stability.
     var trackRaw: String?
     var response24hRaw: String
     var decisionRaw: String?
@@ -58,32 +59,6 @@ final class TrainingSession {
         set { decisionRaw = newValue?.rawValue }
     }
 
-    var loadRegion: LoadRegion? {
-        get {
-            guard let loadRegionRaw else { return nil }
-            return LoadRegion(rawValue: loadRegionRaw)
-        }
-        set { loadRegionRaw = newValue?.rawValue }
-    }
-
-    var track: RehabTrackID {
-        get { RehabTrackID(rawValue: trackRaw ?? "") ?? .knee }
-        set {
-            trackRaw = newValue.rawValue
-            loadRegionRaw = newValue.loadRegion.rawValue
-        }
-    }
-
-    /// Region used for Progress load series. Legacy rows with load but no region map to knee.
-    var effectiveLoadRegion: LoadRegion? {
-        if let loadRegion { return loadRegion }
-        if let trackRaw, let stored = RehabTrackID(rawValue: trackRaw) {
-            return stored.loadRegion
-        }
-        if hasResistanceLog { return .knee }
-        return nil
-    }
-
     init(
         id: UUID = UUID(),
         date: Date,
@@ -99,8 +74,6 @@ final class TrainingSession {
         warmupReps: Int? = nil,
         warmupHoldSeconds: Int? = nil,
         warmupLoadLbs: Double? = nil,
-        loadRegion: LoadRegion? = nil,
-        track: RehabTrackID? = nil,
         resistanceSets: [ResistanceSet] = [],
         calendar: Calendar = .current
     ) {
@@ -118,9 +91,8 @@ final class TrainingSession {
         self.warmupReps = warmupReps
         self.warmupHoldSeconds = warmupHoldSeconds
         self.warmupLoadLbs = warmupLoadLbs
-        let resolvedTrack = track ?? .knee
-        self.trackRaw = resolvedTrack.rawValue
-        self.loadRegionRaw = (loadRegion ?? resolvedTrack.loadRegion).rawValue
+        self.trackRaw = "knee"
+        self.loadRegionRaw = "knee"
         self.response24hRaw = Response24h.pending.rawValue
         self.decisionRaw = nil
         self.notes = ""
