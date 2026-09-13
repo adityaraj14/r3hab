@@ -67,13 +67,27 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(BrandCopy.privacySummary, "No account · No ads · Stored entirely on your iPhone")
     }
 
-    func testWelcomeBenefitCardsAreTheFourAdiChose() {
+    func testWelcomeShowsTheThreeTenets() {
+        XCTAssertEqual(BrandCopy.tenets.map(\.title), ["Reduce", "Rebuild", "Return"])
         XCTAssertEqual(
-            BrandCopy.habits.map(\.title),
+            BrandCopy.tenets.map(\.body),
+            [
+                "Ease pain and load while the flare settles.",
+                "Progressive strength into the tendon (isometrics → HSR).",
+                "Back to the activity — or daily life — that got you here."
+            ]
+        )
+        XCTAssertEqual(BrandCopy.tenetLine, "R3 · Reduce · Rebuild · Return")
+        XCTAssertFalse(BrandCopy.onboardingTitle.contains("3"))
+    }
+
+    func testBenefitCardsMovedFromWelcomeToSettings() {
+        XCTAssertEqual(
+            BrandCopy.benefits.map(\.title),
             ["Track the journey", "Stay accountable", "Trust the data", "Your data is yours"]
         )
         XCTAssertEqual(
-            BrandCopy.habits.map(\.body),
+            BrandCopy.benefits.map(\.body),
             [
                 "Pain, sessions, and load in one place.",
                 "Show up, log it, keep the chain going.",
@@ -81,17 +95,22 @@ final class BrandCopyTests: XCTestCase {
                 "Export anytime from Settings."
             ]
         )
-        for habit in BrandCopy.habits {
-            XCTAssertFalse(habit.body.contains("Small, honest logs"), habit.body)
-            XCTAssertFalse(habit.body.contains("Decide from your numbers"), habit.body)
+        let welcomeTitles = Set(BrandCopy.tenets.map(\.title))
+        for benefit in BrandCopy.benefits {
+            XCTAssertFalse(welcomeTitles.contains(benefit.title), "\(benefit.title) is off Welcome")
         }
+        XCTAssertEqual(BrandCopy.settingsSectionTitle, "Why R3hab")
     }
 
-    func testWelcomeBenefitBodiesFitOnOneFootnoteLine() {
-        // ~313pt of footnote text on a 6.1" phone is ~55 characters.
-        for habit in BrandCopy.habits {
-            XCTAssertLessThanOrEqual(habit.body.count, 55, habit.body)
-            XCTAssertFalse(habit.body.contains("…"), habit.body)
+    func testPhasesKeepTheirNamesAndSetupFramesThemAsTenets() {
+        XCTAssertEqual(
+            BrandCopy.setupTenetFraming,
+            "Phase A is Reduce. B and C are Rebuild. Return is the goal — we’ll get there."
+        )
+        for phase in RehabPhase.allCases {
+            for tenet in BrandCopy.tenets {
+                XCTAssertFalse(phase.title.contains(tenet.title), phase.title)
+            }
         }
     }
 

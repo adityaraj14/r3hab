@@ -128,14 +128,20 @@ struct SettingsStubView: View {
                     Label("Phase guide", systemImage: "list.bullet.clipboard")
                 }
                 LabeledContent("Revision", value: PhaseGuideCopy.protocolRevision)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(BrandCopy.settingsSectionTitle)
-                        .font(.subheadline.weight(.semibold))
-                    Text(BrandCopy.settingsBlurb)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
+            }
+
+            Section {
+                Text(BrandCopy.settingsBlurb)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                ForEach(BrandCopy.benefits) { benefit in
+                    BrandCardRow(card: benefit)
+                        .padding(.vertical, 2)
                 }
-                .padding(.vertical, 2)
+            } header: {
+                Text(BrandCopy.settingsSectionTitle)
+            } footer: {
+                Text(BrandCopy.tenetLine)
             }
 
             Section("Disclaimer") {

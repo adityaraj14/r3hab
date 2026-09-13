@@ -140,8 +140,8 @@ struct OnboardingView: View {
             privacyLine
 
             VStack(spacing: 8) {
-                ForEach(BrandCopy.habits) { habit in
-                    habitRow(habit)
+                ForEach(BrandCopy.tenets) { tenet in
+                    BrandCardRow(card: tenet)
                 }
             }
         }
@@ -226,6 +226,10 @@ struct OnboardingView: View {
                 Text(BrandCopy.setupLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(BrandCopy.setupTenetFraming)
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.quiet)
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 10) {
@@ -401,36 +405,6 @@ struct OnboardingView: View {
         .accessibilityLabel("Private. No account, no ads, stored entirely on your iPhone.")
     }
 
-    private func habitRow(_ habit: BrandHabit) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: habitIcon(habit))
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-                .frame(width: 20)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(habit.title)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.white)
-                Text(habit.body)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .combine)
-    }
-
-    private func habitIcon(_ habit: BrandHabit) -> String {
-        switch habit.title {
-        case "Track the journey": return "chart.line.uptrend.xyaxis"
-        case "Stay accountable": return "checkmark.circle"
-        case "Trust the data": return "scalemass"
-        default: return "square.and.arrow.up"
-        }
-    }
-
     /// Selectable card. `subtitle` is nil for label-only choices (lifts).
     private func choiceCard(
         title: String,
@@ -514,6 +488,32 @@ struct OnboardingView: View {
 
         Haptics.success()
         onFinished()
+    }
+}
+
+/// Icon, title, one-line body. Tenets on Welcome, benefits in Settings.
+struct BrandCardRow: View {
+    var card: BrandCard
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: card.icon)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+                .frame(width: 20)
+                .padding(.top, 2)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(card.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.white)
+                Text(card.body)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
     }
 }
 
