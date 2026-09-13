@@ -1,6 +1,8 @@
 import Foundation
 
-struct BrandHabit: Identifiable, Hashable, Sendable {
+/// Icon + title + one-line body. Tenets on Welcome, benefits in Settings.
+struct BrandCard: Identifiable, Hashable, Sendable {
+    var icon: String
     var title: String
     var body: String
     var id: String { title }
@@ -28,24 +30,23 @@ enum BrandCopy {
     R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — let the numbers guide you.
     """
 
-    static let habits: [BrandHabit] = [
-        // Bodies stay one line at footnote size on a 6.1" phone (~55 characters)
-        // — the Welcome page is laid out to fit, not scroll.
-        BrandHabit(
-            title: "Track the journey",
-            body: "Pain, sessions, and load in one place."
+    /// The 3 in R3. Welcome shows these three cards and nothing else.
+    static let tenetLine = "R3 · Reduce · Rebuild · Return"
+    static let tenets: [BrandCard] = [
+        BrandCard(
+            icon: "arrow.down.circle",
+            title: "Reduce",
+            body: "Ease pain and load while the flare settles."
         ),
-        BrandHabit(
-            title: "Stay accountable",
-            body: "Show up, log it, keep the chain going."
+        BrandCard(
+            icon: "figure.strengthtraining.traditional",
+            title: "Rebuild",
+            body: "Progressive strength into the tendon (isometrics → HSR)."
         ),
-        BrandHabit(
-            title: "Trust the data",
-            body: "Decisions backed by real data from your hard work."
-        ),
-        BrandHabit(
-            title: "Your data is yours",
-            body: "Export anytime from Settings."
+        BrandCard(
+            icon: "figure.run",
+            title: "Return",
+            body: "Back to the activity — or daily life — that got you here."
         )
     ]
 
@@ -66,6 +67,8 @@ enum BrandCopy {
     static let setupEyebrow = "Setup"
     static let setupTitle = "Where are you right now?"
     static let setupLead = "Pick your starting point. Change it anytime in Settings."
+    /// Ties the phase cards to the tenets without renaming the phases.
+    static let setupTenetFraming = "Phase A is Reduce. B and C are Rebuild. Return is the goal — we’ll get there."
 
     /// The three selectable starting points. Title + explanation live on the
     /// card itself; there is no separate phase explainer.
@@ -101,6 +104,28 @@ enum BrandCopy {
     static let settingsBlurb = """
     R3hab is your personal rehab assistant. Logs stay on this iPhone — private, no ads. When the week feels messy, look at the numbers instead of re-arguing the plan.
     """
+    static let benefits: [BrandCard] = [
+        BrandCard(
+            icon: "chart.line.uptrend.xyaxis",
+            title: "Track the journey",
+            body: "Pain, sessions, and load in one place."
+        ),
+        BrandCard(
+            icon: "checkmark.circle",
+            title: "Stay accountable",
+            body: "Show up, log it, keep the chain going."
+        ),
+        BrandCard(
+            icon: "scalemass",
+            title: "Trust the data",
+            body: "Decisions backed by real data from your hard work."
+        ),
+        BrandCard(
+            icon: "square.and.arrow.up",
+            title: "Your data is yours",
+            body: "Export anytime from Settings."
+        )
+    ]
 
     /// The one-line privacy card on Welcome.
     static let privacySummary = "No account · No ads · Stored entirely on your iPhone"
