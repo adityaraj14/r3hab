@@ -758,7 +758,7 @@ F9 detail: Given check-ins only for D-3,D-2,D-1 (yesterday) all AM=2 and one ≥
 
 Banner copy examples:
 
-- Progress: `Stable mornings: 2/3 · Need a ~6k+ step day in the streak`
+- Progress: `Stable mornings: 2/3`
 - Steps gap: `3/3 stable · steps still low — aim ~6–8k when pain stays ≤2`
 - Ready: `Exit criteria looking good — switch to Phase B when ready (Settings)`
 
