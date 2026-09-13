@@ -151,8 +151,7 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// One injury ships today. The knee card is the only selectable one; a
-    /// second, visibly disabled card says more tracks are coming.
+    /// One injury ships today: the knee card, always selected.
     private var injuryPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -161,10 +160,7 @@ struct OnboardingView: View {
                     title: BrandCopy.injuryTitle
                 )
 
-                VStack(spacing: 10) {
-                    injuryCard(InjuryCatalog.patellarTendinopathy)
-                    comingSoonCard
-                }
+                injuryCard(InjuryCatalog.patellarTendinopathy)
 
                 Text(BrandCopy.injuryDiagnosisNote)
                     .font(.footnote)
@@ -344,38 +340,6 @@ struct OnboardingView: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isSelected)
-    }
-
-    /// Not a Button on purpose: dashed hairline, dimmed text, no chevron or
-    /// radio, so it cannot be mistaken for a second selectable injury.
-    private var comingSoonCard: some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: "hourglass")
-                .font(.title3)
-                .foregroundStyle(Color.white.opacity(0.3))
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(BrandCopy.injuryComingSoonTitle)
-                    .font(.headline)
-                    .foregroundStyle(Color.white.opacity(0.45))
-                Text(BrandCopy.injuryComingSoonBody)
-                    .font(.footnote)
-                    .foregroundStyle(Color.white.opacity(0.35))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(
-                    Color.white.opacity(0.12),
-                    style: StrokeStyle(lineWidth: 1, dash: [5, 4])
-                )
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(BrandCopy.injuryComingSoonTitle). \(BrandCopy.injuryComingSoonBody)")
     }
 
     /// One-line privacy card.

@@ -50,11 +50,8 @@ enum BrandCopy {
         )
     ]
 
-    /// One injury ships today, so this page confirms and teases more — it is
-    /// not a picker.
+    /// One injury ships today, so this page confirms — it is not a picker.
     static let injuryTitle = "Confirm your injury"
-    static let injuryComingSoonTitle = "More injuries coming soon"
-    static let injuryComingSoonBody = "We’ll add more tracks over time."
 
     static let injuryDiagnosisNote = """
     Getting a professional diagnosis first is recommended. R3hab helps you track and decide from your own numbers — it isn’t a diagnosis, and we don’t take on the risk if you move ahead without care.
