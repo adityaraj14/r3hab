@@ -86,6 +86,12 @@ final class TodayPlannerTests: XCTestCase {
         XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, evening: true, restDay: true)), .allDone)
     }
 
+    func testAllDoneLineIsAdisSignOff() {
+        XCTAssertEqual(TodayPlanner.allDoneLine, "All done for the day. Let’s pick it back up tomorrow.")
+        XCTAssertFalse(TodayPlanner.allDoneLine.contains("Judge it by tomorrow morning"))
+        XCTAssertFalse(TodayPlanner.allDoneLine.contains("Morning, load, and evening"))
+    }
+
     func testOptionalLiftOnARestDayFallsThroughLikeAnyTrainedDay() {
         XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, trained: true, restDay: true)), .logEvening)
         XCTAssertEqual(

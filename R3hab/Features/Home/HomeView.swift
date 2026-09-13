@@ -229,8 +229,8 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
-    /// Eyebrow + the one action. No explanatory line under it; the sheets
-    /// carry their own context.
+    /// Eyebrow + the one action. No explanatory line under a prompt; the
+    /// sheets carry their own context. Only the done state keeps a status line.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(nextUpEyebrow(for: action).uppercased())
@@ -294,7 +294,11 @@ struct HomeView: View {
                 Label("Today is logged", systemImage: "checkmark.seal.fill")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
-                    .padding(.vertical, 6)
+                    .padding(.top, 6)
+                Text(TodayPlanner.allDoneLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding(16)
