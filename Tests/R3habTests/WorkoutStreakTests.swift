@@ -241,16 +241,30 @@ final class WorkoutStreakTests: XCTestCase {
         )
     }
 
-    func testOneMissCopyMatchesTheNotification() {
-        let copy = WorkoutStreak.copy(for: .oneMiss)
-        XCTAssertEqual(copy?.title, "Don’t miss twice")
+    func testStreakStatusIsOneShortWordPerMissState() {
+        XCTAssertNil(WorkoutStreak.statusLabel(for: .none))
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .approaching), "Due today")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), "Don’t miss twice")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), WorkoutStreak.missTwiceTitle)
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .twoMiss), "Missed twice")
+
+        // The card is count + status only; the explanatory bodies stay in the
+        // notification and the quote cycle, never on the streak card.
+        for miss in [WorkoutStreak.MissState.approaching, .oneMiss, .twoMiss] {
+            let label = WorkoutStreak.statusLabel(for: miss) ?? ""
+            XCTAssertLessThanOrEqual(label.count, 20, label)
+            XCTAssertFalse(label.contains("every other day"), label)
+            XCTAssertFalse(label.contains("chain"), label)
+            XCTAssertNotEqual(label, WorkoutStreak.missTwiceBody)
+        }
+    }
+
+    func testNotificationBodyIsUnchangedByTheCardCleanup() {
+        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Don’t miss twice")
         XCTAssertEqual(
-            copy?.body,
+            WorkoutStreak.missTwiceBody,
             "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
         )
-        XCTAssertEqual(copy?.title, WorkoutStreak.missTwiceTitle)
-        XCTAssertEqual(copy?.body, WorkoutStreak.missTwiceBody)
-        XCTAssertNil(WorkoutStreak.copy(for: .none))
     }
 
     func testQuoteRotatesByDayAndTap() {

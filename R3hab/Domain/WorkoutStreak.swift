@@ -114,27 +114,22 @@ enum WorkoutStreak {
         return .twoMiss
     }
 
-    /// Same message family as the missed-session notification.
+    /// Missed-session notification copy. The Today card only borrows the title.
     static let missTwiceTitle = "Don’t miss twice"
     static let missTwiceBody =
         "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
 
-    static func copy(for miss: MissState) -> (title: String, body: String)? {
+    /// One short status line for the streak card. No explanation, no slogan.
+    static func statusLabel(for miss: MissState) -> String? {
         switch miss {
         case .none:
             return nil
         case .approaching:
-            return (
-                "Due today",
-                "A hard session any time today keeps the chain. One loaded session still counts."
-            )
+            return "Due today"
         case .oneMiss:
-            return (missTwiceTitle, missTwiceBody)
+            return missTwiceTitle
         case .twoMiss:
-            return (
-                "Start the chain again",
-                "Two due days slipped. One hard session today is the reset — process over a perfect record."
-            )
+            return "Missed twice"
         }
     }
 

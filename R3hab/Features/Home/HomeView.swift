@@ -1,7 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today — one bright next action, three quiet entry rows, one streak line.
+/// Today — one quiet streak count, one bright next action, three quiet entry
+/// rows, one line from the quote cycle at the bottom.
 /// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
@@ -113,6 +114,7 @@ struct HomeView: View {
                         phaseALine(phaseAStatus)
                     }
                     entryRows
+                    quoteFooter
                 }
                 .padding(.horizontal)
                 .padding(.top, 4)
@@ -422,45 +424,26 @@ struct HomeView: View {
 
     // MARK: Streak — first thing on the screen
 
-    /// The chain lives at the top of Today. The flame is the one place gold
-    /// appears outside the next-up button, and only while the chain is live.
+    /// Count plus at most one short status word. The flame is the one place
+    /// gold appears outside the next-up button, and only while the chain is live.
     private var streakCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                    .font(.title)
-                    .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WorkoutStreak.sessionWord(streak.current))
-                        .font(.title.monospacedDigit().weight(.bold))
-                        .foregroundStyle(.primary)
-                    Text(streakSubtitle)
+        HStack(alignment: .center, spacing: 14) {
+            Image(systemName: streak.current > 0 ? "flame.fill" : "link")
+                .font(.title)
+                .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(WorkoutStreak.sessionWord(streak.current))
+                    .font(.title.monospacedDigit().weight(.bold))
+                    .foregroundStyle(.primary)
+                if let streakStatus {
+                    Text(streakStatus)
                         .font(.caption)
                         .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
                         .lineLimit(1)
                 }
-                Spacer(minLength: 0)
             }
-            if let miss = WorkoutStreak.copy(for: streak.miss) {
-                Text(miss.body)
-                    .font(.footnote)
-                    .foregroundStyle(.primary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            Button {
-                quoteTapOffset += 1
-                Haptics.light()
-            } label: {
-                Text(quoteLine)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(3)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint("Tap for another line")
+            Spacer(minLength: 0)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -473,12 +456,44 @@ struct HomeView: View {
     }
 
     private var streakAccessibilityLabel: String {
-        var parts = ["Hard session chain \(WorkoutStreak.sessionWord(streak.current))", streakSubtitle]
-        if let miss = WorkoutStreak.copy(for: streak.miss) {
-            parts.append(miss.body)
+        let count = "Streak \(WorkoutStreak.sessionWord(streak.current))"
+        guard let streakStatus else { return count }
+        return "\(count). \(streakStatus)"
+    }
+
+    /// Miss state first (due today / missed), then the off day, then the
+    /// record when it beats the live count. Nothing when there is nothing to say.
+    private var streakStatus: String? {
+        if let status = WorkoutStreak.statusLabel(for: streak.miss) {
+            return status
         }
-        parts.append(todayQuote.text)
-        return parts.joined(separator: ". ")
+        if streak.isRestDay {
+            return "Rest day"
+        }
+        if streak.best > streak.current {
+            return "Best \(WorkoutStreak.sessionWord(streak.best))"
+        }
+        return nil
+    }
+
+    // MARK: Quote cycle — last thing on the screen
+
+    private var quoteFooter: some View {
+        Button {
+            quoteTapOffset += 1
+            Haptics.light()
+        } label: {
+            Text(quoteLine)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.leading)
+                .lineLimit(3)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 4)
+        .accessibilityLabel(todayQuote.text)
+        .accessibilityHint("Tap for another line")
     }
 
     private var quoteLine: String {
@@ -486,22 +501,6 @@ struct HomeView: View {
             return "“\(todayQuote.text)” — \(attribution)"
         }
         return todayQuote.text
-    }
-
-    private var streakSubtitle: String {
-        if let miss = WorkoutStreak.copy(for: streak.miss) {
-            return miss.title
-        }
-        if streak.best == 0 {
-            return "Hard-session chain · every other day"
-        }
-        if streak.current == 0, streak.lastChain > 0 {
-            return "Last chain \(WorkoutStreak.sessionWord(streak.lastChain)) · best \(streak.best)"
-        }
-        if streak.best > streak.current {
-            return "Best \(WorkoutStreak.sessionWord(streak.best))"
-        }
-        return "Keep the chain · every other day"
     }
 
     // MARK: Actions
