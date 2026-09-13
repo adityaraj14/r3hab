@@ -2,8 +2,10 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Scene-level shell. `@Query` lives in `RootTabContent` so we can remount it
-/// after a real background — stale SwiftData instances crash on resume.
+/// Scene-level shell. Suspension handling lives here: flush SwiftData before
+/// the app is frozen and invalidate in-flight syncs. The tab tree is never
+/// remounted on resume — sheets hold value state and resolve rows by id, so an
+/// editor left open across a background keeps its draft.
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
@@ -12,16 +14,12 @@ struct RootView: View {
     /// Bumped when leaving the foreground so in-flight notification Tasks stop
     /// touching SwiftData after an `await` (models can be invalid on resume).
     @State private var syncGeneration = 0
-    /// True after a real background (not Control Center). Used to remount @Query.
-    @State private var didLeaveToBackground = false
-    @State private var queryEpoch = 0
 
     var body: some View {
         RootTabContent(
             showOnboarding: $showOnboarding,
             syncGeneration: syncGeneration
         )
-        .id(queryEpoch)
         .onChange(of: scenePhase) { _, phase in
             handleScenePhase(phase)
         }
@@ -31,20 +29,11 @@ struct RootView: View {
         switch phase {
         case .active:
             modelContext.autosaveEnabled = true
-            if didLeaveToBackground {
-                didLeaveToBackground = false
-                // Fresh @Query after long suspend — stale model instances crash
-                // when SwiftUI re-renders the tab shell on resume.
-                queryEpoch &+= 1
-            }
         case .inactive, .background:
             // Invalidate in-flight syncs *before* they resume across an await
             // and touch models that SwiftData may have dropped.
             syncGeneration &+= 1
             modelContext.autosaveEnabled = false
-            if phase == .background {
-                didLeaveToBackground = true
-            }
             flushSwiftDataForSuspension()
         @unknown default:
             break
@@ -64,7 +53,7 @@ struct RootView: View {
     }
 }
 
-/// Tab shell + queries. Recreated via `.id` on `RootView` after background.
+/// Tab shell + queries.
 private struct RootTabContent: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
@@ -134,8 +123,7 @@ private struct RootTabContent: View {
             Task { await syncNotifications(generation: generation) }
         }
         .onChange(of: scenePhase) { _, phase in
-            // Returning from iOS Settings after granting permission, or any
-            // resume that did not remount this view.
+            // Returning from iOS Settings after granting permission.
             if phase == .active {
                 let generation = syncGeneration
                 Task { await syncNotifications(generation: generation) }
