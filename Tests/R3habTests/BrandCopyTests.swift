@@ -57,7 +57,7 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(BrandCopy.onboardingTitle, "Your personal rehab assistant.")
         XCTAssertEqual(
             BrandCopy.onboardingLead,
-            "R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — the numbers settle it."
+            "R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — let the numbers guide you."
         )
         XCTAssertEqual(BrandCopy.privacySummary, "No account · No ads · Stored entirely on your iPhone")
     }
@@ -71,7 +71,7 @@ final class BrandCopyTests: XCTestCase {
             BrandCopy.habits.map(\.body),
             [
                 "Pain, sessions, and load in one place.",
-                "Quick logs that keep the habit alive.",
+                "Show up, log it, keep the chain going.",
                 "Decisions backed by real data from your hard work.",
                 "Export anytime from Settings."
             ]

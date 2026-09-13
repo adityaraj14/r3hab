@@ -25,7 +25,7 @@ enum BrandCopy {
     static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — the numbers settle it.
+    R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — let the numbers guide you.
     """
 
     static let habits: [BrandHabit] = [
@@ -37,7 +37,7 @@ enum BrandCopy {
         ),
         BrandHabit(
             title: "Stay accountable",
-            body: "Quick logs that keep the habit alive."
+            body: "Show up, log it, keep the chain going."
         ),
         BrandHabit(
             title: "Trust the data",
