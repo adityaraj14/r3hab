@@ -386,11 +386,11 @@ enum Phase: String, Codable, CaseIterable, Identifiable {
     case aFlareDeload = "A"
     case bIsometrics = "B"
     case cHeavySlowResistance = "C"
-    case dEnergyStorage = "D"
-    case eReturnToSport = "E"
+    // D (energy storage) and E (return to sport) were removed in build 22+.
+    // Stored "D" / "E" raws remap to C on read (settings rewrite on launch).
 
     var displayName: String { /* full Notion labels */ }
-    var sortOrder: Int { /* 0...4 */ }
+    var sortOrder: Int { /* 0...2 */ }
 
     var earlierPhases: [Phase] {
         Phase.allCases.filter { $0.sortOrder < sortOrder }
@@ -701,8 +701,8 @@ Unresolved older sessions never count as predecessors. Resolve order of Pending 
 | **A** Flare de-load | Relative rest; easy bike if pain-free; no heavy/impact/tennis | ≤2/10 for **3** consecutive stable AM days **and** ≥1 of those days steps ≥6k | Less walking | Medical if red flags |
 | **B** Isometrics | Wall sit / Spanish / ext hold; 3–4×20–30s → 45s; 2×/wk; ≥48h | 4–6+ clean sessions; last 3 24h OK; steps ~7.5k; resting low | Shorter/easier holds | → A |
 | **C** HSR | Leg press + extension 2–3×/wk, tempo 3-1-3; months | ~6–8+ wks capacity↑, stable life | −20–30% load / drop set | → B or A |
-| **D** Energy storage | Low-volume landings/plyos; keep some C | Weeks clean 24h on speed + stable HSR | −50% plyo volume | → C or A |
-| **E** Return to sport | Tennis ladder; keep 1–2 HSR days | Desired tennis, stable 24h | Fewer tennis minutes | → C or A |
+
+Phases D (energy storage) and E (return to sport) are out of the app for now — only A–C ship, matching onboarding. Existing rows or settings that still carry `D` / `E` read as C.
 
 ### Phase A exit evaluator (v1 primary, AND only)
 

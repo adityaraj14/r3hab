@@ -116,17 +116,17 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(phaseC.map(\.id), ["ke", "lp"])
     }
 
-    func testKneeLoadersStayAvailableInLaterPhases() {
-        // With bike/custom gone, D/E rows still lead with the primary lift.
-        let phaseD = SessionPreset.forPhase(.dEnergyStorage, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
-        XCTAssertEqual(phaseD.first?.id, "ke")
-        XCTAssertTrue(phaseD.contains { $0.id == "lp" })
-        XCTAssertTrue(phaseD.contains { $0.id == "land" })
-
-        let phaseE = SessionPreset.forPhase(.eReturnToSport, primaryLoadID: PrimaryLoadCatalog.legPress.id)
-        XCTAssertEqual(phaseE.first?.id, "lp")
-        XCTAssertTrue(phaseE.contains { $0.id == "ke" })
-        XCTAssertFalse(phaseE.contains { $0.id == "bike" || $0.id == "custom" })
+    func testPresetsAreTheFourKneeLoadersOnly() {
+        // Phases D/E are gone, and with them the landings / tennis chips.
+        XCTAssertEqual(SessionPreset.all.map(\.id), ["ext", "ke", "lp-iso", "lp"])
+        XCTAssertFalse(SessionPreset.all.contains { $0.id == "land" || $0.id == "hit" || $0.id == "match" })
+        for preset in SessionPreset.all {
+            XCTAssertNotNil(preset.phases, preset.id)
+            XCTAssertTrue(preset.phases?.isSubset(of: Set(RehabPhase.allCases)) == true, preset.id)
+        }
+        for phase in RehabPhase.allCases {
+            XCTAssertEqual(SessionPreset.forPhase(phase).count, 2, "\(phase) shows both loaders")
+        }
     }
 
     func testChartLoadTitleKeepsSeatedExtensionLabel() {

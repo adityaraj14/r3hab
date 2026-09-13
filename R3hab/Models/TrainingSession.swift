@@ -37,7 +37,7 @@ final class TrainingSession {
     var updatedAt: Date
 
     var phase: RehabPhase {
-        get { RehabPhase(rawValue: phaseRaw) ?? .aFlareDeLoad }
+        get { RehabPhase.normalized(rawValue: phaseRaw) }
         set { phaseRaw = newValue.rawValue }
     }
 

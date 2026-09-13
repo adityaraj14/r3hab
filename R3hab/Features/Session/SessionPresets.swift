@@ -33,8 +33,8 @@ struct SessionPreset: Identifiable, Hashable {
     }
 
     /// Knee chips are the two loaders (Adi, PR #18): no "Easy bike", no
-    /// "Custom…". Phase D/E add the protocol’s landings / tennis presets.
-    /// Other session types stay reachable via the Type picker and free text.
+    /// "Custom…". Iso variants in A/B, HSR variants in C. Other session
+    /// types stay reachable via the Type picker and free text.
     static let all: [SessionPreset] = [
         .init(
             id: "ext",
@@ -51,7 +51,7 @@ struct SessionPreset: Identifiable, Hashable {
             label: "Seated extension",
             sessionType: .hsrStrength,
             whatIDid: "Seated extension",
-            phases: [.cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
+            phases: [.cHeavySlowResistance],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
@@ -71,14 +71,11 @@ struct SessionPreset: Identifiable, Hashable {
             label: "Leg press",
             sessionType: .hsrStrength,
             whatIDid: "Leg press",
-            phases: [.cHeavySlowResistance, .dEnergyStorage, .eReturnToSport],
+            phases: [.cHeavySlowResistance],
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
-        ),
-        .init(id: "land", label: "Low landings", sessionType: .energyStorage, whatIDid: "Low-volume landings / small jumps", phases: [.dEnergyStorage]),
-        .init(id: "hit", label: "Short hitting", sessionType: .tennisSport, whatIDid: "Tennis: short hitting session", phases: [.eReturnToSport]),
-        .init(id: "match", label: "Match play", sessionType: .tennisSport, whatIDid: "Tennis: match play", phases: [.eReturnToSport])
+        )
     ]
 
     static let seatedExtensionIsometricId = "ext"
@@ -92,14 +89,14 @@ struct SessionPreset: Identifiable, Hashable {
         preferred(for: phase, primaryLoadID: PrimaryLoadCatalog.defaultID)
     }
 
-    /// Iso variant in A/B; HSR variant from C onward. Unknown ids fall back to seated extension.
+    /// Iso variant in A/B; HSR variant in C. Unknown ids fall back to seated extension.
     static func preferred(for phase: RehabPhase, primaryLoadID: String) -> SessionPreset {
         let option = PrimaryLoadCatalog.option(for: primaryLoadID)
         let presetID: String
         switch phase {
         case .aFlareDeLoad, .bIsometrics:
             presetID = option.isometricPresetID
-        case .cHeavySlowResistance, .dEnergyStorage, .eReturnToSport:
+        case .cHeavySlowResistance:
             presetID = option.hsrPresetID
         }
         return all.first { $0.id == presetID }

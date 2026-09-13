@@ -44,7 +44,26 @@ final class SettingsSeedPolicyTests: XCTestCase {
         )
         let alreadyLoad = !SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension")
         let alreadyInjury = !SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy")
-        XCTAssertTrue(alreadyMigrated && alreadyLoad && alreadyInjury)
+        let alreadyPhase = RehabPhase.allCases.allSatisfy { !SettingsSeedPolicy.shouldRemapPhase($0.rawValue) }
+        XCTAssertTrue(alreadyMigrated && alreadyLoad && alreadyInjury && alreadyPhase)
+    }
+
+    func testRemovedPhasesDAndERemapToC() {
+        XCTAssertEqual(RehabPhase.allCases, [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance])
+        XCTAssertEqual(RehabPhase.allCases.map(\.rawValue), ["A", "B", "C"])
+
+        for retired in ["D", "E"] {
+            XCTAssertTrue(SettingsSeedPolicy.shouldRemapPhase(retired), retired)
+            XCTAssertEqual(RehabPhase.normalized(rawValue: retired), .cHeavySlowResistance, retired)
+            XCTAssertEqual(RehabPhase.normalizedRawValue(retired), "C", retired)
+        }
+        for live in ["A", "B", "C"] {
+            XCTAssertFalse(SettingsSeedPolicy.shouldRemapPhase(live), live)
+            XCTAssertEqual(RehabPhase.normalizedRawValue(live), live)
+        }
+        // Garbage still lands on the fresh-install default, as before.
+        XCTAssertEqual(RehabPhase.normalized(rawValue: ""), .aFlareDeLoad)
+        XCTAssertEqual(RehabPhase.normalized(rawValue: "Z"), .aFlareDeLoad)
     }
 
     func testRetiredInjuryIDsNeedAWrite() {
