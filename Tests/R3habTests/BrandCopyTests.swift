@@ -27,6 +27,15 @@ final class BrandCopyTests: XCTestCase {
         )
     }
 
+    func testTendonsAdaptSlowlyLineIsRetired() {
+        for quote in MotivationalQuotes.all {
+            XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("Tendons adapt slowly"), quote.text)
+            XCTAssertFalse(quote.text.localizedCaseInsensitiveContains("So do habits"), quote.text)
+        }
+        XCTAssertEqual(MotivationalQuotes.all[5].text, "Every other day. Keep showing up.")
+        XCTAssertNil(MotivationalQuotes.all[5].attribution)
+    }
+
     func testAdisAtomicHabitsLineIsInSlotTen() {
         let last = MotivationalQuotes.all[9]
         XCTAssertEqual(last.text, "The greatest threat to success is not failure but boredom. Keep going.")

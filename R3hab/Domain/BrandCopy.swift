@@ -114,7 +114,7 @@ enum MotivationalQuotes {
         MotivationalQuote(text: "Fall down seven times, stand up eight.", attribution: "Japanese proverb"),
         MotivationalQuote(text: "Consistency beats intensity.", attribution: nil),
         MotivationalQuote(text: "Load a little. Judge it tomorrow morning.", attribution: nil),
-        MotivationalQuote(text: "Tendons adapt slowly. So do habits.", attribution: nil),
+        MotivationalQuote(text: "Every other day. Keep showing up.", attribution: nil),
         MotivationalQuote(text: "Trust the numbers, not the mood.", attribution: nil),
         MotivationalQuote(text: "One session at a time.", attribution: nil),
         MotivationalQuote(text: "A flat week is still a week logged.", attribution: nil),
