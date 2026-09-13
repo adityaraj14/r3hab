@@ -105,9 +105,9 @@ struct HistoryView: View {
                 get: { editSessionId != nil },
                 set: { if !$0 { editSessionId = nil } }
             )) {
-                if let id = editSessionId, let s = sessions.first(where: { $0.id == id }) {
+                if let id = editSessionId {
                     NavigationStack {
-                        SessionEditor(existing: s)
+                        SessionEditor(existingId: id)
                     }
                     .preferredColorScheme(.dark)
                 }

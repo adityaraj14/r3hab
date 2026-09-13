@@ -3,6 +3,10 @@ import SwiftData
 import UIKit
 
 /// Log or edit a training session (primary lift iso/HSR + 24h loop).
+///
+/// Holds only value state. When editing, the row is resolved by id through
+/// `@Query` on every touch, so a sheet left open across a long background never
+/// writes through a retained `TrainingSession`.
 struct SessionEditor: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -10,7 +14,8 @@ struct SessionEditor: View {
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
 
     var targetDate: Date = Date()
-    var existing: TrainingSession?
+    /// Session to edit; `nil` logs a new one.
+    var existingId: UUID?
     var focus: SessionLogFocus = .general
 
     @State private var phase: RehabPhase = .aFlareDeLoad
@@ -33,7 +38,11 @@ struct SessionEditor: View {
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
-    private var isEditing: Bool { existing != nil }
+    private var isEditing: Bool { existingId != nil }
+    private var existing: TrainingSession? {
+        guard let existingId else { return nil }
+        return sessions.first { $0.id == existingId }
+    }
 
     private var showsResistance: Bool {
         if let id = selectedPresetId,
@@ -196,7 +205,7 @@ struct SessionEditor: View {
         .onChange(of: painDuring) { _, _ in clearError() }
         .onChange(of: painAfter) { _, _ in clearError() }
         .sheet(isPresented: $showResolve) {
-            if let existing { Resolve24hSheet(sessionId: existing.id) }
+            if let existingId { Resolve24hSheet(sessionId: existingId) }
         }
     }
 
@@ -231,7 +240,7 @@ struct SessionEditor: View {
     }
 
     private var lastSessionContext: TrainingSession? {
-        sessions.first { $0.id != existing?.id }
+        sessions.first { $0.id != existingId }
     }
 
     private func lastSessionSection(_ last: TrainingSession) -> some View {
@@ -654,7 +663,12 @@ struct SessionEditor: View {
         let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
         let storedAfter = resolvedPainAfter()
 
-        if let existing {
+        if isEditing {
+            // Re-resolve from the current context at write time.
+            guard let existing else {
+                presentError("This session is no longer available.")
+                return
+            }
             existing.phase = phase
             existing.sessionType = sessionType
             existing.whatIDid = text
