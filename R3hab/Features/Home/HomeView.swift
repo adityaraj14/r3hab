@@ -5,6 +5,7 @@ import SwiftData
 /// Sized to fit a single viewport: History holds the past, Today adds to it.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(AppRouter.self) private var router
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
@@ -16,6 +17,9 @@ struct HomeView: View {
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    /// Set on background so the next `.active` can drop any sheet that was
+    /// mid-flight over models SwiftData may have invalidated.
+    @State private var didLeaveToBackground = false
     @AppStorage("quoteTapOffset") private var quoteTapOffset = 0
 
     private var calendar: Calendar { .current }
@@ -140,16 +144,16 @@ struct HomeView: View {
                 get: { resolveTargetId != nil },
                 set: { if !$0 { resolveTargetId = nil } }
             )) {
-                if let id = resolveTargetId, let session = sessions.first(where: { $0.id == id }) {
-                    Resolve24hSheet(session: session)
+                if let id = resolveTargetId {
+                    Resolve24hSheet(sessionId: id)
                 }
             }
             .sheet(isPresented: Binding(
                 get: { afterPainTargetId != nil },
                 set: { if !$0 { afterPainTargetId = nil } }
             )) {
-                if let id = afterPainTargetId, let session = sessions.first(where: { $0.id == id }) {
-                    AfterPainSheet(session: session)
+                if let id = afterPainTargetId {
+                    AfterPainSheet(sessionId: id)
                 }
             }
             .confirmationDialog(
@@ -171,7 +175,39 @@ struct HomeView: View {
             .task {
                 _ = try? AppBootstrap.ensureSettings(context: modelContext)
             }
+            .onChange(of: scenePhase) { _, phase in
+                handleScenePhase(phase)
+            }
         }
+    }
+
+    // MARK: Resume belt
+
+    /// After a real background, close any editor that was open. The editors
+    /// themselves no longer retain models, but a sheet that was half-filled
+    /// over a suspend is not worth trusting — the user re-opens from Today.
+    private func handleScenePhase(_ phase: ScenePhase) {
+        switch phase {
+        case .background:
+            didLeaveToBackground = true
+        case .active:
+            guard didLeaveToBackground else { return }
+            didLeaveToBackground = false
+            dismissTransientSheets()
+        case .inactive:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func dismissTransientSheets() {
+        showAM = false
+        showPM = false
+        showSession = false
+        resolveTargetId = nil
+        afterPainTargetId = nil
+        restConfirmId = nil
     }
 
     // MARK: Header

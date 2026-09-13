@@ -23,6 +23,8 @@
 		33852A11DB0D407691655972 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
 		C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStreak.swift; sourceTree = "<group>"; };
 		B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPlanner.swift; sourceTree = "<group>"; };
+		D4E6F8A0B2C35D7E9F1A2B3C /* DailyCheckInValues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInValues.swift; sourceTree = "<group>"; };
+		E5F7A9B1C3D46E8FA0B2C3D4 /* DailyCheckInStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInStore.swift; sourceTree = "<group>"; };
 		180612735F20428098D5B5BE /* DailyCheckInEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DailyCheckInEditor.swift; sourceTree = "<group>"; };
 		6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
@@ -70,6 +72,8 @@
 		D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33852A11DB0D407691655972 /* SessionSpacing.swift */; };
 		D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */; };
 		B7D2F8C4E6A35B7C9D1E2F3B /* TodayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */; };
+		D4E6F8A0B2C35D7E9F1A2B3D /* DailyCheckInValues.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E6F8A0B2C35D7E9F1A2B3C /* DailyCheckInValues.swift */; };
+		E5F7A9B1C3D46E8FA0B2C3D5 /* DailyCheckInStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5F7A9B1C3D46E8FA0B2C3D4 /* DailyCheckInStore.swift */; };
 		61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 180612735F20428098D5B5BE /* DailyCheckInEditor.swift */; };
 		EFA9689B052E428DBB732F54 /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C4EDF31EEAE49F9BB0314A3 /* HistoryView.swift */; };
 		0890AECE74E7472E9F4B7A22 /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2EDC9FFC5B9492FB1D49E12 /* HomeView.swift */; };
@@ -194,6 +198,7 @@
 				0B121FF0B2974BD1A2491DB9 /* LogStore.swift */,
 				ED9AA8F2B526430384E46937 /* ExportImport.swift */,
 				4670AE5C99794407900C0055 /* ModelMapping.swift */,
+				E5F7A9B1C3D46E8FA0B2C3D4 /* DailyCheckInStore.swift */,
 			);
 			path = Data;
 			sourceTree = "<group>";
@@ -211,6 +216,7 @@
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 				C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */,
 				B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */,
+				D4E6F8A0B2C35D7E9F1A2B3C /* DailyCheckInValues.swift */,
 			);
 			path = Domain;
 			sourceTree = "<group>";
@@ -305,6 +311,8 @@
 				D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */,
 				D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */,
 				B7D2F8C4E6A35B7C9D1E2F3B /* TodayPlanner.swift in Sources */,
+				D4E6F8A0B2C35D7E9F1A2B3D /* DailyCheckInValues.swift in Sources */,
+				E5F7A9B1C3D46E8FA0B2C3D5 /* DailyCheckInStore.swift in Sources */,
 				A9C1E7B3D5F24A6B8C0D1E30 /* AppTheme.swift in Sources */,
 				C3D5E7F9A1B24C6D8E0F1A2C /* FlowLayout.swift in Sources */,
 				61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */,

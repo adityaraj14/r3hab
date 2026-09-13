@@ -147,50 +147,22 @@ private struct RootTabContent: View {
                 router.requestNotificationSync()
             }
         }
+        // Deep-link sheets take ids only; each sheet resolves (or reports
+        // "Session not found") against the current context itself.
         .sheet(isPresented: Binding(
             get: { router.resolveSessionId != nil },
             set: { if !$0 { router.resolveSessionId = nil } }
         )) {
-            if let id = router.resolveSessionId,
-               let session = sessions.first(where: { $0.id == id }) {
-                Resolve24hSheet(session: session)
-            } else {
-                NavigationStack {
-                    ContentUnavailableView(
-                        "Session not found",
-                        systemImage: "questionmark.circle",
-                        description: Text("This 24h item may have been deleted or already resolved.")
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { router.resolveSessionId = nil }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
+            if let id = router.resolveSessionId {
+                Resolve24hSheet(sessionId: id)
             }
         }
         .sheet(isPresented: Binding(
             get: { router.afterPainSessionId != nil },
             set: { if !$0 { router.afterPainSessionId = nil } }
         )) {
-            if let id = router.afterPainSessionId,
-               let session = sessions.first(where: { $0.id == id }) {
-                AfterPainSheet(session: session)
-            } else {
-                NavigationStack {
-                    ContentUnavailableView(
-                        "Session not found",
-                        systemImage: "questionmark.circle",
-                        description: Text("This workout may have been deleted.")
-                    )
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Close") { router.afterPainSessionId = nil }
-                        }
-                    }
-                }
-                .preferredColorScheme(.dark)
+            if let id = router.afterPainSessionId {
+                AfterPainSheet(sessionId: id)
             }
         }
     }

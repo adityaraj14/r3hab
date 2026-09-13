@@ -196,7 +196,7 @@ struct SessionEditor: View {
         .onChange(of: painDuring) { _, _ in clearError() }
         .onChange(of: painAfter) { _, _ in clearError() }
         .sheet(isPresented: $showResolve) {
-            if let existing { Resolve24hSheet(session: existing) }
+            if let existing { Resolve24hSheet(sessionId: existing.id) }
         }
     }
 

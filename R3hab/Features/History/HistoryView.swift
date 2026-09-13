@@ -116,16 +116,16 @@ struct HistoryView: View {
                 get: { resolveSessionId != nil },
                 set: { if !$0 { resolveSessionId = nil } }
             )) {
-                if let id = resolveSessionId, let s = sessions.first(where: { $0.id == id }) {
-                    Resolve24hSheet(session: s)
+                if let id = resolveSessionId {
+                    Resolve24hSheet(sessionId: id)
                 }
             }
             .sheet(isPresented: Binding(
                 get: { afterPainSessionId != nil },
                 set: { if !$0 { afterPainSessionId = nil } }
             )) {
-                if let id = afterPainSessionId, let s = sessions.first(where: { $0.id == id }) {
-                    AfterPainSheet(session: s)
+                if let id = afterPainSessionId {
+                    AfterPainSheet(sessionId: id)
                 }
             }
             .sheet(isPresented: $showBackdate) {

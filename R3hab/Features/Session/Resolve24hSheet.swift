@@ -2,13 +2,17 @@ import SwiftUI
 import SwiftData
 
 /// Resolve pending 24h response + decision (PR-08).
+///
+/// Takes a session id, not a model: the row is looked up through `@Query` on
+/// the current context every time it is touched, so a sheet left open across a
+/// long background never writes through an invalidated `TrainingSession`.
 struct Resolve24hSheet: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.date, order: .reverse) private var allSessions: [TrainingSession]
 
-    let session: TrainingSession
+    let sessionId: UUID
 
     @State private var response: Response24h = .same
     @State private var decision: SessionDecision = .stay
@@ -18,103 +22,122 @@ struct Resolve24hSheet: View {
     @State private var loadNudge: LoadNudge?
 
     private var settings: AppSettings? { settingsList.first }
+    private var session: TrainingSession? { allSessions.first { $0.id == sessionId } }
 
     var body: some View {
         NavigationStack {
-            Form {
-                Section("Session") {
-                    Text(session.displayTitle)
-                        .font(.body.weight(.semibold))
-                    if let resistance = session.resistanceSummary {
-                        Text(resistance)
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+            if let session {
+                form(for: session)
+            } else {
+                ContentUnavailableView(
+                    "Session not found",
+                    systemImage: "questionmark.circle",
+                    description: Text("This 24h item may have been deleted or already resolved.")
+                )
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") { dismiss() }
                     }
-                    LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
-                    LabeledContent("During / after", value: "\(session.painDuring) → \(session.displayPainAfter)")
-                }
-
-                Section("How is the tendon next day?") {
-                    Picker("24h response", selection: $response) {
-                        Text("Better").tag(Response24h.better)
-                        Text("Same").tag(Response24h.same)
-                        Text("Worse").tag(Response24h.worse)
-                    }
-                    .pickerStyle(.segmented)
-                    .onChange(of: response) { _, new in
-                        applySuggestion(for: new)
-                    }
-                }
-
-                Section("Decision") {
-                    Picker("Decision", selection: $decision) {
-                        ForEach([SessionDecision.stay, .softCut, .progress, .hardDrop], id: \.self) { d in
-                            Text(d.title).tag(d)
-                        }
-                    }
-                    .onChange(of: decision) { _, new in
-                        guidance = DecisionSuggester.guidance(for: new)
-                    }
-
-                    if let guidance {
-                        Text(guidance)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-
-                Section {
-                    Button("Close as Rest (no 24h judgment)") {
-                        closeAsRest()
-                    }
-                    .foregroundStyle(.orange)
-                } footer: {
-                    Text("Use Rest if you want to clear this pending without Better/Same/Worse.")
-                }
-
-                if let errorMessage {
-                    Text(errorMessage).foregroundStyle(.red).font(.footnote)
-                }
-            }
-            .navigationTitle("Resolve 24h")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") { saveClinical() }
-                        .fontWeight(.semibold)
-                }
-            }
-            .onAppear {
-                if session.response24h == .pending {
-                    applySuggestion(for: .same)
-                    response = .same
-                } else {
-                    response = session.response24h == .notApplicable ? .same : session.response24h
-                    decision = session.decision ?? .stay
-                    guidance = DecisionSuggester.guidance(for: decision)
-                }
-            }
-            .loadNudgeAlert($loadNudge) {
-                loadNudge = nil
-                dismiss()
-            }
-            .sheet(isPresented: $showHardDropPhase) {
-                HardDropPhaseSheet(current: settings?.currentPhase ?? .aFlareDeLoad) { chosen in
-                    if let chosen, let settings {
-                        settings.currentPhase = chosen
-                        // phaseChangedAt updated by setter
-                    }
-                    finalizeSave()
                 }
             }
         }
         .preferredColorScheme(.dark)
     }
 
+    private func form(for session: TrainingSession) -> some View {
+        Form {
+            Section("Session") {
+                Text(session.displayTitle)
+                    .font(.body.weight(.semibold))
+                if let resistance = session.resistanceSummary {
+                    Text(resistance)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
+                LabeledContent("During / after", value: "\(session.painDuring) → \(session.displayPainAfter)")
+            }
+
+            Section("How is the tendon next day?") {
+                Picker("24h response", selection: $response) {
+                    Text("Better").tag(Response24h.better)
+                    Text("Same").tag(Response24h.same)
+                    Text("Worse").tag(Response24h.worse)
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: response) { _, new in
+                    applySuggestion(for: new)
+                }
+            }
+
+            Section("Decision") {
+                Picker("Decision", selection: $decision) {
+                    ForEach([SessionDecision.stay, .softCut, .progress, .hardDrop], id: \.self) { d in
+                        Text(d.title).tag(d)
+                    }
+                }
+                .onChange(of: decision) { _, new in
+                    guidance = DecisionSuggester.guidance(for: new)
+                }
+
+                if let guidance {
+                    Text(guidance)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            Section {
+                Button("Close as Rest (no 24h judgment)") {
+                    closeAsRest()
+                }
+                .foregroundStyle(.orange)
+            } footer: {
+                Text("Use Rest if you want to clear this pending without Better/Same/Worse.")
+            }
+
+            if let errorMessage {
+                Text(errorMessage).foregroundStyle(.red).font(.footnote)
+            }
+        }
+        .navigationTitle("Resolve 24h")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Cancel") { dismiss() }
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Save") { saveClinical() }
+                    .fontWeight(.semibold)
+            }
+        }
+        .onAppear {
+            if session.response24h == .pending {
+                applySuggestion(for: .same)
+                response = .same
+            } else {
+                response = session.response24h == .notApplicable ? .same : session.response24h
+                decision = session.decision ?? .stay
+                guidance = DecisionSuggester.guidance(for: decision)
+            }
+        }
+        .loadNudgeAlert($loadNudge) {
+            loadNudge = nil
+            dismiss()
+        }
+        .sheet(isPresented: $showHardDropPhase) {
+            HardDropPhaseSheet(current: settings?.currentPhase ?? .aFlareDeLoad) { chosen in
+                if let chosen, let settings {
+                    settings.currentPhase = chosen
+                    // phaseChangedAt updated by setter
+                }
+                finalizeSave()
+            }
+        }
+    }
+
     private func applySuggestion(for response: Response24h) {
+        guard let session else { return }
         let priors = DecisionSuggester.priorsForSuggestion(
             current: session.snapshot,
             all: allSessions.map(\.snapshot)
@@ -141,6 +164,11 @@ struct Resolve24hSheet: View {
     }
 
     private func finalizeSave() {
+        // Re-resolve from the current context at write time.
+        guard let session else {
+            errorMessage = "This session is no longer available."
+            return
+        }
         let previousResponse = session.response24h
         session.response24h = response
         session.decision = decision
@@ -168,6 +196,10 @@ struct Resolve24hSheet: View {
     }
 
     private func closeAsRest() {
+        guard let session else {
+            dismiss()
+            return
+        }
         session.response24h = .notApplicable
         session.decision = .rest
         session.resolvedAt = Date()
