@@ -137,7 +137,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     func testBrandCopyHasJourneyCardsNotNameStory() {
         XCTAssertEqual(
             BrandCopy.habits.map(\.title),
-            ["Track the journey", "Stay accountable", "Trust the data"]
+            ["Track the journey", "Stay accountable", "Trust the data", "Your data is yours"]
         )
         XCTAssertEqual(BrandCopy.onboardingEyebrow, "Welcome")
         XCTAssertEqual(BrandCopy.onboardingTitle, "Your personal rehab assistant.")
@@ -145,7 +145,6 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertFalse(BrandCopy.settingsBlurb.contains("Identity"))
         XCTAssertFalse(BrandCopy.settingsBlurb.contains("Process"))
         XCTAssertFalse(BrandCopy.settingsBlurb.contains("written with a 3"))
-        XCTAssertEqual(BrandCopy.privacyPoints.map(\.title), ["Completely private", "No ads", "On-device only"])
     }
 
 }

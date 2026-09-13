@@ -50,19 +50,98 @@ final class BrandCopyTests: XCTestCase {
         }
     }
 
-    func testWelcomeBenefitBodiesFitOnOneFootnoteLine() {
-        // ~313pt of footnote text on a 6.1" phone is ~55 characters; keep headroom.
-        for habit in BrandCopy.habits {
-            XCTAssertLessThanOrEqual(habit.body.count, 46, habit.body)
-            XCTAssertFalse(habit.body.contains("…"), habit.body)
-        }
+    // MARK: Onboarding pack (Adi, Sep 2026)
+
+    func testWelcomeCopyIsAdis() {
+        XCTAssertEqual(BrandCopy.onboardingEyebrow, "Welcome")
+        XCTAssertEqual(BrandCopy.onboardingTitle, "Your personal rehab assistant.")
+        XCTAssertEqual(
+            BrandCopy.onboardingLead,
+            "R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — the numbers settle it."
+        )
+        XCTAssertEqual(BrandCopy.privacySummary, "No account · No ads · Stored entirely on your iPhone")
+    }
+
+    func testWelcomeBenefitCardsAreTheFourAdiChose() {
+        XCTAssertEqual(
+            BrandCopy.habits.map(\.title),
+            ["Track the journey", "Stay accountable", "Trust the data", "Your data is yours"]
+        )
         XCTAssertEqual(
             BrandCopy.habits.map(\.body),
             [
                 "Pain, sessions, and load in one place.",
-                "Small, honest logs — enough to keep going.",
-                "Decide from your numbers, not the messy week."
+                "Quick logs that keep the habit alive.",
+                "Decisions backed by real data from your hard work.",
+                "Export anytime from Settings."
             ]
+        )
+        for habit in BrandCopy.habits {
+            XCTAssertFalse(habit.body.contains("Small, honest logs"), habit.body)
+            XCTAssertFalse(habit.body.contains("Decide from your numbers"), habit.body)
+        }
+    }
+
+    func testWelcomeBenefitBodiesFitOnOneFootnoteLine() {
+        // ~313pt of footnote text on a 6.1" phone is ~55 characters.
+        for habit in BrandCopy.habits {
+            XCTAssertLessThanOrEqual(habit.body.count, 55, habit.body)
+            XCTAssertFalse(habit.body.contains("…"), habit.body)
+        }
+    }
+
+    func testInjuryPageIsAPickerWithOneEnabledCardAndAComingSoonCard() {
+        XCTAssertEqual(BrandCopy.injuryTitle, "Select your injury")
+        XCTAssertEqual(
+            InjuryCatalog.patellarTendinopathy.title,
+            "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
+        )
+        XCTAssertEqual(BrandCopy.injuryComingSoonTitle, "More injuries coming soon")
+        XCTAssertEqual(BrandCopy.injuryComingSoonBody, "We’ll add more tracks over time.")
+        XCTAssertTrue(BrandCopy.injuryDiagnosisNote.contains("professional diagnosis"))
+    }
+
+    func testPrimaryLiftCopyIsLabelsOnly() {
+        XCTAssertEqual(BrandCopy.primaryLiftTitle, "Your primary lift")
+        XCTAssertEqual(
+            BrandCopy.primaryLiftLead,
+            "Choose the exercise you’ll use during the resistance training phase."
+        )
+        XCTAssertEqual(BrandCopy.primaryLiftTip, "Prefer something convenient and easy to stick with.")
+        XCTAssertEqual(PrimaryLoadCatalog.all.map(\.title), ["Seated extension", "Leg press"])
+    }
+
+    func testSetupPageHasThreeSelectablePhasesWithInlineExplanations() {
+        XCTAssertEqual(BrandCopy.setupTitle, "Where are you right now?")
+        XCTAssertEqual(BrandCopy.setupLead, "Pick your starting point. Change it anytime in Settings.")
+        XCTAssertEqual(
+            BrandCopy.setupPhaseChoices.map(\.phase),
+            [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance]
+        )
+        XCTAssertEqual(
+            BrandCopy.setupPhaseChoices.map(\.title),
+            ["Phase A · Flare", "Phase B · Isometrics", "Phase C · Heavy slow resistance"]
+        )
+        XCTAssertEqual(
+            BrandCopy.setupPhaseChoices.map(\.body),
+            [
+                "Ease off until resting pain settles.",
+                "Easy, consistent isometric work with your primary lift.",
+                "The main phase for rebuilding the tendon."
+            ]
+        )
+        XCTAssertEqual(OnboardingCompletion.initialPhase, .aFlareDeLoad)
+    }
+
+    func testDisclaimerTitleAndNotificationsCopy() {
+        XCTAssertEqual(BrandCopy.disclaimerEyebrow, "Before you start")
+        XCTAssertEqual(BrandCopy.disclaimerTitle, "Not a clinic.")
+        XCTAssertFalse(BrandCopy.disclaimerTitle.contains("intentional"))
+        XCTAssertTrue(BrandCopy.disclaimerBody.contains("not a medical device"))
+        XCTAssertEqual(BrandCopy.notificationsToggleTitle, "Notifications")
+        XCTAssertEqual(
+            BrandCopy.notificationsToggleBody,
+            "Reminders for check-ins, workout sessions, and the occasional dose of motivation."
         )
     }
 
@@ -84,23 +163,28 @@ final class BrandCopyTests: XCTestCase {
     }
 
     func testPrivacyCopyNeverNamesTheStorageFramework() {
-        let all = [BrandCopy.privacyTitle, BrandCopy.privacyLead, BrandCopy.privacySummary, BrandCopy.settingsBlurb]
-            + BrandCopy.privacyPoints.flatMap { [$0.title, $0.body] }
-        for line in all {
+        for line in [BrandCopy.privacySummary, BrandCopy.settingsBlurb] {
             XCTAssertFalse(line.contains("SwiftData"), line)
             XCTAssertFalse(line.contains("SQLite"), line)
         }
-        XCTAssertTrue(BrandCopy.privacyPoints[2].body.contains("this iPhone"))
+        XCTAssertTrue(BrandCopy.privacySummary.contains("your iPhone"))
     }
 
     func testInjuryCopyIsKneeOnlyPlainLanguage() {
-        XCTAssertEqual(BrandCopy.injuryTitle, "Built for the patellar tendon.")
-        XCTAssertFalse(BrandCopy.injuryTitle.localizedCaseInsensitiveContains("loading"))
-        for line in [BrandCopy.injuryTitle, BrandCopy.injuryLead, BrandCopy.injuryDiagnosisNote, BrandCopy.primaryLiftLead] {
+        let lines = [
+            BrandCopy.injuryTitle,
+            InjuryCatalog.patellarTendinopathy.title,
+            BrandCopy.injuryComingSoonTitle,
+            BrandCopy.injuryComingSoonBody,
+            BrandCopy.injuryDiagnosisNote,
+            BrandCopy.primaryLiftLead,
+            BrandCopy.primaryLiftTip
+        ]
+        for line in lines {
             XCTAssertFalse(line.contains("QL"), line)
             XCTAssertFalse(line.localizedCaseInsensitiveContains("hip thrust"), line)
             XCTAssertFalse(line.localizedCaseInsensitiveContains("side bend"), line)
         }
-        XCTAssertTrue(BrandCopy.injuryLead.contains("patellar tendinopathy"))
+        XCTAssertTrue(InjuryCatalog.patellarTendinopathy.title.contains("patellar tendinopathy"))
     }
 }

@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// First-launch onboarding. Five dark screens: welcome, injury (knee-only
-/// confirmation), primary lift, setup, disclaimer.
+/// confirmation), primary lift, setup, disclaimer + notifications.
 struct OnboardingView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var settingsList: [AppSettings]
@@ -10,7 +10,7 @@ struct OnboardingView: View {
     var onFinished: () -> Void
 
     @State private var page = 0
-    @State private var phase: RehabPhase = OnboardingCompletion.defaultPhase
+    @State private var phase: RehabPhase = OnboardingCompletion.initialPhase
     @State private var selectedPrimaryLoadID = PrimaryLoadCatalog.defaultID
     @State private var wantNotifications = false
     @State private var isBusy = false
@@ -83,9 +83,6 @@ struct OnboardingView: View {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
             if let settings {
                 selectedPrimaryLoadID = PrimaryLoadCatalog.normalizedID(settings.primaryLoadID)
-                if settings.currentPhase == .aFlareDeLoad {
-                    phase = .aFlareDeLoad
-                }
             }
         }
     }
@@ -130,7 +127,7 @@ struct OnboardingView: View {
     }
 
     private var welcomeContent: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 14) {
             screenHeader(
                 eyebrow: BrandCopy.onboardingEyebrow,
                 title: BrandCopy.onboardingTitle
@@ -140,9 +137,9 @@ struct OnboardingView: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            privacyPitch
+            privacyLine
 
-            VStack(spacing: 10) {
+            VStack(spacing: 8) {
                 ForEach(BrandCopy.habits) { habit in
                     habitRow(habit)
                 }
@@ -154,8 +151,8 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// One injury ships, so this page confirms rather than picks: what the
-    /// protocol covers, the diagnosis note, and the single knee card.
+    /// One injury ships today. The knee card is the only selectable one; a
+    /// second, visibly disabled card says more tracks are coming.
     private var injuryPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -163,12 +160,11 @@ struct OnboardingView: View {
                     eyebrow: "Injury",
                     title: BrandCopy.injuryTitle
                 )
-                Text(BrandCopy.injuryLead)
-                    .font(.body)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
 
-                injuryCard(InjuryCatalog.patellarTendinopathy)
+                VStack(spacing: 10) {
+                    injuryCard(InjuryCatalog.patellarTendinopathy)
+                    comingSoonCard
+                }
 
                 Text(BrandCopy.injuryDiagnosisNote)
                     .font(.footnote)
@@ -188,23 +184,28 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
                     eyebrow: "Lift",
-                    title: "Your primary lift"
+                    title: BrandCopy.primaryLiftTitle
                 )
                 Text(BrandCopy.primaryLiftLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 10) {
                     ForEach(PrimaryLoadCatalog.all) { option in
-                        phaseChoice(
+                        choiceCard(
                             title: option.title,
-                            subtitle: option.subtitle,
                             selected: selectedPrimaryLoadID == option.id
                         ) {
                             selectedPrimaryLoadID = option.id
                         }
                     }
                 }
+
+                Label(BrandCopy.primaryLiftTip, systemImage: "lightbulb")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
@@ -214,6 +215,7 @@ struct OnboardingView: View {
         .scrollIndicators(.hidden)
     }
 
+    /// Three selectable starting points, explanation on the card itself.
     private var setupPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -224,48 +226,19 @@ struct OnboardingView: View {
                 Text(BrandCopy.setupLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
 
-                VStack(alignment: .leading, spacing: 12) {
-                    ForEach(BrandCopy.setupPhaseLines) { line in
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(line.title)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(.white)
-                            Text(line.body)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                VStack(spacing: 10) {
+                    ForEach(BrandCopy.setupPhaseChoices) { choice in
+                        choiceCard(
+                            title: choice.title,
+                            subtitle: choice.body,
+                            selected: phase == choice.phase
+                        ) {
+                            phase = choice.phase
                         }
                     }
                 }
-
-                VStack(spacing: 10) {
-                    phaseChoice(
-                        title: "Flare / protect",
-                        subtitle: "Phase A · reduce load",
-                        selected: phase == .aFlareDeLoad
-                    ) {
-                        phase = .aFlareDeLoad
-                    }
-                    phaseChoice(
-                        title: "Already loading",
-                        subtitle: "Phase B · isometrics",
-                        selected: phase == .bIsometrics
-                    ) {
-                        phase = .bIsometrics
-                    }
-                }
-
-                Toggle(isOn: $wantNotifications) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Local notifications")
-                        Text("Morning and evening check-ins, plus overdue 24h pending. Local only — they never leave this phone. Off anytime in Settings.")
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .tint(AppTheme.gold)
-                .padding(.top, 4)
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
@@ -275,22 +248,20 @@ struct OnboardingView: View {
         .scrollIndicators(.hidden)
     }
 
+    /// Disclaimer, then the notification opt-in, then the final CTA below.
     private var disclaimerPage: some View {
-        onboardingCard(
-            eyebrow: BrandCopy.disclaimerEyebrow,
-            title: BrandCopy.disclaimerTitle,
-            body: BrandCopy.disclaimerBody
-        )
-    }
-
-    private func onboardingCard(eyebrow: String, title: String, body: String) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                screenHeader(eyebrow: eyebrow, title: title)
-                Text(body)
+                screenHeader(
+                    eyebrow: BrandCopy.disclaimerEyebrow,
+                    title: BrandCopy.disclaimerTitle
+                )
+                Text(BrandCopy.disclaimerBody)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                notificationsToggle
             }
             .padding(.horizontal, 24)
             .padding(.top, 12)
@@ -298,6 +269,31 @@ struct OnboardingView: View {
             .frame(maxWidth: .infinity, alignment: .topLeading)
         }
         .scrollIndicators(.hidden)
+    }
+
+    private var notificationsToggle: some View {
+        Toggle(isOn: $wantNotifications) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(BrandCopy.notificationsToggleTitle)
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                Text(BrandCopy.notificationsToggleBody)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .tint(AppTheme.gold)
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.06))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(AppTheme.quietStroke, lineWidth: 1)
+        )
+        .padding(.top, 4)
     }
 
     private func screenHeader(eyebrow: String, title: String) -> some View {
@@ -314,73 +310,96 @@ struct OnboardingView: View {
         }
     }
 
+    /// The one selectable injury. Always selected, so it reads as the chosen
+    /// card rather than a picker with one option.
     private func injuryCard(_ injury: InjuryDefinition) -> some View {
         HStack(alignment: .center, spacing: 12) {
             Image(systemName: InjuryCatalog.systemImage)
                 .font(.title3)
                 .foregroundStyle(AppTheme.quiet)
                 .frame(width: 28)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(injury.title)
+            Text(injury.title)
+                .font(.headline)
+                .foregroundStyle(.white)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Image(systemName: "checkmark.circle.fill")
+                .font(.title3)
+                .foregroundStyle(.white)
+                .accessibilityHidden(true)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(Color.white.opacity(0.10))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(Color.white.opacity(0.7), lineWidth: 1.5)
+        )
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isSelected)
+    }
+
+    /// Not a Button on purpose: dashed hairline, dimmed text, no chevron or
+    /// radio, so it cannot be mistaken for a second selectable injury.
+    private var comingSoonCard: some View {
+        HStack(alignment: .center, spacing: 12) {
+            Image(systemName: "hourglass")
+                .font(.title3)
+                .foregroundStyle(Color.white.opacity(0.3))
+                .frame(width: 28)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(BrandCopy.injuryComingSoonTitle)
                     .font(.headline)
-                    .foregroundStyle(.white)
-                Text(injury.subtitle)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Color.white.opacity(0.45))
+                Text(BrandCopy.injuryComingSoonBody)
+                    .font(.footnote)
+                    .foregroundStyle(Color.white.opacity(0.35))
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.06))
-        )
         .overlay(
             RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(AppTheme.quietStroke, lineWidth: 1)
+                .strokeBorder(
+                    Color.white.opacity(0.12),
+                    style: StrokeStyle(lineWidth: 1, dash: [5, 4])
+                )
         )
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(BrandCopy.injuryComingSoonTitle). \(BrandCopy.injuryComingSoonBody)")
     }
 
-    /// Compact privacy card: one title, one summary line, three short points.
-    private var privacyPitch: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Image(systemName: "lock.fill")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                Text(BrandCopy.privacyTitle)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-            }
+    /// One-line privacy card.
+    private var privacyLine: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "lock.fill")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
             Text(BrandCopy.privacySummary)
                 .font(.subheadline.weight(.medium))
-                .foregroundStyle(Color.white.opacity(0.8))
+                .foregroundStyle(Color.white.opacity(0.85))
                 .fixedSize(horizontal: false, vertical: true)
-
-            ForEach(BrandCopy.privacyPoints) { point in
-                Text(point.body)
-                    .font(.caption)
-                    .foregroundStyle(Color.white.opacity(0.6))
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+            Spacer(minLength: 0)
         }
-        .padding(14)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color.white.opacity(0.05))
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .strokeBorder(AppTheme.quietStroke, lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Private. No account, no ads, stored on this iPhone only.")
+        .accessibilityLabel("Private. No account, no ads, stored entirely on your iPhone.")
     }
-
 
     private func habitRow(_ habit: BrandHabit) -> some View {
         HStack(alignment: .top, spacing: 12) {
@@ -407,13 +426,15 @@ struct OnboardingView: View {
         switch habit.title {
         case "Track the journey": return "chart.line.uptrend.xyaxis"
         case "Stay accountable": return "checkmark.circle"
-        default: return "scalemass"
+        case "Trust the data": return "scalemass"
+        default: return "square.and.arrow.up"
         }
     }
 
-    private func phaseChoice(
+    /// Selectable card. `subtitle` is nil for label-only choices (lifts).
+    private func choiceCard(
         title: String,
-        subtitle: String,
+        subtitle: String? = nil,
         selected: Bool,
         action: @escaping () -> Void
     ) -> some View {
@@ -423,9 +444,12 @@ struct OnboardingView: View {
                     Text(title)
                         .font(.headline)
                         .foregroundStyle(.white)
-                    Text(subtitle)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
                 Spacer(minLength: 8)
                 Image(systemName: selected ? "checkmark.circle.fill" : "circle")
@@ -497,6 +521,9 @@ struct OnboardingView: View {
 /// tendinopathy. Skip: Phase B, notifications off, keep the chosen lift
 /// (unknown / retired ids fall back to seated extension).
 enum OnboardingCompletion {
+    /// Pre-selected card on the Setup page.
+    static let initialPhase: RehabPhase = .aFlareDeLoad
+    /// Phase applied when the user skips without choosing.
     static let defaultPhase: RehabPhase = .bIsometrics
 
     static func result(

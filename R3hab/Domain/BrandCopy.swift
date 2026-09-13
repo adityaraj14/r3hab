@@ -6,6 +6,13 @@ struct BrandHabit: Identifiable, Hashable, Sendable {
     var id: String { title }
 }
 
+struct SetupPhaseChoice: Identifiable, Hashable, Sendable {
+    var phase: RehabPhase
+    var title: String
+    var body: String
+    var id: RehabPhase { phase }
+}
+
 struct MotivationalQuote: Identifiable, Hashable, Sendable {
     var text: String
     var attribution: String?
@@ -18,90 +25,83 @@ enum BrandCopy {
     static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    Rehab isn’t a straight line. R3hab keeps the journey on this phone, so when doubt shows up you look at your numbers instead of re-telling the whole story.
+    R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — the numbers settle it.
     """
 
     static let habits: [BrandHabit] = [
-        // Bodies stay under ~45 characters so each is one line at footnote
-        // size on a 6.1" phone — the Welcome page is laid out to fit, not scroll.
+        // Bodies stay one line at footnote size on a 6.1" phone (~55 characters)
+        // — the Welcome page is laid out to fit, not scroll.
         BrandHabit(
             title: "Track the journey",
             body: "Pain, sessions, and load in one place."
         ),
         BrandHabit(
             title: "Stay accountable",
-            body: "Small, honest logs — enough to keep going."
+            body: "Quick logs that keep the habit alive."
         ),
         BrandHabit(
             title: "Trust the data",
-            body: "Decide from your numbers, not the messy week."
+            body: "Decisions backed by real data from your hard work."
+        ),
+        BrandHabit(
+            title: "Your data is yours",
+            body: "Export anytime from Settings."
         )
     ]
 
-    static let injuryTitle = "Built for the patellar tendon."
-
-    static let injuryLead = """
-    Jumper’s knee and patellar tendinopathy (also called patellar tendonitis) are the same injury and share one knee protocol: progressive loading, judged by the next morning.
-    """
+    static let injuryTitle = "Select your injury"
+    static let injuryComingSoonTitle = "More injuries coming soon"
+    static let injuryComingSoonBody = "We’ll add more tracks over time."
 
     static let injuryDiagnosisNote = """
     Getting a professional diagnosis first is recommended. R3hab helps you track and decide from your own numbers — it isn’t a diagnosis, and we don’t take on the risk if you move ahead without care.
     """
 
-    static let primaryLiftLead = "This is the lift you dose the same way. Switch later in Settings."
+    static let primaryLiftTitle = "Your primary lift"
+    static let primaryLiftLead = "Choose the exercise you’ll use during the resistance training phase."
+    static let primaryLiftTip = "Prefer something convenient and easy to stick with."
 
     static let setupEyebrow = "Setup"
     static let setupTitle = "Where are you right now?"
-    static let setupLead = """
-    Rehab here moves in phases — from protecting a flare, to easy loading, to heavier work later. You only pick a starting point. Change it anytime in Settings when mornings tell you to.
-    """
+    static let setupLead = "Pick your starting point. Change it anytime in Settings."
 
-    static let setupPhaseLines: [BrandHabit] = [
-        BrandHabit(
-            title: "Phase A · Flare / protect",
-            body: "Ease off. Relative rest until resting pain settles."
+    /// The three selectable starting points. Title + explanation live on the
+    /// card itself; there is no separate phase explainer.
+    static let setupPhaseChoices: [SetupPhaseChoice] = [
+        SetupPhaseChoice(
+            phase: .aFlareDeLoad,
+            title: "Phase A · Flare",
+            body: "Ease off until resting pain settles."
         ),
-        BrandHabit(
-            title: "Phase B · Already loading",
-            body: "Easy, consistent isometric work (your primary lift). Most people start here."
+        SetupPhaseChoice(
+            phase: .bIsometrics,
+            title: "Phase B · Isometrics",
+            body: "Easy, consistent isometric work with your primary lift."
         ),
-        BrandHabit(
-            title: "Later (C →)",
-            body: "Heavier slow loading, then return. You’ll grow into these; no need to choose them now."
+        SetupPhaseChoice(
+            phase: .cHeavySlowResistance,
+            title: "Phase C · Heavy slow resistance",
+            body: "The main phase for rebuilding the tendon."
         )
     ]
 
     static let disclaimerEyebrow = "Before you start"
-    static let disclaimerTitle = "Not a clinic — and that’s intentional."
+    static let disclaimerTitle = "Not a clinic."
     static let disclaimerBody = """
     R3hab is a personal log for your rehab journey. It helps you see patterns and decide with data. It is not a medical device, not a diagnosis, and not a substitute for a clinician. If something feels wrong — sharp joint pain, swelling, locking, or pain that won’t settle — see a professional.
     """
+
+    static let notificationsToggleTitle = "Notifications"
+    static let notificationsToggleBody =
+        "Reminders for check-ins, workout sessions, and the occasional dose of motivation."
 
     static let settingsSectionTitle = "Why R3hab"
     static let settingsBlurb = """
     R3hab is your personal rehab assistant. Logs stay on this iPhone — private, no ads. When the week feels messy, look at the numbers instead of re-arguing the plan.
     """
 
-    static let privacyEyebrow = "Private"
-    static let privacyTitle = "Yours. On this phone."
-    static let privacyLead = "A diary, not a product that sells you."
-    /// One-line version for the compact Welcome card.
-    static let privacySummary = "No account · No ads · Stored on this iPhone only"
-
-    static let privacyPoints: [BrandHabit] = [
-        BrandHabit(
-            title: "Completely private",
-            body: "No account. No cloud login. Pain and sessions never leave this device."
-        ),
-        BrandHabit(
-            title: "No ads",
-            body: "Nothing to tap through. Nothing watching the set."
-        ),
-        BrandHabit(
-            title: "On-device only",
-            body: "Stored on this iPhone only. Export a file if you want a backup — we don’t host one."
-        )
-    ]
+    /// The one-line privacy card on Welcome.
+    static let privacySummary = "No account · No ads · Stored entirely on your iPhone"
 }
 
 /// Short Today lines. 10-item cycle in R3hab’s own voice — short, neutral,
