@@ -29,6 +29,31 @@ enum LoadCopy {
     }
 }
 
+enum VolumeCopy {
+    static let unit = "lb·reps"
+
+    static func labeled(_ value: Double) -> String {
+        "\(formatted(value)) \(unit)"
+    }
+
+    static func formatted(_ value: Double) -> String {
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSeparator = ","
+        formatter.decimalSeparator = "."
+        if value.rounded() == value {
+            formatter.maximumFractionDigits = 0
+            formatter.minimumFractionDigits = 0
+        } else {
+            formatter.maximumFractionDigits = 1
+            formatter.minimumFractionDigits = 0
+        }
+        return formatter.string(from: NSNumber(value: value)) ?? TrainingSession.formatLoad(value)
+    }
+}
+
 /// One working or warm-up set inside a training session.
 struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
     var id: UUID
@@ -317,12 +342,10 @@ enum ResistanceMath {
         return loads.max()
     }
 
-    /// Prefer work volume; if only warm-up, use warm-up volume.
-    static func chartVolume(work: [ResistanceSet], warmup: [ResistanceSet] = []) -> Double? {
-        let workVol = totalVolume(work.filter { !$0.isWarmup })
-        if workVol > 0 { return workVol }
-        let wu = totalVolume(warmup.isEmpty ? work.filter(\.isWarmup) : warmup)
-        return wu > 0 ? wu : nil
+    /// Work-set volume only (Σ reps × lb). Warm-ups and hold seconds are ignored.
+    static func chartVolume(_ sets: [ResistanceSet]) -> Double? {
+        let workVol = totalVolume(sets.filter { !$0.isWarmup })
+        return workVol > 0 ? workVol : nil
     }
 
     static func chartMaxLoad(work: [ResistanceSet], warmup: [ResistanceSet] = []) -> Double? {

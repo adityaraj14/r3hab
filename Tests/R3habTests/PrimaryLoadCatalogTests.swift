@@ -129,8 +129,8 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         }
     }
 
-    func testChartLoadTitleKeepsSeatedExtensionLabel() {
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartLoadTitle, "Seated extension load")
-        XCTAssertEqual(PrimaryLoadCatalog.legPress.chartLoadTitle, "Leg press load")
+    func testChartVolumeTitleKeepsSeatedExtensionLabel() {
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartVolumeTitle, "Seated extension volume")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.chartVolumeTitle, "Leg press volume")
     }
 }

@@ -11,18 +11,16 @@ struct ChartSeriesLine: Identifiable {
 
 enum PainChartColors {
     static let knee = Color.accentColor
-    static let left = Color(red: 0.91, green: 0.73, blue: 0.23)
-    static let right = Color.orange
-    static let load = Color.orange
+    static let volume = Color.orange
 }
 
-/// Explorable knee chart: tap a day for averaged AM/PM pain + L/R load (lbs).
+/// Explorable knee chart: tap a day for averaged AM/PM pain + session volume.
 struct KneeExploreChart: View {
     let points: [DayExplorePoint]
     var height: CGFloat = 168
     var visibleDays: Int = 7
-    var loadTitle: String = "Seated extension load"
-    var emptyDescription: String = "Log morning or evening pain or a seated-extension session. Load vs pain is the insight."
+    var volumeTitle: String = "Seated extension volume"
+    var emptyDescription: String = "Log morning or evening pain or a seated-extension session. Volume vs next morning is the insight."
 
     @State private var selectedDate: Date?
 
@@ -58,17 +56,10 @@ struct KneeExploreChart: View {
         return start...end
     }
 
-    private var loadDomainMax: Double {
-        let loads = points.flatMap { [$0.leftLoadLbs, $0.rightLoadLbs] }.compactMap { $0 }
-        let maxLoad = loads.max() ?? 20
-        return max(maxLoad * 1.1, 20)
-    }
-
-    private var sidesDiverge: Bool {
-        points.contains { point in
-            guard let left = point.leftLoadLbs, let right = point.rightLoadLbs else { return false }
-            return left != right
-        }
+    private var volumeDomainMax: Double {
+        let volumes = points.compactMap(\.volume)
+        let maxVolume = volumes.max() ?? 1
+        return max(maxVolume * 1.1, 1)
     }
 
     var body: some View {
@@ -83,13 +74,12 @@ struct KneeExploreChart: View {
                     painChart
                 }
                 chartBlock(
-                    title: loadTitle,
-                    unit: "lbs",
-                    accessibility: "\(loadTitle) in pounds. Tap a day for details."
+                    title: volumeTitle,
+                    unit: VolumeCopy.unit,
+                    accessibility: "\(volumeTitle) in \(VolumeCopy.unit). Tap a day for details."
                 ) {
-                    loadChart
+                    volumeChart
                 }
-                loadLegend
                 selectionCard
             } else {
                 ContentUnavailableView(
@@ -168,18 +158,28 @@ struct KneeExploreChart: View {
         .chartDayPicker(points: points, selectedDate: $selectedDate, enableScrub: !allowsScroll)
     }
 
-    private var loadChart: some View {
+    private var volumeChart: some View {
         Chart {
             ForEach(points) { point in
-                leftMarks(for: point)
-                if sidesDiverge {
-                    rightMarks(for: point)
+                if let volume = point.volume {
+                    LineMark(
+                        x: .value("Day", point.date),
+                        y: .value("Volume", volume)
+                    )
+                    .interpolationMethod(.linear)
+                    .foregroundStyle(PainChartColors.volume)
+                    PointMark(
+                        x: .value("Day", point.date),
+                        y: .value("Volume", volume)
+                    )
+                    .foregroundStyle(PainChartColors.volume)
+                    .symbolSize(40)
                 }
             }
             selectionRule
         }
         .chartXScale(domain: xDomain)
-        .chartYScale(domain: 0...loadDomainMax)
+        .chartYScale(domain: 0...volumeDomainMax)
         .chartYAxis {
             AxisMarks(position: .leading) {
                 AxisGridLine()
@@ -192,68 +192,11 @@ struct KneeExploreChart: View {
     }
 
     @ChartContentBuilder
-    private func leftMarks(for point: DayExplorePoint) -> some ChartContent {
-        if let load = sidesDiverge ? point.leftLoadLbs : (point.leftLoadLbs ?? point.rightLoadLbs) {
-            LineMark(
-                x: .value("Day", point.date),
-                y: .value(sidesDiverge ? "Left load" : "Load", load)
-            )
-            .interpolationMethod(.linear)
-            .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
-            PointMark(
-                x: .value("Day", point.date),
-                y: .value(sidesDiverge ? "Left load" : "Load", load)
-            )
-            .foregroundStyle(sidesDiverge ? PainChartColors.left : PainChartColors.load)
-            .symbolSize(40)
-        }
-    }
-
-    @ChartContentBuilder
-    private func rightMarks(for point: DayExplorePoint) -> some ChartContent {
-        if let right = point.rightLoadLbs {
-            LineMark(
-                x: .value("Day", point.date),
-                y: .value("Right load", right)
-            )
-            .interpolationMethod(.linear)
-            .foregroundStyle(PainChartColors.right)
-            PointMark(
-                x: .value("Day", point.date),
-                y: .value("Right load", right)
-            )
-            .foregroundStyle(PainChartColors.right)
-            .symbolSize(40)
-        }
-    }
-
-    @ChartContentBuilder
     private var selectionRule: some ChartContent {
         if let selected {
             RuleMark(x: .value("Selected", selected.date))
                 .foregroundStyle(Color.primary.opacity(0.35))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
-        }
-    }
-
-    @ViewBuilder
-    private var loadLegend: some View {
-        if sidesDiverge {
-            HStack(spacing: 14) {
-                legendDot(PainChartColors.left, "Left load")
-                legendDot(PainChartColors.right, "Right load")
-            }
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-        }
-    }
-
-    private func legendDot(_ color: Color, _ label: String) -> some View {
-        HStack(spacing: 5) {
-            Circle()
-                .fill(color)
-                .frame(width: 7, height: 7)
-            Text(label)
         }
     }
 
@@ -273,17 +216,10 @@ struct KneeExploreChart: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                HStack(spacing: 16) {
-                    if sidesDiverge {
-                        labeledValue("Left", selected.leftLoadLbs.map(LoadCopy.labeled) ?? "—")
-                        labeledValue("Right", selected.rightLoadLbs.map(LoadCopy.labeled) ?? "—")
-                    } else {
-                        labeledValue(
-                            "Load",
-                            (selected.leftLoadLbs ?? selected.rightLoadLbs).map(LoadCopy.labeled) ?? "—"
-                        )
-                    }
-                }
+                labeledValue(
+                    "Volume",
+                    selected.volume.map(VolumeCopy.labeled) ?? "—"
+                )
             }
             .padding(12)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -295,7 +231,7 @@ struct KneeExploreChart: View {
         }
         Text(allowsScroll
              ? "Tap a day for details. Scroll sideways to move the window."
-             : "Tap a day for pain and load.")
+             : "Tap a day for pain and volume.")
             .font(.caption)
             .foregroundStyle(.secondary)
     }

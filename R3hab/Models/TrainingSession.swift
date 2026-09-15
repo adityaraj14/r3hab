@@ -185,28 +185,15 @@ final class TrainingSession {
             || warmupLoadLbs != nil || warmupReps != nil || warmupHoldSeconds != nil
     }
 
-    /// Volume (Σ reps × lb) for Progress charts.
+    /// Work-set volume for Progress: Σ reps × loadLbs via `resistanceSets()`.
+    /// Load-only rows with no reps stay nil so they are not labeled as volume.
     var chartVolume: Double? {
-        let all = resistanceSets()
-        return ResistanceMath.chartVolume(work: all)
+        ResistanceMath.chartVolume(resistanceSets())
     }
 
-    /// Max load (lb) for legend context.
+    /// Max work-set load (lb). Used by the session editor last-session row.
     var chartMaxLoad: Double? {
         ResistanceMath.chartMaxLoad(work: resistanceSets())
-    }
-
-    var chartMaxLoadLeft: Double? {
-        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .left })
-    }
-
-    var chartMaxLoadRight: Double? {
-        ResistanceMath.maxLoad(resistanceSets().filter { !$0.isWarmup && $0.side == .right })
-    }
-
-    /// Backward-compatible single load for older call sites.
-    var chartLoadLbs: Double? {
-        chartMaxLoad
     }
 
     /// Exercise name only (drops the auto-filled set list).

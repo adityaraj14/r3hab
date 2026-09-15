@@ -56,13 +56,6 @@ struct DailyMetricSnapshot: Equatable, Sendable {
     var steps: Int?
 }
 
-struct SessionSideLoadSnapshot: Equatable, Sendable {
-    var date: Date
-    var leftMaxLbs: Double?
-    var rightMaxLbs: Double?
-    var unspecifiedMaxLbs: Double?
-}
-
 /// One calendar day for the explorable knee chart.
 struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
@@ -74,12 +67,11 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var eveningPain: Double? = nil
     var duringPain: Double? = nil
     var afterPain: Double? = nil
-    var leftLoadLbs: Double?
-    var rightLoadLbs: Double?
+    /// Daily session volume (Σ work-set reps × lb). Nil days stay gaps.
+    var volume: Double?
 
     var hasValues: Bool {
-        pain != nil || duringPain != nil || afterPain != nil
-            || leftLoadLbs != nil || rightLoadLbs != nil
+        pain != nil || duringPain != nil || afterPain != nil || volume != nil
     }
 }
 
@@ -154,22 +146,11 @@ enum ChartDaySelection {
     }
 }
 
-/// Session load point for resistance trend charts.
+/// Session work-set volume for Progress charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
-    /// Preferred chart metric: volume (Σ reps × lb) when available.
+    /// Σ reps × lb for work sets. Nil when volume cannot be derived.
     var volume: Double?
-    /// Max load that session (lb).
-    var maxLoadLbs: Double?
-    /// Legacy single load.
-    var loadLbs: Double?
-
-    init(date: Date, volume: Double? = nil, maxLoadLbs: Double? = nil, loadLbs: Double? = nil) {
-        self.date = date
-        self.volume = volume
-        self.maxLoadLbs = maxLoadLbs
-        self.loadLbs = loadLbs
-    }
 }
 
 enum ChartMetricBuilder {
@@ -212,11 +193,7 @@ enum ChartMetricBuilder {
         var volByDay: [String: Double] = [:]
         for s in sessions {
             let key = CalendarDay.dayKey(s.date, calendar: calendar)
-            let v = s.volume ?? {
-                // Fallback: max load as weak proxy when volume missing
-                s.maxLoadLbs ?? s.loadLbs
-            }()
-            guard let v, v > 0 else { continue }
+            guard let v = s.volume, v > 0 else { continue }
             volByDay[key, default: 0] += v
         }
 
@@ -229,58 +206,9 @@ enum ChartMetricBuilder {
         return result
     }
 
-    /// Max load (lb) per calendar day (for legend / secondary).
-    static func loadSeries(
-        sessions: [SessionLoadSnapshot],
-        dayCount: Int,
-        today: Date = Date(),
-        calendar: Calendar = .current
-    ) -> [DayValue] {
-        let startToday = calendar.startOfDay(for: today)
-        var maxByDay: [String: Double] = [:]
-        for s in sessions {
-            guard let load = s.maxLoadLbs ?? s.loadLbs else { continue }
-            let key = CalendarDay.dayKey(s.date, calendar: calendar)
-            maxByDay[key] = max(maxByDay[key] ?? 0, load)
-        }
-
-        var result: [DayValue] = []
-        for offset in stride(from: dayCount - 1, through: 0, by: -1) {
-            guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
-            let key = CalendarDay.dayKey(day, calendar: calendar)
-            result.append(DayValue(dayKey: key, date: day, value: maxByDay[key]))
-        }
-        return result
-    }
-
-    /// Map volume (or load) onto the 0…10 pain axis so trends can share one chart.
-    static func scaledLoadSeries(
-        loadPoints: [DayValue],
-        painDomainMax: Double = 10
-    ) -> (scaled: [DayValue], maxLoad: Double?) {
-        let loads = loadPoints.compactMap(\.value)
-        guard let maxLoad = loads.max(), maxLoad > 0 else {
-            return (
-                loadPoints.map { DayValue(dayKey: $0.dayKey, date: $0.date, value: nil) },
-                nil
-            )
-        }
-        let scaled = loadPoints.map { point -> DayValue in
-            guard let v = point.value else {
-                return DayValue(dayKey: point.dayKey, date: point.date, value: nil)
-            }
-            return DayValue(
-                dayKey: point.dayKey,
-                date: point.date,
-                value: (v / maxLoad) * painDomainMax
-            )
-        }
-        return (scaled, maxLoad)
-    }
-
     static func explorePoints(
         checkIns: [DailyMetricSnapshot],
-        sideLoads: [SessionSideLoadSnapshot],
+        sessions: [SessionLoadSnapshot],
         dayCount: Int,
         today: Date = Date(),
         calendar: Calendar = .current,
@@ -291,19 +219,15 @@ enum ChartMetricBuilder {
         for row in checkIns {
             painByDay[CalendarDay.dayKey(row.date, calendar: calendar)] = row
         }
-        var leftByDay: [String: Double] = [:]
-        var rightByDay: [String: Double] = [:]
-        for session in sideLoads {
-            let key = CalendarDay.dayKey(session.date, calendar: calendar)
-            if let left = session.leftMaxLbs {
-                leftByDay[key] = max(leftByDay[key] ?? 0, left)
-            }
-            if let right = session.rightMaxLbs {
-                rightByDay[key] = max(rightByDay[key] ?? 0, right)
-            }
-            if session.leftMaxLbs == nil, session.rightMaxLbs == nil, let load = session.unspecifiedMaxLbs {
-                leftByDay[key] = max(leftByDay[key] ?? 0, load)
-                rightByDay[key] = max(rightByDay[key] ?? 0, load)
+        var volumeByDay: [String: Double] = [:]
+        for point in volumeSeries(
+            sessions: sessions,
+            dayCount: dayCount,
+            today: today,
+            calendar: calendar
+        ) {
+            if let value = point.value {
+                volumeByDay[point.dayKey] = value
             }
         }
         var duringByDay: [String: Int] = [:]
@@ -330,8 +254,7 @@ enum ChartMetricBuilder {
                     eveningPain: row?.dailyPainPM.map(Double.init),
                     duringPain: duringByDay[key].map(Double.init),
                     afterPain: afterByDay[key].map(Double.init),
-                    leftLoadLbs: leftByDay[key],
-                    rightLoadLbs: rightByDay[key]
+                    volume: volumeByDay[key]
                 )
             )
         }

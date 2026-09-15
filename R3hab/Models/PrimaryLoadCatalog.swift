@@ -13,8 +13,8 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var logCTA: String
     var homeObjective: String
 
-    var chartLoadTitle: String {
-        id == "seated-extension" ? "Seated extension load" : "\(title) load"
+    var chartVolumeTitle: String {
+        id == "seated-extension" ? "Seated extension volume" : "\(title) volume"
     }
 }
 

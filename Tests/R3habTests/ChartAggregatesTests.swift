@@ -73,39 +73,27 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(knee.first?.value, 2)
     }
 
-    func testLoadSeriesTakesMaxPerDayAndFillsGaps() {
+    func testVolumeSeriesSumsSameDayAndFillsGaps() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let sessions: [SessionLoadSnapshot] = [
-            SessionLoadSnapshot(date: day(-2, from: today), loadLbs: 20),
-            SessionLoadSnapshot(date: day(-2, from: today), loadLbs: 25),
-            SessionLoadSnapshot(date: day(0, from: today), loadLbs: 30)
+            SessionLoadSnapshot(date: day(-2, from: today), volume: 840),
+            SessionLoadSnapshot(date: day(-2, from: today), volume: 560),
+            SessionLoadSnapshot(date: day(0, from: today), volume: 1120)
         ]
 
-        let series = ChartMetricBuilder.loadSeries(
+        let series = ChartMetricBuilder.volumeSeries(
             sessions: sessions,
             dayCount: 3,
             today: today,
             calendar: calendar
         )
         XCTAssertEqual(series.count, 3)
-        XCTAssertEqual(series[0].value, 25)
+        XCTAssertEqual(series[0].value, 1400)
         XCTAssertNil(series[1].value)
-        XCTAssertEqual(series[2].value, 30)
+        XCTAssertEqual(series[2].value, 1120)
     }
 
-    func testScaledLoadMapsOntoPainDomain() {
-        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
-        let loadPoints = [
-            DayValue(dayKey: "a", date: day(-1, from: today), value: 20),
-            DayValue(dayKey: "b", date: today, value: 40)
-        ]
-        let (scaled, maxLoad) = ChartMetricBuilder.scaledLoadSeries(loadPoints: loadPoints)
-        XCTAssertEqual(maxLoad, 40)
-        XCTAssertEqual(scaled[0].value, 5)
-        XCTAssertEqual(scaled[1].value, 10)
-    }
-
-    func testExplorePointsMapsAMPainAndSideLoads() {
+    func testExplorePointsMapsAMPainAndVolume() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let checkIns = [
             DailyMetricSnapshot(
@@ -115,17 +103,12 @@ final class ChartAggregatesTests: XCTestCase {
                 steps: nil
             )
         ]
-        let loads = [
-            SessionSideLoadSnapshot(
-                date: today,
-                leftMaxLbs: 45,
-                rightMaxLbs: 40,
-                unspecifiedMaxLbs: 45
-            )
+        let sessions = [
+            SessionLoadSnapshot(date: today, volume: 1680)
         ]
         let points = ChartMetricBuilder.explorePoints(
             checkIns: checkIns,
-            sideLoads: loads,
+            sessions: sessions,
             dayCount: 1,
             today: today,
             calendar: calendar
@@ -134,8 +117,7 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(points[0].pain, 3.5)
         XCTAssertEqual(points[0].morningPain, 3)
         XCTAssertEqual(points[0].eveningPain, 4)
-        XCTAssertEqual(points[0].leftLoadLbs, 45)
-        XCTAssertEqual(points[0].rightLoadLbs, 40)
+        XCTAssertEqual(points[0].volume, 1680)
     }
 
     func testAveragedDailyPainUsesLoggedSidesOnly() {
@@ -156,7 +138,7 @@ final class ChartAggregatesTests: XCTestCase {
         ]
         let points = ChartMetricBuilder.explorePoints(
             checkIns: checkIns,
-            sideLoads: [],
+            sessions: [],
             dayCount: 4,
             today: today,
             calendar: calendar
@@ -175,24 +157,18 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertNil(points[3].eveningPain)
     }
 
-    func testExplorePointsMapsUnspecifiedLoadOntoBothSides() {
+    func testExplorePointsMapsSessionVolumeOntoTheDay() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let points = ChartMetricBuilder.explorePoints(
             checkIns: [],
-            sideLoads: [
-                SessionSideLoadSnapshot(
-                    date: today,
-                    leftMaxLbs: nil,
-                    rightMaxLbs: nil,
-                    unspecifiedMaxLbs: 30
-                )
+            sessions: [
+                SessionLoadSnapshot(date: today, volume: 2450)
             ],
             dayCount: 1,
             today: today,
             calendar: calendar
         )
-        XCTAssertEqual(points[0].leftLoadLbs, 30)
-        XCTAssertEqual(points[0].rightLoadLbs, 30)
+        XCTAssertEqual(points[0].volume, 2450)
     }
 
     func testExplorePoints28DayWindowKeepsInteriorHistory() {
@@ -207,24 +183,14 @@ final class ChartAggregatesTests: XCTestCase {
             DailyMetricSnapshot(date: ymd(2026, 8, 20), restingPainAM: 3, dailyPainPM: nil, steps: nil),
             DailyMetricSnapshot(date: ymd(2026, 9, 3), restingPainAM: 2, dailyPainPM: nil, steps: nil)
         ]
-        let loads = [
-            SessionSideLoadSnapshot(
-                date: ymd(2026, 7, 25),
-                leftMaxLbs: 15,
-                rightMaxLbs: 15,
-                unspecifiedMaxLbs: 15
-            ),
-            SessionSideLoadSnapshot(
-                date: ymd(2026, 8, 10),
-                leftMaxLbs: 20,
-                rightMaxLbs: 20,
-                unspecifiedMaxLbs: 20
-            )
+        let sessions = [
+            SessionLoadSnapshot(date: ymd(2026, 7, 25), volume: 360),
+            SessionLoadSnapshot(date: ymd(2026, 8, 10), volume: 480)
         ]
 
         let month = ChartMetricBuilder.explorePoints(
             checkIns: checkIns,
-            sideLoads: loads,
+            sessions: sessions,
             dayCount: 28,
             today: today,
             calendar: calendar
@@ -237,18 +203,18 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 7), calendar: calendar)]?.pain, 4)
         XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 20), calendar: calendar)]?.pain, 3)
         XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 9, 3), calendar: calendar)]?.pain, 2)
-        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 10), calendar: calendar)]?.leftLoadLbs, 20)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 10), calendar: calendar)]?.volume, 480)
         XCTAssertNil(byKey[CalendarDay.dayKey(ymd(2026, 7, 20), calendar: calendar)])
         XCTAssertNil(byKey[CalendarDay.dayKey(ymd(2026, 7, 25), calendar: calendar)])
 
         let emptyInterior = byKey[CalendarDay.dayKey(ymd(2026, 8, 15), calendar: calendar)]
         XCTAssertNotNil(emptyInterior)
         XCTAssertNil(emptyInterior?.pain)
-        XCTAssertNil(emptyInterior?.leftLoadLbs)
+        XCTAssertNil(emptyInterior?.volume)
 
         let week = ChartMetricBuilder.explorePoints(
             checkIns: checkIns,
-            sideLoads: loads,
+            sessions: sessions,
             dayCount: 7,
             today: today,
             calendar: calendar
@@ -277,8 +243,7 @@ final class ChartAggregatesTests: XCTestCase {
                 dayKey: CalendarDay.dayKey(date, calendar: calendar),
                 date: date,
                 pain: 2,
-                leftLoadLbs: 20,
-                rightLoadLbs: 20
+                volume: 560
             )
         }
 
@@ -298,14 +263,14 @@ final class ChartAggregatesTests: XCTestCase {
         let tapped = ChartDaySelection.nearestPoint(to: points[5].date, in: points)
         XCTAssertEqual(tapped?.dayKey, points[5].dayKey)
         XCTAssertEqual(tapped?.pain, 2)
-        XCTAssertEqual(tapped?.leftLoadLbs, 20)
+        XCTAssertEqual(tapped?.volume, 560)
     }
 
     func testExplorePointsSkipsUnloggedAfterPain() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let points = ChartMetricBuilder.explorePoints(
             checkIns: [],
-            sideLoads: [],
+            sessions: [],
             dayCount: 1,
             today: today,
             calendar: calendar,
