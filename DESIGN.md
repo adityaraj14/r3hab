@@ -124,7 +124,7 @@ Acceptance criteria use testable outcomes (Given/When/Then style bullets where c
 | **REQ-FUNC-011** | P0 | Soft cut / hard drop guidance copy | Show short rule hint **whenever** decision saved as SoftCut or HardDrop (including user override), not only when response is Worse. Optional static footnote on session detail. Non-blocking. |
 | **REQ-FUNC-012** | P0 | ≥48h hard session spacing hint | If last hard session &lt;48h ago and new session type is Isometrics/HSR/EnergyStorage/Tennis, show non-blocking warning before/on save. |
 | **REQ-FUNC-013** | P1 | Exercise/session **presets** by phase | Chips fill `whatIDid` + `type`; text remains editable. |
-| **REQ-FUNC-014** | P0 | History list: daily + sessions chronological | Filter Daily / Session / All. Tap to edit. |
+| **REQ-FUNC-014** | P0 | History list: daily + sessions chronological | Filter All / Workouts. All shows day summaries (tap to edit check-in, swipe to delete it); Workouts lists sessions. |
 | **REQ-FUNC-014b** | P0 | **Backdate** daily check-in or session | From History: “Log past day” with date picker **≤ today** (local). Uniqueness by date still holds. Home CTAs remain **today-only**. Evaluators use stored `date`, ignore `createdAt`. |
 | **REQ-FUNC-015** | P0 | Charts: 7-day and 28-day for AM pain, PM pain, steps | Empty days = gaps. Shared `SparklineView` / chart builders. |
 | **REQ-FUNC-016** | P1 | Stable-day counter | Consecutive days AM ≤ phaseAPainThreshold. Shown on Home and/or Progress tab. |
