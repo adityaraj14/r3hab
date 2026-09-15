@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Progress tab — pain vs load, 24h outcomes, consistency, load trail.
+/// Progress tab — pain vs volume, 24h outcomes, consistency.
 struct RehabProgressView: View {
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
@@ -44,13 +44,8 @@ struct RehabProgressView: View {
     private var explorePoints: [DayExplorePoint] {
         ChartMetricBuilder.explorePoints(
             checkIns: metrics,
-            sideLoads: sessions.map {
-                SessionSideLoadSnapshot(
-                    date: $0.date,
-                    leftMaxLbs: $0.chartMaxLoadLeft,
-                    rightMaxLbs: $0.chartMaxLoadRight,
-                    unspecifiedMaxLbs: $0.chartMaxLoad
-                )
+            sessions: sessions.map {
+                SessionLoadSnapshot(date: $0.date, volume: $0.chartVolume)
             },
             dayCount: range.rawValue,
             sessionPains: sessionPains
@@ -122,9 +117,9 @@ struct RehabProgressView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 10) {
-                            Text("Load vs next morning")
+                            Text("Training volume vs next morning")
                                 .font(.headline)
-                            Text("Mild pain during load is OK if mornings stay calm. Tap a day.")
+                            Text("Mild pain during a session is OK if mornings stay calm. Tap a day.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             KneeExploreChart(
@@ -132,7 +127,7 @@ struct RehabProgressView: View {
                                 height: 140,
                                 // Must match the picker. Capping at 7 kept 28-day on a 7-day domain.
                                 visibleDays: range.rawValue,
-                                loadTitle: primaryLoad.chartLoadTitle,
+                                volumeTitle: primaryLoad.chartVolumeTitle,
                                 emptyDescription: progressEmptyDescription
                             )
                             .id(range.rawValue)
