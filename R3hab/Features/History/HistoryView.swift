@@ -24,12 +24,11 @@ struct HistoryView: View {
     private var calendar: Calendar { .current }
 
     enum Filter: String, CaseIterable, Identifiable, Hashable {
-        case all, daily, sessions
+        case all, sessions
         var id: String { rawValue }
         var title: String {
             switch self {
             case .all: return "All"
-            case .daily: return "Daily"
             case .sessions: return "Workouts"
             }
         }
@@ -62,8 +61,6 @@ struct HistoryView: View {
                 TabView(selection: $filter) {
                     allList
                         .tag(Filter.all)
-                    dailyList
-                        .tag(Filter.daily)
                     workoutsList
                         .tag(Filter.sessions)
                 }
@@ -243,30 +240,13 @@ struct HistoryView: View {
                 } label: {
                     daySummaryRow(day)
                 }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .overlay {
-            if dayEntries.isEmpty {
-                emptyState(title: "No days yet", description: "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate.")
-            }
-        }
-    }
-
-    private var dailyList: some View {
-        List {
-            ForEach(checkIns, id: \.dayKey) { checkIn in
-                Button {
-                    editDailyDate = checkIn.date
-                } label: {
-                    dailyRow(checkIn)
-                }
                 .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        deleteDailyKey = checkIn.dayKey
-                    } label: {
-                        Label("Delete", systemImage: "trash")
+                    if day.checkIn != nil {
+                        Button(role: .destructive) {
+                            deleteDailyKey = day.dayKey
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
                     }
                 }
             }
@@ -274,8 +254,8 @@ struct HistoryView: View {
         .listStyle(.insetGrouped)
         .scrollContentBackground(.hidden)
         .overlay {
-            if checkIns.isEmpty {
-                emptyState(title: "No check-ins yet", description: "Morning and evening pain plus steps will show here.")
+            if dayEntries.isEmpty {
+                emptyState(title: "No days yet", description: "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate.")
             }
         }
     }
@@ -392,21 +372,6 @@ struct HistoryView: View {
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(dayAccessibility(day))
-    }
-
-    private func dailyRow(_ c: DailyCheckIn) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(c.date.formatted(date: .abbreviated, time: .omitted))
-                .font(.headline)
-            metricRow("Morning pain", c.restingPainAM.map(String.init) ?? "—")
-            metricRow("Evening pain", c.dailyPainPM.map(String.init) ?? "—")
-            metricRow("Steps", c.steps.map { $0.formatted() } ?? "—")
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "\(c.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(c.restingPainAM.map(String.init) ?? "not logged"). Evening pain \(c.dailyPainPM.map(String.init) ?? "not logged"). Steps \(c.steps.map { $0.formatted() } ?? "not logged")."
-        )
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
