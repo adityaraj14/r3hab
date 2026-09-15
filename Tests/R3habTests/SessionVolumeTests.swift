@@ -94,23 +94,22 @@ final class SessionVolumeTests: XCTestCase {
         XCTAssertNil(session.resistanceSetsJSON)
     }
 
-    func testLegacyLoadOnlyDoesNotInventZero() {
+    func testLegacyLoadOnlyLeavesAChartGap() {
         let session = makeSession(sets: nil, reps: nil, loadLbs: 35)
-        XCTAssertEqual(session.chartVolume, 35)
+        XCTAssertNil(session.chartVolume)
 
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let series = ChartMetricBuilder.volumeSeries(
-            sessions: [SessionLoadSnapshot(date: today, loadLbs: 35)],
+            sessions: [SessionLoadSnapshot(date: today, volume: session.chartVolume)],
             dayCount: 1,
             today: today,
             calendar: calendar
         )
-        XCTAssertEqual(series[0].value, 35)
+        XCTAssertNil(series[0].value)
     }
 
     func testVolumeCopyFormatsGroupedLbReps() {
         XCTAssertEqual(VolumeCopy.labeled(2450), "2,450 lb·reps")
-        XCTAssertEqual(VolumeCopy.labeled(35), "35 lb·reps")
     }
 
     private func makeSession(sets: Int?, reps: Int?, loadLbs: Double?) -> TrainingSession {

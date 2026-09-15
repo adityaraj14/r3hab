@@ -146,22 +146,11 @@ enum ChartDaySelection {
     }
 }
 
-/// Session load point for resistance trend charts.
+/// Session work-set volume for Progress charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
-    /// Preferred chart metric: volume (Σ reps × lb) when available.
+    /// Σ reps × lb for work sets. Nil when volume cannot be derived.
     var volume: Double?
-    /// Max load that session (lb).
-    var maxLoadLbs: Double?
-    /// Legacy single load.
-    var loadLbs: Double?
-
-    init(date: Date, volume: Double? = nil, maxLoadLbs: Double? = nil, loadLbs: Double? = nil) {
-        self.date = date
-        self.volume = volume
-        self.maxLoadLbs = maxLoadLbs
-        self.loadLbs = loadLbs
-    }
 }
 
 enum ChartMetricBuilder {
@@ -204,8 +193,7 @@ enum ChartMetricBuilder {
         var volByDay: [String: Double] = [:]
         for s in sessions {
             let key = CalendarDay.dayKey(s.date, calendar: calendar)
-            let v = s.volume ?? s.maxLoadLbs ?? s.loadLbs
-            guard let v, v > 0 else { continue }
+            guard let v = s.volume, v > 0 else { continue }
             volByDay[key, default: 0] += v
         }
 

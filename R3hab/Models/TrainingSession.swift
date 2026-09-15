@@ -185,20 +185,13 @@ final class TrainingSession {
             || warmupLoadLbs != nil || warmupReps != nil || warmupHoldSeconds != nil
     }
 
-    /// Session volume for Progress. Work rows only: Σ reps × loadLbs.
-    /// Legacy sessions without structured rows fall back to `resistanceSets()`
-    /// (set × reps × load) or a lone `loadLbs` when reps are missing.
+    /// Work-set volume for Progress: Σ reps × loadLbs via `resistanceSets()`.
+    /// Load-only rows with no reps stay nil so they are not labeled as volume.
     var chartVolume: Double? {
-        if let volume = ResistanceMath.chartVolume(resistanceSets()) {
-            return volume
-        }
-        if resistanceSetsJSON == nil, let load = loadLbs, load > 0 {
-            return load
-        }
-        return nil
+        ResistanceMath.chartVolume(resistanceSets())
     }
 
-    /// Max work-set load (lb). Used by the session editor, not Progress.
+    /// Max work-set load (lb). Used by the session editor last-session row.
     var chartMaxLoad: Double? {
         ResistanceMath.chartMaxLoad(work: resistanceSets())
     }

@@ -63,7 +63,7 @@ struct SessionEditor: View {
     }
 
     private var volumePreview: Double {
-        ResistanceMath.chartVolume(workSets) ?? 0
+        ResistanceMath.totalVolume(workSets) + ResistanceMath.totalVolume(warmupSets)
     }
 
     var body: some View {
@@ -142,12 +142,12 @@ struct SessionEditor: View {
 
                 if volumePreview > 0 {
                     Section {
-                        LabeledContent("Session volume", value: VolumeCopy.labeled(volumePreview))
-                        if let maxL = ResistanceMath.maxLoad(workSets) {
+                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lbs·reps")
+                        if let maxL = ResistanceMath.maxLoad(workSets + warmupSets) {
                             LabeledContent("Max load", value: LoadCopy.labeled(maxL))
                         }
                     } footer: {
-                        Text("Progress charts plot daily training volume.")
+                        Text("Progress charts plot daily volume (and max load in the legend).")
                     }
                 }
             }
