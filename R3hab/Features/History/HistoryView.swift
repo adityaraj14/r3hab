@@ -375,7 +375,8 @@ struct HistoryView: View {
     }
 
     private func sessionRow(_ s: TrainingSession) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        let setList = SessionSummary.historyResistanceList(s.resistanceSets())
+        return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 Text("Workout")
                     .font(.caption2.weight(.semibold))
@@ -393,11 +394,8 @@ struct HistoryView: View {
             Text(s.displayTitle)
                 .font(.headline)
                 .lineLimit(1)
-            if let resistance = s.resistanceSummary {
-                Text(resistance)
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
+            if let setList {
+                HistoryResistanceListView(list: setList)
             }
             metricRow("Date", s.date.formatted(date: .abbreviated, time: .omitted))
             metricRow("Pain during", String(s.painDuring))
@@ -405,9 +403,20 @@ struct HistoryView: View {
         }
         .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            "Workout, \(s.displayTitle). \(s.date.formatted(date: .abbreviated, time: .omitted)). Pain during \(s.painDuring), after \(s.displayPainAfter). \(s.response24h.title)."
-        )
+        .accessibilityLabel(sessionAccessibility(s, setList: setList))
+    }
+
+    private func sessionAccessibility(_ s: TrainingSession, setList: HistoryResistanceList?) -> String {
+        var parts = [
+            "Workout, \(s.displayTitle)",
+            s.date.formatted(date: .abbreviated, time: .omitted),
+            "Pain during \(s.painDuring), after \(s.displayPainAfter)",
+            s.response24h.title
+        ]
+        if let setList, !setList.spokenSummary.isEmpty {
+            parts.append(setList.spokenSummary)
+        }
+        return parts.joined(separator: ". ") + "."
     }
 
     private func workoutMetric(_ daySessions: [TrainingSession]) -> some View {
@@ -483,6 +492,52 @@ struct HistoryView: View {
             workout = "workout \(day.sessions.map(\.displayTitle).joined(separator: ", "))"
         }
         return "\(day.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(morning). Evening pain \(evening). Steps \(steps). \(workout)."
+    }
+}
+
+/// Layout A: numbered work sets under a quiet count header.
+struct HistoryResistanceListView: View {
+    let list: HistoryResistanceList
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let header = list.header {
+                Text(header)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+            }
+            ForEach(list.rows) { row in
+                if row.isOverflow {
+                    Text("+\(list.hiddenWorkCount) more")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(row.spoken)
+                } else {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(row.kind.label)
+                            .font(.caption.monospacedDigit().weight(.semibold))
+                            .foregroundStyle(row.isWarmup ? Color.secondary : Color.primary)
+                            .frame(width: 28, alignment: .leading)
+                        Text(row.dose)
+                            .font(.caption.monospacedDigit())
+                            .frame(minWidth: 44, alignment: .leading)
+                        Text(row.load)
+                            .font(.caption.monospacedDigit())
+                        Spacer(minLength: 6)
+                        if let laterality = row.laterality {
+                            Text(laterality)
+                                .font(.caption.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(row.isWarmup ? Color.secondary : Color.primary)
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(row.spoken)
+                }
+            }
+        }
+        .accessibilityElement(children: .combine)
     }
 }
 

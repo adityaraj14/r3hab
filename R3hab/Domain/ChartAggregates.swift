@@ -1,5 +1,59 @@
 import Foundation
 
+/// Progress chart window. Default stays 7 days.
+enum ProgressDayRange: CaseIterable, Identifiable, Hashable, Sendable {
+    case days7
+    case days28
+    case days90
+    case all
+
+    var id: String {
+        switch self {
+        case .days7: return "7"
+        case .days28: return "28"
+        case .days90: return "90"
+        case .all: return "all"
+        }
+    }
+
+    var pickerTitle: String {
+        switch self {
+        case .days7: return "7"
+        case .days28: return "28"
+        case .days90: return "90"
+        case .all: return "All"
+        }
+    }
+
+    /// All windows longer than this still plot every day, then scroll.
+    static let chartViewportCap = 90
+    /// All from earliest log through today, but never more than two years of points.
+    static let allCapDays = 730
+
+    func dayCount(
+        checkInDates: [Date],
+        sessionDates: [Date],
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Int {
+        switch self {
+        case .days7: return 7
+        case .days28: return 28
+        case .days90: return 90
+        case .all:
+            let startToday = calendar.startOfDay(for: today)
+            let dates = (checkInDates + sessionDates).map { calendar.startOfDay(for: $0) }
+            guard let earliest = dates.min() else { return 7 }
+            let span = calendar.dateComponents([.day], from: earliest, to: startToday).day ?? 0
+            return min(max(span + 1, 1), Self.allCapDays)
+        }
+    }
+
+    func chartVisibleDays(windowDays: Int) -> Int {
+        min(windowDays, Self.chartViewportCap)
+    }
+}
+
 struct DayValue: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
     var dayKey: String

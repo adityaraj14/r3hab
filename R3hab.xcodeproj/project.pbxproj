@@ -15,6 +15,7 @@
 		ED9AA8F2B526430384E46937 /* ExportImport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportImport.swift; sourceTree = "<group>"; };
 		4670AE5C99794407900C0055 /* ModelMapping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelMapping.swift; sourceTree = "<group>"; };
 		EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChartAggregates.swift; sourceTree = "<group>"; };
+		A8E1F2B3C4D5467788992201 /* ProgressInterpretation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressInterpretation.swift; sourceTree = "<group>"; };
 		F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DecisionSuggester.swift; sourceTree = "<group>"; };
 		228510573C3D4E428D1084C6 /* DomainSnapshots.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DomainSnapshots.swift; sourceTree = "<group>"; };
 		C906FBBA88814D529A9B926F /* PendingQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingQueue.swift; sourceTree = "<group>"; };
@@ -64,6 +65,7 @@
 		C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */ = {isa = PBXBuildFile; fileRef = ED9AA8F2B526430384E46937 /* ExportImport.swift */; };
 		1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4670AE5C99794407900C0055 /* ModelMapping.swift */; };
 		1142799D3AFE47C89C33443D /* ChartAggregates.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */; };
+		A8E1F2B3C4D5467788992202 /* ProgressInterpretation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8E1F2B3C4D5467788992201 /* ProgressInterpretation.swift */; };
 		3B4FA48B9C844652984EA468 /* DecisionSuggester.swift in Sources */ = {isa = PBXBuildFile; fileRef = F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */; };
 		AC4F72BADF3C44978DE3DEEB /* DomainSnapshots.swift in Sources */ = {isa = PBXBuildFile; fileRef = 228510573C3D4E428D1084C6 /* DomainSnapshots.swift */; };
 		BA6A2BF7177F4D53B5982277 /* PendingQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = C906FBBA88814D529A9B926F /* PendingQueue.swift */; };
@@ -207,6 +209,7 @@
 			isa = PBXGroup;
 			children = (
 				EC87C3F039074C0B9E273AC1 /* ChartAggregates.swift */,
+				A8E1F2B3C4D5467788992201 /* ProgressInterpretation.swift */,
 				F33838CE2F0A4D2FB1A559A5 /* DecisionSuggester.swift */,
 				228510573C3D4E428D1084C6 /* DomainSnapshots.swift */,
 				C906FBBA88814D529A9B926F /* PendingQueue.swift */,
@@ -303,6 +306,7 @@
 				C8AA74C5945642A19791C95D /* ExportImport.swift in Sources */,
 				1EC20FFAE0C148A788E5AEEE /* ModelMapping.swift in Sources */,
 				1142799D3AFE47C89C33443D /* ChartAggregates.swift in Sources */,
+				A8E1F2B3C4D5467788992202 /* ProgressInterpretation.swift in Sources */,
 				3B4FA48B9C844652984EA468 /* DecisionSuggester.swift in Sources */,
 				AC4F72BADF3C44978DE3DEEB /* DomainSnapshots.swift in Sources */,
 				BA6A2BF7177F4D53B5982277 /* PendingQueue.swift in Sources */,
@@ -397,7 +401,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;
@@ -427,7 +431,7 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = R3hab/R3hab.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 28;
+				CURRENT_PROJECT_VERSION = 29;
 				DEVELOPMENT_TEAM = C5PR8599W4;
 				ENABLE_PREVIEWS = YES;
 				ENABLE_TESTABILITY = YES;

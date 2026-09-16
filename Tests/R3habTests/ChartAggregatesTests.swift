@@ -313,6 +313,95 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(points[3].pending, 1)
     }
 
+    func testProgressDayRangeFixedWindowsAndAllFromEarliest() {
+        let today = calendar.date(from: DateComponents(year: 2026, month: 9, day: 16))!
+        func ymd(_ year: Int, _ month: Int, _ day: Int) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day))!
+        }
+
+        XCTAssertEqual(
+            ProgressDayRange.days7.dayCount(
+                checkInDates: [ymd(2026, 1, 1)],
+                sessionDates: [],
+                today: today,
+                calendar: calendar
+            ),
+            7
+        )
+        XCTAssertEqual(
+            ProgressDayRange.days28.dayCount(
+                checkInDates: [],
+                sessionDates: [ymd(2026, 1, 1)],
+                today: today,
+                calendar: calendar
+            ),
+            28
+        )
+        XCTAssertEqual(
+            ProgressDayRange.days90.dayCount(
+                checkInDates: [ymd(2025, 1, 1)],
+                sessionDates: [ymd(2025, 6, 1)],
+                today: today,
+                calendar: calendar
+            ),
+            90
+        )
+
+        let allFromAugust = ProgressDayRange.all.dayCount(
+            checkInDates: [ymd(2026, 8, 18)],
+            sessionDates: [ymd(2026, 8, 20)],
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(allFromAugust, 30)
+
+        let capped = ProgressDayRange.all.dayCount(
+            checkInDates: [ymd(2023, 1, 1)],
+            sessionDates: [],
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(capped, ProgressDayRange.allCapDays)
+        XCTAssertEqual(ProgressDayRange.allCapDays, 730)
+        XCTAssertEqual(ProgressDayRange.days90.chartVisibleDays(windowDays: 90), 90)
+        XCTAssertEqual(ProgressDayRange.all.chartVisibleDays(windowDays: 400), 90)
+    }
+
+    func testExplorePoints90DayWindowKeepsInteriorHistory() {
+        let today = calendar.date(from: DateComponents(year: 2026, month: 9, day: 16))!
+        func ymd(_ year: Int, _ month: Int, _ day: Int) -> Date {
+            calendar.date(from: DateComponents(year: year, month: month, day: day))!
+        }
+
+        let checkIns = [
+            DailyMetricSnapshot(date: ymd(2026, 6, 1), restingPainAM: 5, dailyPainPM: nil, steps: nil),
+            DailyMetricSnapshot(date: ymd(2026, 7, 20), restingPainAM: 4, dailyPainPM: nil, steps: nil),
+            DailyMetricSnapshot(date: ymd(2026, 8, 20), restingPainAM: 3, dailyPainPM: nil, steps: nil),
+            DailyMetricSnapshot(date: today, restingPainAM: 2, dailyPainPM: nil, steps: nil)
+        ]
+        let sessions = [
+            SessionLoadSnapshot(date: ymd(2026, 7, 25), volume: 360),
+            SessionLoadSnapshot(date: ymd(2026, 8, 10), volume: 480)
+        ]
+
+        let quarter = ChartMetricBuilder.explorePoints(
+            checkIns: checkIns,
+            sessions: sessions,
+            dayCount: 90,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(quarter.count, 90)
+        XCTAssertEqual(calendar.startOfDay(for: quarter[0].date), ymd(2026, 6, 19))
+        XCTAssertEqual(calendar.startOfDay(for: quarter[89].date), today)
+
+        let byKey = Dictionary(uniqueKeysWithValues: quarter.map { ($0.dayKey, $0) })
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 7, 20), calendar: calendar)]?.pain, 4)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 20), calendar: calendar)]?.pain, 3)
+        XCTAssertEqual(byKey[CalendarDay.dayKey(ymd(2026, 8, 10), calendar: calendar)]?.volume, 480)
+        XCTAssertNil(byKey[CalendarDay.dayKey(ymd(2026, 6, 1), calendar: calendar)])
+    }
+
     func testConsistencyCountsOnlyWindowDays() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let checkIns = [
