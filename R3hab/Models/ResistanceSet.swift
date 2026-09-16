@@ -149,6 +149,72 @@ struct WorkSetPair: Equatable, Identifiable, Sendable {
     }
 }
 
+/// Structured History card rows. Reuses `WorkSetPair`; not a second set model.
+struct HistoryResistanceList: Equatable, Sendable {
+    var workCount: Int
+    var warmupCount: Int
+    var rows: [HistoryResistanceRow]
+    var hiddenWorkCount: Int
+
+    var header: String? {
+        var parts: [String] = []
+        if workCount > 0 {
+            parts.append(workCount == 1 ? "1 work" : "\(workCount) work")
+        }
+        if warmupCount > 0 {
+            parts.append(warmupCount == 1 ? "1 warm-up" : "\(warmupCount) warm-ups")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    var spokenSummary: String {
+        let head = header.map { $0.replacingOccurrences(of: " · ", with: ", ") }
+        let body = rows.map(\.spoken)
+        return ([head].compactMap { $0 } + body).joined(separator: ". ")
+    }
+}
+
+struct HistoryResistanceRow: Equatable, Identifiable, Sendable {
+    enum Kind: Equatable, Sendable {
+        case warmup
+        case work(Int)
+        case overflow(Int)
+
+        var id: String {
+            switch self {
+            case .warmup: return "wu"
+            case .work(let n): return "work-\(n)"
+            case .overflow(let n): return "more-\(n)"
+            }
+        }
+
+        var label: String {
+            switch self {
+            case .warmup: return "WU"
+            case .work(let n): return "\(n)"
+            case .overflow(let n): return "+\(n)"
+            }
+        }
+    }
+
+    var id: String
+    var kind: Kind
+    var dose: String
+    var load: String
+    var laterality: String?
+    var spoken: String
+
+    var isWarmup: Bool {
+        if case .warmup = kind { return true }
+        return false
+    }
+
+    var isOverflow: Bool {
+        if case .overflow = kind { return true }
+        return false
+    }
+}
+
 /// Compact session copy for cards, charts, and auto-filled “what I did”.
 enum SessionSummary {
     static func displayTitle(whatIDid: String) -> String {
@@ -241,6 +307,145 @@ enum SessionSummary {
                 rightLoadLbs: laterality == .bilateral ? (leftLoad ?? rightLoad) : rightLoad
             )
         }
+    }
+
+    /// Numbered History card rows. Warm-ups first, then work sets.
+    static func historyResistanceList(
+        _ sets: [ResistanceSet],
+        maxWorkVisible: Int = 4
+    ) -> HistoryResistanceList? {
+        let warmupPairs = groupWorkSets(sets.filter(\.isWarmup))
+        let workPairs = groupWorkSets(sets.filter { !$0.isWarmup })
+        guard !warmupPairs.isEmpty || !workPairs.isEmpty else { return nil }
+
+        var rows: [HistoryResistanceRow] = []
+        for pair in warmupPairs {
+            rows.append(historyRow(pair: pair, kind: .warmup))
+        }
+
+        let showOverflow = workPairs.count > 5
+        let visibleWork = showOverflow ? Array(workPairs.prefix(maxWorkVisible)) : workPairs
+        for (index, pair) in visibleWork.enumerated() {
+            rows.append(historyRow(pair: pair, kind: .work(index + 1)))
+        }
+        let hiddenWorkCount = showOverflow ? workPairs.count - visibleWork.count : 0
+        if hiddenWorkCount > 0 {
+            rows.append(
+                HistoryResistanceRow(
+                    id: "more-\(hiddenWorkCount)",
+                    kind: .overflow(hiddenWorkCount),
+                    dose: "",
+                    load: "",
+                    laterality: nil,
+                    spoken: hiddenWorkCount == 1
+                        ? "1 more work set"
+                        : "\(hiddenWorkCount) more work sets"
+                )
+            )
+        }
+
+        return HistoryResistanceList(
+            workCount: workPairs.count,
+            warmupCount: warmupPairs.count,
+            rows: rows,
+            hiddenWorkCount: hiddenWorkCount
+        )
+    }
+
+    private static func historyRow(pair: WorkSetPair, kind: HistoryResistanceRow.Kind) -> HistoryResistanceRow {
+        let dose = historyDose(reps: pair.reps, holdSeconds: pair.holdSeconds)
+        let load = historyLoad(pair)
+        let laterality = historyLaterality(pair)
+        return HistoryResistanceRow(
+            id: kind.id + "-" + pair.id.uuidString,
+            kind: kind,
+            dose: dose,
+            load: load,
+            laterality: laterality,
+            spoken: historySpoken(
+                kind: kind,
+                reps: pair.reps,
+                holdSeconds: pair.holdSeconds,
+                pair: pair,
+                laterality: laterality
+            )
+        )
+    }
+
+    static func historyDose(reps: Int?, holdSeconds: Int?) -> String {
+        if let hold = holdSeconds, hold > 0 {
+            if let reps, reps > 1 {
+                return "\(reps)×\(hold)s"
+            }
+            return "\(hold)s"
+        }
+        if let reps {
+            return "\(reps)"
+        }
+        return ""
+    }
+
+    private static func historyLoad(_ pair: WorkSetPair) -> String {
+        if pair.loadsMatch {
+            guard let lbs = pair.leftLoad else { return "" }
+            return "@ \(TrainingSession.formatLoad(lbs))"
+        }
+        let left = pair.leftLoad.map(TrainingSession.formatLoad) ?? "—"
+        let right = pair.rightLoad.map(TrainingSession.formatLoad) ?? "—"
+        return "@ L \(left) / R \(right)"
+    }
+
+    private static func historyLaterality(_ pair: WorkSetPair) -> String? {
+        if !pair.loadsMatch { return nil }
+        if pair.right != nil || pair.left.side == nil { return "both" }
+        return pair.left.side?.shortLabel
+    }
+
+    private static func historySpoken(
+        kind: HistoryResistanceRow.Kind,
+        reps: Int?,
+        holdSeconds: Int?,
+        pair: WorkSetPair,
+        laterality: String?
+    ) -> String {
+        let label: String
+        switch kind {
+        case .warmup:
+            label = "Warm-up"
+        case .work(let number):
+            label = "Set \(number)"
+        case .overflow(let count):
+            return count == 1 ? "1 more work set" : "\(count) more work sets"
+        }
+
+        let effort: String
+        if let hold = holdSeconds, hold > 0 {
+            if let reps, reps > 1 {
+                effort = "\(reps) holds of \(hold) seconds"
+            } else {
+                effort = "\(hold) seconds"
+            }
+        } else if let reps {
+            effort = reps == 1 ? "1 rep" : "\(reps) reps"
+        } else {
+            effort = "set"
+        }
+
+        let load: String
+        if pair.loadsMatch {
+            if let lbs = pair.leftLoad {
+                load = "at \(TrainingSession.formatLoad(lbs))"
+            } else {
+                load = ""
+            }
+        } else {
+            let left = pair.leftLoad.map(TrainingSession.formatLoad) ?? "none"
+            let right = pair.rightLoad.map(TrainingSession.formatLoad) ?? "none"
+            load = "at left \(left), right \(right)"
+        }
+
+        let side = laterality.map { $0 == "both" ? "both" : $0 } ?? ""
+        return [label, effort, load, side].filter { !$0.isEmpty }.joined(separator: ", ")
     }
 
     /// Short resistance line, e.g. `3×8 @ 15 lbs both · WU 2×30s @ 15 lbs`.
