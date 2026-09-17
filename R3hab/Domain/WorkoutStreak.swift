@@ -51,7 +51,7 @@ enum WorkoutStreak {
         now: Date,
         calendar: Calendar = .current
     ) -> Snapshot {
-        let hard = sessions
+        let hard = SessionDraft.finalized(sessions)
             .filter { SessionSpacing.isHard($0.sessionType) }
             .sorted { $0.date < $1.date || ($0.date == $1.date && $0.createdAt < $1.createdAt) }
 

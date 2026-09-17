@@ -161,7 +161,7 @@ struct SessionEditor: View {
                     .lineLimit(2...4)
             }
 
-            if isEditing, let existing, existing.response24h == .pending {
+            if isEditing, let existing, !existing.isDraft, existing.response24h == .pending {
                 Section {
                     Button("Resolve 24h response…") { showResolve = true }
                 }
@@ -179,8 +179,13 @@ struct SessionEditor: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
+            if showsDraftSave {
+                ToolbarItem(placement: .automatic) {
+                    Button("Save draft") { persist(as: .draft) }
+                }
+            }
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { save() }
+                Button("Save") { persist(as: .finalize) }
                     .fontWeight(.semibold)
                     .tint(AppTheme.gold)
             }
@@ -213,6 +218,16 @@ struct SessionEditor: View {
         existing?.hasLoggedPainAfter == true
     }
 
+    private var showsDraftSave: Bool {
+        guard let existing else { return true }
+        return existing.isDraft
+    }
+
+    private enum PersistKind {
+        case draft
+        case finalize
+    }
+
     /// Selected: solid white fill, ink text. Unselected: faint fill, white text.
     /// Tinted `.bordered` read like a disabled gold button.
     private func exercisePill(_ preset: SessionPreset, selected: Bool) -> some View {
@@ -240,7 +255,7 @@ struct SessionEditor: View {
     }
 
     private var lastSessionContext: TrainingSession? {
-        sessions.first { $0.id != existingId }
+        sessions.first { $0.id != existingId && !$0.isDraft }
     }
 
     private func lastSessionSection(_ last: TrainingSession) -> some View {
@@ -524,7 +539,7 @@ struct SessionEditor: View {
             phase = existing.phase
             sessionType = existing.sessionType
             whatIDid = existing.whatIDid
-            painDuring = existing.painDuring
+            painDuring = PainScore.optional(existing.painDuring)
             painAfter = existing.loggedPainAfter
             notes = existing.notes
             usesIsoHolds = existing.sessionType == .isometrics
@@ -636,93 +651,125 @@ struct SessionEditor: View {
         }
     }
 
-    private func save() {
+    private func persist(as kind: PersistKind) {
         clearError()
 
-        // Normalize warmup flags
         var wu = warmupSets.map { var s = $0; s.isWarmup = true; return s }
         var work = workSets.map { var s = $0; s.isWarmup = false; return s }
         wu = wu.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         work = work.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         let allSets = wu + work
-
-        if let issue = SessionSaveValidation.validate(
-            painDuring: painDuring,
-            painAfter: painAfter,
-            whatIDid: whatIDid,
-            sets: allSets
-        ) {
-            presentError(issue.message)
-            return
-        }
-
-        guard let painDuring else {
-            presentError(SessionSaveIssue.missingPainDuring.message)
-            return
-        }
         let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
-        let storedAfter = resolvedPainAfter()
 
-        if isEditing {
-            // Re-resolve from the current context at write time.
-            guard let existing else {
-                presentError("This session is no longer available.")
+        switch kind {
+        case .finalize:
+            if let issue = SessionSaveValidation.validate(
+                painDuring: painDuring,
+                painAfter: painAfter,
+                whatIDid: whatIDid,
+                sets: allSets
+            ) {
+                presentError(issue.message)
                 return
             }
-            existing.phase = phase
-            existing.sessionType = sessionType
-            existing.whatIDid = text
-            existing.painDuring = painDuring
-            existing.painAfter = storedAfter
-            existing.notes = notes
-            existing.setResistanceSets(allSets)
-            existing.updatedAt = Date()
-            do {
-                try modelContext.save()
-                if existing.hasLoggedPainAfter {
-                    NotificationScheduler.cancelPainAfter(sessionId: existing.id)
-                }
-                Haptics.success()
-                dismiss()
-            } catch {
-                presentError(error.localizedDescription)
+            guard painDuring != nil else {
+                presentError(SessionSaveIssue.missingPainDuring.message)
+                return
             }
+        case .draft:
+            if !SessionDraft.isWorthSaving(painDuring: painDuring, notes: notes, sets: allSets) {
+                presentError(SessionDraft.emptyMessage)
+                return
+            }
+        }
+
+        let storedDuring = painDuring ?? PainScore.notLogged
+        let storedAfter = resolvedPainAfter()
+        let reuseId = existingId ?? draftReuseID(for: kind)
+        let existingRow = reuseId.flatMap { id in sessions.first { $0.id == id } }
+        if existingId != nil && existingRow == nil {
+            presentError("This session is no longer available.")
             return
         }
 
-        let session = TrainingSession(
-            date: targetDate,
-            phase: phase,
-            sessionType: sessionType,
-            whatIDid: text,
-            painDuring: painDuring,
-            painAfter: storedAfter,
-            resistanceSets: allSets,
-            calendar: calendar
-        )
-        session.notes = notes
-        modelContext.insert(session)
+        let wasDraft = existingRow?.isDraft == true
+        let row: TrainingSession
+        let isInsert: Bool
+        if let existingRow {
+            row = existingRow
+            isInsert = false
+            row.phase = phase
+            row.sessionType = sessionType
+            row.whatIDid = text
+            row.painDuring = storedDuring
+            row.painAfter = storedAfter
+            row.notes = notes
+            row.setResistanceSets(allSets)
+            row.updatedAt = Date()
+        } else {
+            row = TrainingSession(
+                date: targetDate,
+                phase: phase,
+                sessionType: sessionType,
+                whatIDid: text,
+                painDuring: storedDuring,
+                painAfter: storedAfter,
+                resistanceSets: allSets,
+                calendar: calendar
+            )
+            row.notes = notes
+            modelContext.insert(row)
+            isInsert = true
+        }
+        row.isDraft = kind == .draft
+
         do {
             try modelContext.save()
-            if let settings, settings.notificationsEnabled {
-                NotificationScheduler.schedulePending(
-                    sessionId: session.id,
-                    sessionDate: session.date,
-                    snoozedUntil: nil,
-                    amHour: settings.amReminderHour,
-                    amMinute: settings.amReminderMinute
-                )
-                if !session.hasLoggedPainAfter {
-                    NotificationScheduler.schedulePainAfter(
-                        sessionId: session.id,
-                        createdAt: session.createdAt
-                    )
-                }
-            }
+            applyNotifications(for: row, kind: kind, wasInsert: isInsert, wasDraft: wasDraft)
             Haptics.success()
             dismiss()
         } catch {
             presentError(error.localizedDescription)
+        }
+    }
+
+    private func draftReuseID(for kind: PersistKind) -> UUID? {
+        guard kind == .draft else { return nil }
+        return SessionDraft.openDraftID(
+            in: sessions.map(\.snapshot),
+            on: displayDate,
+            preferring: sessionType,
+            calendar: calendar
+        )
+    }
+
+    private func applyNotifications(
+        for session: TrainingSession,
+        kind: PersistKind,
+        wasInsert: Bool,
+        wasDraft: Bool
+    ) {
+        if kind == .draft {
+            NotificationScheduler.cancelSessionNotifications(sessionId: session.id)
+            return
+        }
+        if session.hasLoggedPainAfter {
+            NotificationScheduler.cancelPainAfter(sessionId: session.id)
+        }
+        guard wasInsert || wasDraft else { return }
+        guard let settings, settings.notificationsEnabled else { return }
+        NotificationScheduler.schedulePending(
+            sessionId: session.id,
+            sessionDate: session.date,
+            snoozedUntil: nil,
+            amHour: settings.amReminderHour,
+            amMinute: settings.amReminderMinute
+        )
+        if !session.hasLoggedPainAfter {
+            NotificationScheduler.schedulePainAfter(
+                sessionId: session.id,
+                createdAt: session.createdAt
+            )
         }
     }
 

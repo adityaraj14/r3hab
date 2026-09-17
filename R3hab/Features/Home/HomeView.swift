@@ -41,7 +41,20 @@ struct HomeView: View {
     }
 
     private var todaySessions: [TrainingSession] {
-        sessions.filter { calendar.isDate($0.date, inSameDayAs: today) }
+        sessions.filter { !$0.isDraft && calendar.isDate($0.date, inSameDayAs: today) }
+    }
+
+    private var todayDraftId: UUID? {
+        let preferredType = SessionPreset.preferred(
+            for: settings?.currentPhase ?? .aFlareDeLoad,
+            primaryLoadID: settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID
+        ).sessionType
+        return SessionDraft.openDraftID(
+            in: sessions.map(\.snapshot),
+            on: today,
+            preferring: preferredType,
+            calendar: calendar
+        )
     }
 
     private var phaseAStatus: PhaseAExitStatus? {
@@ -131,7 +144,11 @@ struct HomeView: View {
             }
             .sheet(isPresented: $showSession) {
                 NavigationStack {
-                    SessionEditor(targetDate: today, focus: .kneeResistance)
+                    SessionEditor(
+                        targetDate: today,
+                        existingId: todayDraftId,
+                        focus: .kneeResistance
+                    )
                 }
                 .preferredColorScheme(.dark)
             }
@@ -327,6 +344,9 @@ struct HomeView: View {
     }
 
     private var sessionRowValue: String? {
+        if todaySessions.isEmpty, todayDraftId != nil {
+            return "Resume draft"
+        }
         let count = todaySessions.count
         guard count > 0 else { return nil }
         if let pending = todaySessions.first(where: { !$0.hasLoggedPainAfter }) {

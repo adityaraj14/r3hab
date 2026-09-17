@@ -22,14 +22,18 @@ struct RehabProgressView: View {
         }
     }
 
+    private var finalizedSessions: [TrainingSession] {
+        sessions.filter { !$0.isDraft }
+    }
+
     private var sessionPains: [SessionPainSnapshot] {
-        sessions.map {
+        finalizedSessions.map {
             SessionPainSnapshot(date: $0.date, painDuring: $0.painDuring, painAfter: $0.painAfter)
         }
     }
 
     private var sessionOutcomes: [SessionOutcomeSnapshot] {
-        sessions.map {
+        finalizedSessions.map {
             SessionOutcomeSnapshot(date: $0.date, createdAt: $0.createdAt, response24h: $0.response24h)
         }
     }
@@ -37,14 +41,14 @@ struct RehabProgressView: View {
     private var windowDays: Int {
         range.dayCount(
             checkInDates: checkIns.map(\.date),
-            sessionDates: sessions.map(\.date)
+            sessionDates: finalizedSessions.map(\.date)
         )
     }
 
     private var explorePoints: [DayExplorePoint] {
         ChartMetricBuilder.explorePoints(
             checkIns: metrics,
-            sessions: sessions.map {
+            sessions: finalizedSessions.map {
                 SessionLoadSnapshot(date: $0.date, volume: $0.chartVolume)
             },
             dayCount: windowDays,
@@ -74,7 +78,7 @@ struct RehabProgressView: View {
     /// Phase B stretch: clean sessions since phase change while in B (REQ-FUNC-017).
     private var phaseBCleanCount: Int? {
         guard let settings, settings.currentPhase == .bIsometrics else { return nil }
-        return sessions.filter {
+        return finalizedSessions.filter {
             $0.date >= settings.phaseChangedAt
                 && $0.phase == .bIsometrics
                 && ($0.response24h == .better || $0.response24h == .same)
@@ -82,7 +86,7 @@ struct RehabProgressView: View {
     }
 
     private var hasAnyData: Bool {
-        !checkIns.isEmpty || !sessions.isEmpty
+        !checkIns.isEmpty || !finalizedSessions.isEmpty
     }
 
     private var primaryLoad: PrimaryLoadOption {

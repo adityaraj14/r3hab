@@ -22,7 +22,9 @@ struct Resolve24hSheet: View {
     @State private var loadNudge: LoadNudge?
 
     private var settings: AppSettings? { settingsList.first }
-    private var session: TrainingSession? { allSessions.first { $0.id == sessionId } }
+    private var session: TrainingSession? {
+        allSessions.first { $0.id == sessionId && !$0.isDraft }
+    }
 
     var body: some View {
         NavigationStack {

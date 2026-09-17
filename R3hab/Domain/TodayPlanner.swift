@@ -85,7 +85,7 @@ enum TodayPlanner {
         sessions: [TrainingSessionSnapshot],
         now: Date
     ) -> [UUID] {
-        sessions
+        SessionDraft.finalized(sessions)
             .filter { !$0.hasLoggedPainAfter }
             .filter { now.timeIntervalSince($0.createdAt) <= afterPainWindowHours * 3600 }
             .sorted { $0.createdAt > $1.createdAt }
@@ -97,6 +97,6 @@ enum TodayPlanner {
         now: Date,
         calendar: Calendar = .current
     ) -> Bool {
-        sessions.contains { calendar.isDate($0.date, inSameDayAs: now) }
+        SessionDraft.finalized(sessions).contains { calendar.isDate($0.date, inSameDayAs: now) }
     }
 }

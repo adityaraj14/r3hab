@@ -39,14 +39,14 @@ enum LogStore {
     @MainActor
     static func pendingSessionTuples(from sessions: [TrainingSession]) -> [(id: UUID, date: Date, snoozedUntil: Date?)] {
         sessions
-            .filter { $0.response24h == .pending }
+            .filter { !$0.isDraft && $0.response24h == .pending }
             .map { (id: $0.id, date: $0.date, snoozedUntil: $0.snoozedUntil) }
     }
 
     @MainActor
     static func painAfterSessionTuples(from sessions: [TrainingSession]) -> [(id: UUID, createdAt: Date)] {
         sessions
-            .filter { !$0.hasLoggedPainAfter }
+            .filter { !$0.isDraft && !$0.hasLoggedPainAfter }
             .map { (id: $0.id, createdAt: $0.createdAt) }
     }
 
@@ -74,7 +74,7 @@ enum LogStore {
     @MainActor
     static func lastHardDate(from sessions: [TrainingSession]) -> Date? {
         sessions
-            .filter { SessionSpacing.isHard($0.sessionType) }
+            .filter { !$0.isDraft && SessionSpacing.isHard($0.sessionType) }
             .map(\.date)
             .max()
     }

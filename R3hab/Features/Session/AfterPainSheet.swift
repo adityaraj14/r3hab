@@ -17,7 +17,9 @@ struct AfterPainSheet: View {
     @State private var errorMessage: String?
     @State private var errorDismissTask: Task<Void, Never>?
 
-    private var session: TrainingSession? { sessions.first { $0.id == sessionId } }
+    private var session: TrainingSession? {
+        sessions.first { $0.id == sessionId && !$0.isDraft }
+    }
 
     var body: some View {
         NavigationStack {

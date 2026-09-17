@@ -269,7 +269,7 @@ struct HistoryView: View {
                     sessionRow(session)
                 }
                 .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    if !session.hasLoggedPainAfter {
+                    if !session.isDraft, !session.hasLoggedPainAfter {
                         Button {
                             afterPainSessionId = session.id
                         } label: {
@@ -277,7 +277,7 @@ struct HistoryView: View {
                         }
                         .tint(.gray)
                     }
-                    if session.response24h == .pending {
+                    if !session.isDraft, session.response24h == .pending {
                         Button {
                             resolveSessionId = session.id
                         } label: {
@@ -320,7 +320,7 @@ struct HistoryView: View {
         var id: String { dayKey }
 
         var hasPendingWorkout: Bool {
-            sessions.contains { $0.response24h == .pending }
+            sessions.contains { !$0.isDraft && $0.response24h == .pending }
         }
     }
 
@@ -386,10 +386,20 @@ struct HistoryView: View {
                     .background(AppTheme.quietFill, in: Capsule())
                     .accessibilityHidden(true)
                 sessionTypeTag(s.sessionType)
+                if s.isDraft {
+                    Text("Draft")
+                        .font(.caption2.weight(.semibold))
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 3)
+                        .foregroundStyle(AppTheme.gold)
+                        .background(AppTheme.gold.opacity(0.18), in: Capsule())
+                }
                 Spacer()
-                Text(s.response24h.title)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
+                if !s.isDraft {
+                    Text(s.response24h.title)
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
+                }
             }
             Text(s.displayTitle)
                 .font(.headline)
@@ -398,7 +408,7 @@ struct HistoryView: View {
                 HistoryResistanceListView(list: setList)
             }
             metricRow("Date", s.date.formatted(date: .abbreviated, time: .omitted))
-            metricRow("Pain during", String(s.painDuring))
+            metricRow("Pain during", PainScore.display(s.painDuring))
             metricRow("Pain after", s.displayPainAfter)
         }
         .padding(.vertical, 4)
@@ -410,9 +420,13 @@ struct HistoryView: View {
         var parts = [
             "Workout, \(s.displayTitle)",
             s.date.formatted(date: .abbreviated, time: .omitted),
-            "Pain during \(s.painDuring), after \(s.displayPainAfter)",
-            s.response24h.title
+            "Pain during \(PainScore.display(s.painDuring)), after \(s.displayPainAfter)"
         ]
+        if s.isDraft {
+            parts.append("Draft")
+        } else {
+            parts.append(s.response24h.title)
+        }
         if let setList, !setList.spokenSummary.isEmpty {
             parts.append(setList.spokenSummary)
         }
@@ -420,14 +434,16 @@ struct HistoryView: View {
     }
 
     private func workoutMetric(_ daySessions: [TrainingSession]) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+        let finalized = daySessions.filter { !$0.isDraft }
+        let drafts = daySessions.filter(\.isDraft)
+        return VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline) {
                 Text("Workout")
                     .foregroundStyle(.secondary)
                 Spacer()
-                Text(daySessions.isEmpty ? "None" : (daySessions.count == 1 ? "Yes" : "Yes · \(daySessions.count)"))
+                Text(workoutMetricValue(finalized: finalized, drafts: drafts))
                     .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(daySessions.isEmpty ? Color.secondary : Color.primary)
+                    .foregroundStyle(finalized.isEmpty ? Color.secondary : Color.primary)
             }
             if !daySessions.isEmpty {
                 Text(daySessions.map(\.displayTitle).joined(separator: " · "))
@@ -438,6 +454,16 @@ struct HistoryView: View {
             }
         }
         .font(.subheadline)
+    }
+
+    private func workoutMetricValue(finalized: [TrainingSession], drafts: [TrainingSession]) -> String {
+        if finalized.isEmpty {
+            return drafts.isEmpty ? "None" : "Draft"
+        }
+        if finalized.count == 1 {
+            return drafts.isEmpty ? "Yes" : "Yes · draft"
+        }
+        return drafts.isEmpty ? "Yes · \(finalized.count)" : "Yes · \(finalized.count) · draft"
     }
 
     private func metricRow(_ title: String, _ value: String) -> some View {
