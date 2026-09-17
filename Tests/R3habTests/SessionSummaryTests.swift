@@ -13,6 +13,43 @@ final class SessionSummaryTests: XCTestCase {
         XCTAssertEqual(SessionSummary.displayTitle(whatIDid: "   "), "Session")
     }
 
+    func testLooksStructuredWhatIDid() {
+        XCTAssertTrue(SessionSummary.looksStructuredWhatIDid("Seated extension · 4×30s @ 35 lbs"))
+        XCTAssertTrue(SessionSummary.looksStructuredWhatIDid("3x8 @ 20 lbs both"))
+        XCTAssertFalse(SessionSummary.looksStructuredWhatIDid("easy bike and a walk"))
+    }
+
+    func testLastSessionLineUsesWorkDoseAndPain() {
+        let holds = SessionSummary.makePair(
+            reps: 4,
+            loadLbs: 35,
+            holdSeconds: 30,
+            isWarmup: false
+        )
+        XCTAssertEqual(
+            SessionSummary.lastSessionLine(whatIDid: "Seated extension", sets: holds, painDuring: 2),
+            "Last: 4×30s @ 35 lbs · pain 2"
+        )
+    }
+
+    func testLastSessionLineDropsWarmupAndBothSuffix() {
+        let warmup = [ResistanceSet(reps: 2, loadLbs: 15, holdSeconds: 30, isWarmup: true)]
+        let work = (0..<3).flatMap { _ in
+            SessionSummary.makePair(reps: 8, loadLbs: 15, holdSeconds: nil, isWarmup: false)
+        }
+        XCTAssertEqual(
+            SessionSummary.lastSessionLine(whatIDid: "Seated extension", sets: warmup + work, painDuring: 1),
+            "Last: 3×8 @ 15 lbs · pain 1"
+        )
+    }
+
+    func testLastSessionLineOmitsPainWhenNotLogged() {
+        XCTAssertEqual(
+            SessionSummary.lastSessionLine(whatIDid: "Easy bike", sets: [], painDuring: PainScore.notLogged),
+            "Last: Easy bike"
+        )
+    }
+
     func testGroupsAlternatingLeftRightIntoPairs() {
         let sets = (0..<3).flatMap { _ in
             SessionSummary.makePair(reps: 8, loadLbs: 15, holdSeconds: nil, isWarmup: false)

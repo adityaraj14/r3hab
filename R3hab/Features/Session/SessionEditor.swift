@@ -35,6 +35,8 @@ struct SessionEditor: View {
     @State private var spacingWarning: String?
     @State private var didLoad = false
     @State private var showResolve = false
+    @State private var showMoreOptions = false
+    @State private var whatIDidLocked = false
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
@@ -62,32 +64,17 @@ struct SessionEditor: View {
         return "Log session"
     }
 
-    private var volumePreview: Double {
-        ResistanceMath.totalVolume(workSets) + ResistanceMath.totalVolume(warmupSets)
+    /// New logs and drafts stay quiet. A completed edit opens More options.
+    private var usesNewSessionChrome: Bool {
+        existing == nil || existing?.isDraft == true
     }
 
     var body: some View {
         Form {
-            Section {
+            Section("Exercise") {
                 Text(displayDate.formatted(date: .complete, time: .omitted))
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
-
-                Picker("Phase", selection: $phase) {
-                    ForEach(RehabPhase.allCases) { p in
-                        Text(p.title).tag(p)
-                    }
-                }
-            } header: {
-                Text(InjuryCatalog.protocolName)
-            }
-
-            Section("Exercise") {
-                if let settings {
-                    Text("Primary: \(settings.primaryLoad.title)")
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                }
                 // Wrapping chips: a horizontal ScrollView inside a Form row
                 // measured content at row width and clipped the overflow.
                 FlowLayout(spacing: 8, lineSpacing: 8) {
@@ -96,17 +83,6 @@ struct SessionEditor: View {
                     }
                 }
                 .padding(.vertical, 2)
-                Picker("Type", selection: $sessionType) {
-                    ForEach(SessionType.allCases) { t in
-                        Text(t.title).tag(t)
-                    }
-                }
-                .onChange(of: sessionType) { _, new in
-                    usesIsoHolds = (new == .isometrics)
-                    refreshSpacing()
-                }
-                TextField("What I did", text: $whatIDid, axis: .vertical)
-                    .lineLimit(2...4)
             }
 
             // Pain sits directly under Exercise so the required score is on
@@ -114,7 +90,7 @@ struct SessionEditor: View {
             // with the banner if it is empty.
             Section {
                 PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
-                if isEditing {
+                if showsAfterPain {
                     PainScoreControl(
                         title: afterPainAlreadyLogged ? "After" : "After (optional)",
                         value: $painAfter,
@@ -124,7 +100,7 @@ struct SessionEditor: View {
             } header: {
                 Text("Pain")
             } footer: {
-                if isEditing {
+                if showsAfterPain {
                     Text(afterPainAlreadyLogged
                          ? "Both sides share this score and one 24h resolve."
                          : "After-pain can wait. Save during now, or log it from Today / the reminder.")
@@ -139,21 +115,6 @@ struct SessionEditor: View {
                 }
 
                 workSetsSection
-
-                if volumePreview > 0 {
-                    Section {
-                        LabeledContent("Session volume", value: "\(TrainingSession.formatLoad(volumePreview)) lbs·reps")
-                        if let maxL = ResistanceMath.maxLoad(workSets + warmupSets) {
-                            LabeledContent("Max load", value: LoadCopy.labeled(maxL))
-                        }
-                    } footer: {
-                        Text("Progress charts plot daily volume (and max load in the legend).")
-                    }
-                }
-            }
-
-            if !isEditing, let last = lastSessionContext {
-                lastSessionSection(last)
             }
 
             Section("Notes") {
@@ -161,11 +122,22 @@ struct SessionEditor: View {
                     .lineLimit(2...4)
             }
 
+            if showsLastSession, let last = lastSessionContext {
+                Section {
+                    Text(lastSessionLine(for: last))
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel(lastSessionLine(for: last))
+                }
+            }
+
             if isEditing, let existing, !existing.isDraft, existing.response24h == .pending {
                 Section {
                     Button("Resolve 24h response…") { showResolve = true }
                 }
             }
+
+            moreOptionsSection
 
             if let spacingWarning {
                 Section {
@@ -206,7 +178,10 @@ struct SessionEditor: View {
             clearError()
             syncWhatIDid()
         }
-        .onChange(of: whatIDid) { _, _ in clearError() }
+        .onChange(of: sessionType) { _, new in
+            usesIsoHolds = (new == .isometrics)
+            refreshSpacing()
+        }
         .onChange(of: painDuring) { _, _ in clearError() }
         .onChange(of: painAfter) { _, _ in clearError() }
         .sheet(isPresented: $showResolve) {
@@ -216,6 +191,10 @@ struct SessionEditor: View {
 
     private var afterPainAlreadyLogged: Bool {
         existing?.hasLoggedPainAfter == true
+    }
+
+    private var showsAfterPain: Bool {
+        existing?.isDraft == false
     }
 
     private var showsDraftSave: Bool {
@@ -258,15 +237,45 @@ struct SessionEditor: View {
         sessions.first { $0.id != existingId && !$0.isDraft }
     }
 
-    private func lastSessionSection(_ last: TrainingSession) -> some View {
+    private var showsLastSession: Bool {
+        usesNewSessionChrome
+    }
+
+    private func lastSessionLine(for last: TrainingSession) -> String {
+        SessionSummary.lastSessionLine(
+            whatIDid: last.whatIDid,
+            sets: last.resistanceSets(),
+            painDuring: last.painDuring
+        )
+    }
+
+    private var moreOptionsSection: some View {
         Section {
-            LabeledContent("Last session", value: last.displayTitle)
-            if let load = last.chartMaxLoad {
-                LabeledContent("Last max load", value: LoadCopy.labeled(load))
+            if showMoreOptions {
+                Picker("Phase", selection: $phase) {
+                    ForEach(RehabPhase.allCases) { p in
+                        Text(p.title).tag(p)
+                    }
+                }
+                .accessibilityLabel("Phase")
+                Picker("Type", selection: $sessionType) {
+                    ForEach(SessionType.allCases) { t in
+                        Text(t.title).tag(t)
+                    }
+                }
+                .accessibilityLabel("Type")
+                TextField("What I did", text: whatIDidBinding, axis: .vertical)
+                    .lineLimit(2...4)
+                    .accessibilityLabel("What I did")
+                Button("Show less") { showMoreOptions = false }
+            } else {
+                Button("More options") { showMoreOptions = true }
+                    .accessibilityHint("Phase, type, and what I did")
             }
-            LabeledContent("Last pain during", value: String(last.painDuring))
         } footer: {
-            Text("Context only — today’s numbers are what count.")
+            if !showMoreOptions {
+                Text("Phase \(phase.shortTitle) · \(sessionType.title)")
+            }
         }
     }
 
@@ -281,6 +290,17 @@ struct SessionEditor: View {
 
     private var primaryLoadID: String {
         settings?.primaryLoadID ?? PrimaryLoadCatalog.defaultID
+    }
+
+    private var whatIDidBinding: Binding<String> {
+        Binding(
+            get: { whatIDid },
+            set: { newValue in
+                whatIDid = newValue
+                whatIDidLocked = true
+                clearError()
+            }
+        )
     }
 
     private var lateralityBinding: Binding<SetLaterality> {
@@ -301,12 +321,13 @@ struct SessionEditor: View {
 
     private var workSetsSection: some View {
         Section {
-            Picker("Legs", selection: lateralityBinding) {
-                ForEach(SetLaterality.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
+            Button {
+                lateralityBinding.wrappedValue = laterality == .bilateral ? .unilateral : .bilateral
+            } label: {
+                Text(laterality == .bilateral ? "Split L/R loads" : "Use one load")
             }
-            .pickerStyle(.segmented)
+            .accessibilityLabel(laterality == .bilateral ? "Split left and right loads" : "Use one load for both legs")
+            .accessibilityValue(laterality.title)
 
             ForEach(Array(workPairs.enumerated()), id: \.element.id) { index, pair in
                 VStack(alignment: .leading, spacing: 8) {
@@ -347,9 +368,9 @@ struct SessionEditor: View {
         } header: {
             Text(usesIsoHolds ? "Working holds" : "Working sets")
         } footer: {
-            Text(laterality == .bilateral
-                 ? "One load for both knees. Switch to \(SetLaterality.unilateral.title) if left and right use different loads. One 24h resolve for the session."
-                 : "Each set logs left and right separately so loads can differ. One 24h resolve for the session.")
+            if laterality == .unilateral {
+                Text("Left and right loads can differ. One 24h resolve for the session.")
+            }
         }
     }
 
@@ -553,6 +574,9 @@ struct SessionEditor: View {
             }
             selectedPresetId = SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID)
                 .first { $0.sessionType == existing.sessionType && $0.tracksResistance }?.id
+            whatIDidLocked = !existing.whatIDid.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                && !SessionSummary.looksStructuredWhatIDid(existing.whatIDid)
+            showMoreOptions = !existing.isDraft
             refreshSpacing()
             return
         }
@@ -572,6 +596,7 @@ struct SessionEditor: View {
         selectedPresetId = preset.id
         sessionType = preset.sessionType
         usesIsoHolds = preset.usesIsoHoldLogging || preset.sessionType == .isometrics
+        whatIDidLocked = false
         if !preset.whatIDid.isEmpty {
             whatIDid = preset.whatIDid
         }
@@ -624,12 +649,9 @@ struct SessionEditor: View {
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         let work = workSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         if work.isEmpty && wu.isEmpty { return }
-        // Don't clobber free-text history on edit unless it looks structured
-        if isEditing, !whatIDid.isEmpty {
-            let lower = whatIDid.lowercased()
-            let structured = lower.contains("wu") || lower.contains("lb") || lower.contains("lbs") || lower.contains("×")
-                || lower.contains("x") || lower.contains("set") || lower.contains("both")
-            if !structured { return }
+        if whatIDidLocked { return }
+        if isEditing, !whatIDid.isEmpty, !SessionSummary.looksStructuredWhatIDid(whatIDid) {
+            return
         }
         var parts = [name]
         if let compact = SessionSummary.compactResistance(wu + work) {

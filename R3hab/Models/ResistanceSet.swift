@@ -227,6 +227,38 @@ enum SessionSummary {
         return trimmed
     }
 
+    /// Auto-filled “what I did” looks like `Seated extension · 4×30s @ 35 lbs`.
+    static func looksStructuredWhatIDid(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("wu")
+            || lower.contains("lb")
+            || lower.contains("lbs")
+            || lower.contains("×")
+            || lower.contains("x")
+            || lower.contains("set")
+            || lower.contains("both")
+    }
+
+    /// One-line logger context, e.g. `Last: 4×30s @ 35 lbs · pain 2`.
+    static func lastSessionLine(
+        whatIDid: String,
+        sets: [ResistanceSet],
+        painDuring: Int
+    ) -> String {
+        let work = sets.filter { !$0.isWarmup }
+        let dose = compactResistance(work)?.replacingOccurrences(of: " both", with: "")
+        let body: String
+        if let dose, !dose.isEmpty {
+            body = dose
+        } else {
+            body = displayTitle(whatIDid: whatIDid)
+        }
+        if PainScore.isLogged(painDuring) {
+            return "Last: \(body) · pain \(painDuring)"
+        }
+        return "Last: \(body)"
+    }
+
     static func groupWorkSets(_ sets: [ResistanceSet]) -> [WorkSetPair] {
         var result: [WorkSetPair] = []
         var index = 0
