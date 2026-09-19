@@ -57,6 +57,10 @@ struct HomeView: View {
         )
     }
 
+    private var nextUpSessionTitle: String {
+        activePrimaryLoad.nextUpCTA(hasDraft: todayDraftId != nil)
+    }
+
     private var phaseAStatus: PhaseAExitStatus? {
         guard let settings, settings.currentPhase == .aFlareDeLoad else { return nil }
         return PhaseAExitEvaluator.evaluate(
@@ -214,7 +218,7 @@ struct HomeView: View {
     /// sheets carry their own context. Only the done state keeps a status line.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(nextUpEyebrow(for: action).uppercased())
+            Text(TodayPlanner.eyebrow(for: action, hasSessionDraft: todayDraftId != nil).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
@@ -255,9 +259,10 @@ struct HomeView: View {
 
             case .logSession:
                 Button { showSession = true } label: {
-                    Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
+                    Label(nextUpSessionTitle, systemImage: InjuryCatalog.systemImage)
                 }
                 .buttonStyle(.primaryAction)
+                .accessibilityLabel(nextUpSessionTitle)
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -288,15 +293,6 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(AppTheme.surface)
         )
-    }
-
-    private func nextUpEyebrow(for action: TodayNextAction) -> String {
-        switch action {
-        case .resolvePending: return "Needs your 24h call"
-        case .restDay: return "Rest day"
-        case .allDone: return "Today"
-        default: return "Next up"
-        }
     }
 
     // MARK: Phase A (only while in Phase A)

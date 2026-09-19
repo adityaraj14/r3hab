@@ -133,4 +133,11 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartVolumeTitle, "Seated extension volume")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.chartVolumeTitle, "Leg press volume")
     }
+
+    func testNextUpCTAResumesTheLiftWhenADraftExists() {
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: false), "Log seated extension")
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: true), "Resume seated extension")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: false), "Log leg press")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: true), "Resume leg press")
+    }
 }

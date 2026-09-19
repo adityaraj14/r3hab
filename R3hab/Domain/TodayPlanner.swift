@@ -39,6 +39,21 @@ enum TodayPlanner {
     /// that keeps a line under its title — it is a status, not a prompt.
     static let allDoneLine = "All done for the day. Let’s pick it back up tomorrow."
 
+    static func eyebrow(for action: TodayNextAction, hasSessionDraft: Bool = false) -> String {
+        switch action {
+        case .resolvePending:
+            return "Needs your 24h call"
+        case .restDay:
+            return "Rest day"
+        case .allDone:
+            return "Today"
+        case .logSession where hasSessionDraft:
+            return "Draft saved"
+        case .logMorning, .logAfterPain, .logEvening, .logSession:
+            return "Next up"
+        }
+    }
+
     /// Priority: the forced 24h loop first, then the morning score (it is the
     /// protocol’s judge), then a fresh after-pain, then the day’s one load
     /// (evening pain wins once the evening reminder hour has passed). On a rest

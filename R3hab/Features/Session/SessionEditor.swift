@@ -151,21 +151,28 @@ struct SessionEditor: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            if showsDraftSave {
-                ToolbarItem(placement: .automatic) {
-                    Button("Save draft") { persist(as: .draft) }
-                }
-            }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") { persist(as: .finalize) }
                     .fontWeight(.semibold)
                     .tint(AppTheme.gold)
+                    .accessibilityLabel("Save")
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let errorMessage {
                 FormErrorBanner(message: errorMessage)
                     .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if showsDraftSave {
+                Button("Save draft") { persist(as: .draft) }
+                    .buttonStyle(.plain)
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(AppTheme.quiet)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 14)
+                    .accessibilityLabel("Save draft")
             }
         }
         .animation(.easeInOut(duration: 0.2), value: errorMessage)

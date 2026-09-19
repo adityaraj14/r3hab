@@ -16,6 +16,10 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var chartVolumeTitle: String {
         id == "seated-extension" ? "Seated extension volume" : "\(title) volume"
     }
+
+    func nextUpCTA(hasDraft: Bool) -> String {
+        hasDraft ? "Resume \(title.lowercased())" : logCTA
+    }
 }
 
 enum PrimaryLoadCatalog {
