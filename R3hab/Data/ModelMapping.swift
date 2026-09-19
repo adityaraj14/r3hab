@@ -19,7 +19,8 @@ extension TrainingSession {
             snoozedUntil: snoozedUntil,
             phase: phase,
             painDuring: painDuring,
-            painAfter: painAfter
+            painAfter: painAfter,
+            isDraft: isDraft
         )
     }
 }

@@ -40,7 +40,7 @@ enum DecisionSuggester {
         excluding id: UUID?,
         from all: [TrainingSessionSnapshot]
     ) -> [TrainingSessionSnapshot] {
-        all
+        SessionDraft.finalized(all)
             .filter { session in
                 if let id, session.id == id { return false }
                 if session.decision == .rest { return false }
@@ -162,7 +162,7 @@ enum LoadNudgeEvaluator {
         calendar: Calendar
     ) -> TrainingSessionSnapshot? {
         let start = calendar.startOfDay(for: day)
-        return sessions
+        return SessionDraft.finalized(sessions)
             .filter { session in
                 guard session.decision != .rest else { return false }
                 if session.response24h == .notApplicable { return false }

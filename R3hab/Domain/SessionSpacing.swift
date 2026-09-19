@@ -34,7 +34,7 @@ enum SessionSpacing {
         now: Date,
         excluding id: UUID? = nil
     ) -> Double? {
-        let hard = sessions
+        let hard = SessionDraft.finalized(sessions)
             .filter { isHard($0.sessionType) }
             .filter { id == nil || $0.id != id }
             .sorted { $0.date > $1.date || ($0.date == $1.date && $0.createdAt > $1.createdAt) }

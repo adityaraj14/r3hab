@@ -97,12 +97,14 @@ struct SessionDTO: Codable {
     var snoozeUsed: Bool
     var resolvedAt: Date?
     var createdAt: Date
+    var isDraft: Bool
 
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
         case sets, reps, loadLbs, holdSeconds, loadRegion, track, resistanceSets
         case warmupReps, warmupHoldSeconds, warmupLoadLbs
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
+        case isDraft
         case loadKg // legacy key
     }
 
@@ -130,7 +132,8 @@ struct SessionDTO: Codable {
         snoozedUntil: Date?,
         snoozeUsed: Bool,
         resolvedAt: Date?,
-        createdAt: Date
+        createdAt: Date,
+        isDraft: Bool = false
     ) {
         self.id = id
         self.date = date
@@ -156,6 +159,7 @@ struct SessionDTO: Codable {
         self.snoozeUsed = snoozeUsed
         self.resolvedAt = resolvedAt
         self.createdAt = createdAt
+        self.isDraft = isDraft
     }
 
     init(from decoder: Decoder) throws {
@@ -185,6 +189,7 @@ struct SessionDTO: Codable {
         snoozeUsed = try c.decode(Bool.self, forKey: .snoozeUsed)
         resolvedAt = try c.decodeIfPresent(Date.self, forKey: .resolvedAt)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
+        isDraft = try c.decodeIfPresent(Bool.self, forKey: .isDraft) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -213,6 +218,7 @@ struct SessionDTO: Codable {
         try c.encode(snoozeUsed, forKey: .snoozeUsed)
         try c.encodeIfPresent(resolvedAt, forKey: .resolvedAt)
         try c.encode(createdAt, forKey: .createdAt)
+        try c.encode(isDraft, forKey: .isDraft)
     }
 }
 
@@ -301,7 +307,8 @@ enum ExportImportService {
                     snoozedUntil: $0.snoozedUntil,
                     snoozeUsed: $0.snoozeUsed,
                     resolvedAt: $0.resolvedAt,
-                    createdAt: $0.createdAt
+                    createdAt: $0.createdAt,
+                    isDraft: $0.isDraft
                 )
             }
         )
@@ -458,6 +465,7 @@ enum ExportImportService {
         s.snoozeUsed = dto.snoozeUsed
         s.resolvedAt = dto.resolvedAt
         s.createdAt = dto.createdAt
+        s.isDraft = dto.isDraft
         s.updatedAt = Date()
     }
 }

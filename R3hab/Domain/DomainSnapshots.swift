@@ -19,6 +19,7 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
     var phase: RehabPhase
     var painDuring: Int
     var painAfter: Int
+    var isDraft: Bool
 
     init(
         id: UUID = UUID(),
@@ -31,7 +32,8 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         snoozedUntil: Date?,
         phase: RehabPhase,
         painDuring: Int = 0,
-        painAfter: Int = PainScore.notLogged
+        painAfter: Int = PainScore.notLogged,
+        isDraft: Bool = false
     ) {
         self.id = id
         self.date = date
@@ -44,10 +46,44 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         self.phase = phase
         self.painDuring = painDuring
         self.painAfter = painAfter
+        self.isDraft = isDraft
     }
 
     var hasLoggedPainAfter: Bool {
         PainScore.isLogged(painAfter)
+    }
+
+    var isFinalized: Bool { !isDraft }
+}
+
+enum SessionDraft {
+    static let emptyMessage = "Add a load, a note, or pain during to save a draft."
+
+    static func finalized(_ sessions: [TrainingSessionSnapshot]) -> [TrainingSessionSnapshot] {
+        sessions.filter(\.isFinalized)
+    }
+
+    static func isWorthSaving(
+        painDuring: Int?,
+        notes: String,
+        sets: [ResistanceSet]
+    ) -> Bool {
+        if let painDuring, PainScore.isLogged(painDuring) { return true }
+        if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
+        return sets.contains { $0.loadLbs != nil }
+    }
+
+    static func openDraftID(
+        in sessions: [TrainingSessionSnapshot],
+        on day: Date,
+        preferring type: SessionType,
+        calendar: Calendar = .current
+    ) -> UUID? {
+        let drafts = sessions.filter { $0.isDraft && calendar.isDate($0.date, inSameDayAs: day) }
+        if let match = drafts.first(where: { $0.sessionType == type }) {
+            return match.id
+        }
+        return drafts.first?.id
     }
 }
 

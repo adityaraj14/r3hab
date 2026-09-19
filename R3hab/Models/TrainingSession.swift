@@ -35,6 +35,8 @@ final class TrainingSession {
     var resolvedAt: Date?
     var createdAt: Date
     var updatedAt: Date
+    /// Existing rows stay `false` through lightweight migration.
+    var isDraft: Bool = false
 
     var phase: RehabPhase {
         get { RehabPhase.normalized(rawValue: phaseRaw) }
@@ -101,6 +103,7 @@ final class TrainingSession {
         self.resolvedAt = nil
         self.createdAt = Date()
         self.updatedAt = Date()
+        self.isDraft = false
         if !resistanceSets.isEmpty {
             self.setResistanceSets(resistanceSets)
         }

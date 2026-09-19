@@ -8,7 +8,7 @@ enum PendingQueue {
         calendar: Calendar = .current
     ) -> [TrainingSessionSnapshot] {
         let today = CalendarDay.startOfDay(now, calendar: calendar)
-        return sessions
+        return SessionDraft.finalized(sessions)
             .filter { s in
                 guard s.response24h == .pending else { return false }
                 guard s.date < today else { return false }
@@ -28,7 +28,7 @@ enum PendingQueue {
         calendar: Calendar = .current
     ) -> [TrainingSessionSnapshot] {
         let today = CalendarDay.startOfDay(now, calendar: calendar)
-        return sessions
+        return SessionDraft.finalized(sessions)
             .filter { $0.response24h == .pending && CalendarDay.startOfDay($0.date, calendar: calendar) == today }
             .sorted { $0.createdAt < $1.createdAt }
     }
