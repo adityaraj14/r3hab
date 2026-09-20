@@ -14,13 +14,11 @@ enum SessionEditorKind: Equatable, Sendable {
         }
     }
 
-    /// Saved non-draft sessions can be deleted from the editor.
     var showsDelete: Bool { self == .historical }
 
-    /// Next-morning Better / Same / Worse. Drafts and new logs stay off this UI.
     var shows24hResolution: Bool { self == .historical }
 
-    /// After-pain left the session form. Capture stays on Today / AfterPainSheet.
+    /// After left the session form. Capture stays on Today / AfterPainSheet.
     var showsAfterPain: Bool { false }
 
     var showsDraftSave: Bool { self != .historical }
