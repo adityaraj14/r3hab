@@ -32,7 +32,6 @@ enum TodaySessionEntry: Equatable, Sendable {
         return nil
     }
 
-    /// Mirrors `HomeView.sessionRowValue` after #31: empty days always get `todayLine`.
     static func resolve(
         isRestDay: Bool,
         hasDraft: Bool,
@@ -40,18 +39,19 @@ enum TodaySessionEntry: Equatable, Sendable {
         target: LoadPrescription,
         laterality: SetLaterality
     ) -> TodaySessionEntry {
-        _ = isRestDay
-        _ = laterality
-        if todaySessions.isEmpty, hasDraft {
+        if !todaySessions.isEmpty {
+            return .logged(
+                load(from: todaySessions.flatMap(\.resistanceSets)),
+                status: status(for: todaySessions)
+            )
+        }
+        if hasDraft {
             return .resumeDraft
         }
-        if todaySessions.isEmpty {
-            return .target(TodaySessionLoad(warmupNote: nil, workLines: [target.todayLine]))
+        if isRestDay {
+            return .rest
         }
-        return .logged(
-            TodaySessionLoad(warmupNote: nil, workLines: []),
-            status: status(for: todaySessions)
-        )
+        return .target(load(from: target, laterality: laterality))
     }
 
     static func status(for sessions: [TrainingSessionSnapshot]) -> String {
@@ -59,5 +59,30 @@ enum TodaySessionEntry: Equatable, Sendable {
             return "During \(pending.painDuring) · after not logged"
         }
         return sessions.count == 1 ? "Logged" : "\(sessions.count) logged"
+    }
+
+    private static func load(from target: LoadPrescription, laterality: SetLaterality) -> TodaySessionLoad {
+        load(from: [SessionPrefill.warmupSet(loadLbs: target.loadLbs)]
+            + SessionPrefill.workSets(from: target, laterality: laterality))
+    }
+
+    private static func load(from sets: [ResistanceSet]) -> TodaySessionLoad {
+        let warmup = sets.filter(\.isWarmup)
+        let work = sets.filter { !$0.isWarmup }
+        return TodaySessionLoad(
+            warmupNote: SessionSummary.compactResistance(warmup),
+            workLines: SessionSummary.groupWorkSets(work).map(workLine(for:))
+        )
+    }
+
+    private static func workLine(for pair: WorkSetPair) -> String {
+        let dose = SessionSummary.historyDose(reps: pair.reps, holdSeconds: pair.holdSeconds)
+        if pair.loadsMatch {
+            guard let lbs = pair.leftLoad else { return dose }
+            return [dose, "@ \(LoadCopy.labeled(lbs))"].filter { !$0.isEmpty }.joined(separator: " ")
+        }
+        let left = pair.leftLoad.map(LoadCopy.labeled) ?? "—"
+        let right = pair.rightLoad.map(LoadCopy.labeled) ?? "—"
+        return [dose, "L @ \(left) / R @ \(right)"].filter { !$0.isEmpty }.joined(separator: " ")
     }
 }
