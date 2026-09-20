@@ -277,6 +277,8 @@ struct HistoryView: View {
                         }
                         .tint(.gray)
                     }
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     if let action = History24hSwipe.action(
                         isDraft: session.isDraft,
                         response24h: session.response24h
@@ -288,8 +290,6 @@ struct HistoryView: View {
                         }
                         .tint(.orange)
                     }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                     Button(role: .destructive) {
                         deleteSessionId = session.id
                     } label: {
