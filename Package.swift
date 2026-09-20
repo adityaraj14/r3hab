@@ -19,6 +19,7 @@ let package = Package(
                 "Models/PrimaryLoadCatalog.swift",
                 "Domain/DomainSnapshots.swift",
                 "Domain/DecisionSuggester.swift",
+                "Domain/History24hSwipe.swift",
                 "Domain/ProgressionEngine.swift"
             ]
         ),
@@ -26,7 +27,10 @@ let package = Package(
             name: "R3habDomainTests",
             dependencies: ["R3habDomain"],
             path: "Tests/R3habTests",
-            sources: ["ProgressionEngineTests.swift"]
+            sources: [
+                "ProgressionEngineTests.swift",
+                "History24hSwipeTests.swift"
+            ]
         )
     ]
 )

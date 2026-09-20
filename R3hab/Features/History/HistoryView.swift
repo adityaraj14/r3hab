@@ -277,11 +277,14 @@ struct HistoryView: View {
                         }
                         .tint(.gray)
                     }
-                    if !session.isDraft, session.response24h == .pending {
+                    if let action = History24hSwipe.action(
+                        isDraft: session.isDraft,
+                        response24h: session.response24h
+                    ) {
                         Button {
                             resolveSessionId = session.id
                         } label: {
-                            Label("Resolve", systemImage: "checkmark.circle")
+                            Label(action.title, systemImage: "checkmark.circle")
                         }
                         .tint(.orange)
                     }
