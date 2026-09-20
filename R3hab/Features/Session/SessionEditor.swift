@@ -12,6 +12,7 @@ struct SessionEditor: View {
     @Environment(\.dismiss) private var dismiss
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
+    @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
 
     var targetDate: Date = Date()
     /// Session to edit; `nil` logs a new one.
@@ -622,20 +623,32 @@ struct SessionEditor: View {
                     isWarmup: false
                 )
             }
+            return
+        }
+
+        let title: String
+        if let id = selectedPresetId, let preset = SessionPreset.all.first(where: { $0.id == id }) {
+            title = preset.label
         } else {
-            if warmupSets.isEmpty {
-                warmupSets = [
-                    ResistanceSet(reps: 2, loadLbs: nil, holdSeconds: 30, isWarmup: true)
-                ]
-            }
-            if workSets.isEmpty {
-                workSets = SessionSummary.makePair(
-                    reps: 8,
-                    loadLbs: nil,
-                    holdSeconds: nil,
-                    isWarmup: false
-                )
-            }
+            title = PrimaryLoadCatalog.option(for: primaryLoadID).title
+        }
+        let prescription = ProgressionEngine.today(
+            sessions: sessions.filter { $0.id != existingId }.map(\.snapshot),
+            checkIns: checkIns.map(\.snapshot),
+            primaryLoadTitle: title,
+            asOf: Date(),
+            calendar: calendar
+        )
+        laterality = prescription.laterality
+        storedLateralityRaw = prescription.laterality.rawValue
+        if warmupSets.isEmpty {
+            warmupSets = [SessionPrefill.warmupSet(loadLbs: prescription.target.loadLbs)]
+        }
+        if workSets.isEmpty {
+            workSets = SessionPrefill.workSets(
+                from: prescription.target,
+                laterality: prescription.laterality
+            )
         }
     }
 
@@ -680,6 +693,9 @@ struct SessionEditor: View {
         var work = workSets.map { var s = $0; s.isWarmup = false; return s }
         wu = wu.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         work = work.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
+        if kind == .finalize {
+            work = ProgressionEngine.applySessionPain(painDuring, to: work)
+        }
         let allSets = wu + work
         let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
 

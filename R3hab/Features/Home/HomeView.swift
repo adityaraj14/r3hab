@@ -78,6 +78,16 @@ struct HomeView: View {
         settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
     }
 
+    private var todayProgression: ProgressionResult {
+        ProgressionEngine.today(
+            sessions: sessionSnaps,
+            checkIns: checkIns.map(\.snapshot),
+            primaryLoadTitle: activePrimaryLoad.title,
+            asOf: Date(),
+            calendar: calendar
+        )
+    }
+
     private var nextAction: TodayNextAction {
         let now = Date()
         return TodayPlanner.nextAction(
@@ -255,9 +265,15 @@ struct HomeView: View {
 
             case .logSession:
                 Button { showSession = true } label: {
-                    Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
+                        Text(todayProgression.target.todayLine)
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
+                .accessibilityLabel("\(activePrimaryLoad.logCTA). \(todayProgression.target.todayLine)")
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -346,6 +362,9 @@ struct HomeView: View {
     private var sessionRowValue: String? {
         if todaySessions.isEmpty, todayDraftId != nil {
             return "Resume draft"
+        }
+        if todaySessions.isEmpty {
+            return todayProgression.target.todayLine
         }
         let count = todaySessions.count
         guard count > 0 else { return nil }

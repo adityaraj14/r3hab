@@ -25,7 +25,14 @@ enum LoadCopy {
     static let unit = "lbs"
 
     static func labeled(_ lbs: Double) -> String {
-        "\(TrainingSession.formatLoad(lbs)) \(unit)"
+        "\(formatted(lbs)) \(unit)"
+    }
+
+    static func formatted(_ lbs: Double) -> String {
+        if lbs.rounded() == lbs {
+            return String(Int(lbs))
+        }
+        return String(format: "%g", lbs)
     }
 }
 
@@ -50,7 +57,7 @@ enum VolumeCopy {
             formatter.maximumFractionDigits = 1
             formatter.minimumFractionDigits = 0
         }
-        return formatter.string(from: NSNumber(value: value)) ?? TrainingSession.formatLoad(value)
+        return formatter.string(from: NSNumber(value: value)) ?? LoadCopy.formatted(value)
     }
 }
 
@@ -66,6 +73,8 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
     var isWarmup: Bool
     /// Left or right knee. Nil on legacy rows and warm-ups.
     var side: KneeSide?
+    /// 0–10 when logged on this row. Nil on legacy JSON and warm-ups.
+    var painDuring: Int?
 
     init(
         id: UUID = UUID(),
@@ -73,7 +82,8 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         loadLbs: Double? = nil,
         holdSeconds: Int? = nil,
         isWarmup: Bool = false,
-        side: KneeSide? = nil
+        side: KneeSide? = nil,
+        painDuring: Int? = nil
     ) {
         self.id = id
         self.reps = reps
@@ -81,6 +91,7 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         self.holdSeconds = holdSeconds
         self.isWarmup = isWarmup
         self.side = side
+        self.painDuring = painDuring
     }
 
     /// Volume contribution: reps × load (hold sets still count via reps × load).
@@ -420,10 +431,10 @@ enum SessionSummary {
     private static func historyLoad(_ pair: WorkSetPair) -> String {
         if pair.loadsMatch {
             guard let lbs = pair.leftLoad else { return "" }
-            return "@ \(TrainingSession.formatLoad(lbs))"
+            return "@ \(LoadCopy.formatted(lbs))"
         }
-        let left = pair.leftLoad.map(TrainingSession.formatLoad) ?? "—"
-        let right = pair.rightLoad.map(TrainingSession.formatLoad) ?? "—"
+        let left = pair.leftLoad.map(LoadCopy.formatted) ?? "—"
+        let right = pair.rightLoad.map(LoadCopy.formatted) ?? "—"
         return "@ L \(left) / R \(right)"
     }
 
@@ -466,13 +477,13 @@ enum SessionSummary {
         let load: String
         if pair.loadsMatch {
             if let lbs = pair.leftLoad {
-                load = "at \(TrainingSession.formatLoad(lbs))"
+                load = "at \(LoadCopy.formatted(lbs))"
             } else {
                 load = ""
             }
         } else {
-            let left = pair.leftLoad.map(TrainingSession.formatLoad) ?? "none"
-            let right = pair.rightLoad.map(TrainingSession.formatLoad) ?? "none"
+            let left = pair.leftLoad.map(LoadCopy.formatted) ?? "none"
+            let right = pair.rightLoad.map(LoadCopy.formatted) ?? "none"
             load = "at left \(left), right \(right)"
         }
 
