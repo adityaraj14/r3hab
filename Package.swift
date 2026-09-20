@@ -20,7 +20,8 @@ let package = Package(
                 "Domain/DomainSnapshots.swift",
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
-                "Domain/ProgressionEngine.swift"
+                "Domain/ProgressionEngine.swift",
+                "Domain/TodaySessionEntry.swift"
             ]
         ),
         .testTarget(
@@ -29,7 +30,8 @@ let package = Package(
             path: "Tests/R3habTests",
             sources: [
                 "ProgressionEngineTests.swift",
-                "SessionEditorChromeTests.swift"
+                "SessionEditorChromeTests.swift",
+                "TodaySessionEntryTests.swift"
             ]
         )
     ]
