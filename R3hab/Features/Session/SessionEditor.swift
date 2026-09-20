@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Log or edit a training session (primary lift iso/HSR + 24h loop).
+/// Log or edit a training session. Historical rows own Delete and 24h here.
 ///
 /// Holds only value state. When editing, the row is resolved by id through
 /// `@Query` on every touch, so a sheet left open across a long background never
@@ -29,15 +29,15 @@ struct SessionEditor: View {
     @AppStorage("sessionLaterality") private var storedLateralityRaw: String = SetLaterality.bilateral.rawValue
     @State private var laterality: SetLaterality = .bilateral
     @State private var painDuring: Int? = nil
-    @State private var painAfter: Int? = nil
     @State private var notes: String = ""
     @State private var errorMessage: String?
     @State private var errorDismissTask: Task<Void, Never>?
     @State private var spacingWarning: String?
     @State private var didLoad = false
-    @State private var showResolve = false
     @State private var showMoreOptions = false
     @State private var whatIDidLocked = false
+    @State private var response24hEdit: Response24h?
+    @State private var confirmDelete = false
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
@@ -45,6 +45,9 @@ struct SessionEditor: View {
     private var existing: TrainingSession? {
         guard let existingId else { return nil }
         return sessions.first { $0.id == existingId }
+    }
+    private var kind: SessionEditorKind {
+        SessionEditorKind.classify(existingIsDraft: existing.map(\.isDraft))
     }
 
     private var showsResistance: Bool {
@@ -66,9 +69,7 @@ struct SessionEditor: View {
     }
 
     /// New logs and drafts stay quiet. A completed edit opens More options.
-    private var usesNewSessionChrome: Bool {
-        existing == nil || existing?.isDraft == true
-    }
+    private var usesNewSessionChrome: Bool { kind.usesNewSessionChrome }
 
     var body: some View {
         Form {
@@ -91,20 +92,20 @@ struct SessionEditor: View {
             // with the banner if it is empty.
             Section {
                 PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
-                if showsAfterPain {
-                    PainScoreControl(
-                        title: afterPainAlreadyLogged ? "After" : "After (optional)",
-                        value: $painAfter,
-                        allowsClear: !afterPainAlreadyLogged
-                    )
+                if kind.shows24hResolution {
+                    Picker("24h", selection: $response24hEdit) {
+                        Text("Better").tag(Optional.some(Response24h.better))
+                        Text("Same").tag(Optional.some(Response24h.same))
+                        Text("Worse").tag(Optional.some(Response24h.worse))
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityLabel("24h resolution")
                 }
             } header: {
                 Text("Pain")
             } footer: {
-                if showsAfterPain {
-                    Text(afterPainAlreadyLogged
-                         ? "Both sides share this score and one 24h resolve."
-                         : "After-pain can wait. Save during now, or log it from Today / the reminder.")
+                if kind.shows24hResolution {
+                    Text("Next-morning tendon response. Changing Better, Same, or Worse overwrites the saved 24h.")
                 } else {
                     Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
                 }
@@ -132,12 +133,6 @@ struct SessionEditor: View {
                 }
             }
 
-            if isEditing, let existing, !existing.isDraft, existing.response24h == .pending {
-                Section {
-                    Button("Resolve 24h response…") { showResolve = true }
-                }
-            }
-
             moreOptionsSection
 
             if let spacingWarning {
@@ -152,7 +147,12 @@ struct SessionEditor: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel") { dismiss() }
             }
-            if showsDraftSave {
+            if kind.showsDelete {
+                ToolbarItem(placement: .automatic) {
+                    Button("Delete", role: .destructive) { confirmDelete = true }
+                }
+            }
+            if kind.showsDraftSave {
                 ToolbarItem(placement: .automatic) {
                     Button("Save draft") { persist(as: .draft) }
                 }
@@ -184,23 +184,14 @@ struct SessionEditor: View {
             refreshSpacing()
         }
         .onChange(of: painDuring) { _, _ in clearError() }
-        .onChange(of: painAfter) { _, _ in clearError() }
-        .sheet(isPresented: $showResolve) {
-            if let existingId { Resolve24hSheet(sessionId: existingId) }
+        .confirmationDialog(
+            "Delete this workout?",
+            isPresented: $confirmDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) { deleteExisting() }
+            Button("Cancel", role: .cancel) {}
         }
-    }
-
-    private var afterPainAlreadyLogged: Bool {
-        existing?.hasLoggedPainAfter == true
-    }
-
-    private var showsAfterPain: Bool {
-        existing?.isDraft == false
-    }
-
-    private var showsDraftSave: Bool {
-        guard let existing else { return true }
-        return existing.isDraft
     }
 
     private enum PersistKind {
@@ -562,7 +553,7 @@ struct SessionEditor: View {
             sessionType = existing.sessionType
             whatIDid = existing.whatIDid
             painDuring = PainScore.optional(existing.painDuring)
-            painAfter = existing.loggedPainAfter
+            response24hEdit = Session24hResolution.pickerSelection(stored: existing.response24h)
             notes = existing.notes
             usesIsoHolds = existing.sessionType == .isometrics
             let all = existing.resistanceSets()
@@ -686,24 +677,25 @@ struct SessionEditor: View {
         }
     }
 
-    private func persist(as kind: PersistKind) {
+    private func persist(as persistKind: PersistKind) {
+        let shouldWrite24h = kind.shows24hResolution
         clearError()
 
         var wu = warmupSets.map { var s = $0; s.isWarmup = true; return s }
         var work = workSets.map { var s = $0; s.isWarmup = false; return s }
         wu = wu.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
         work = work.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
-        if kind == .finalize {
+        if persistKind == .finalize {
             work = ProgressionEngine.applySessionPain(painDuring, to: work)
         }
         let allSets = wu + work
         let text = whatIDid.trimmingCharacters(in: .whitespacesAndNewlines)
 
-        switch kind {
+        switch persistKind {
         case .finalize:
             if let issue = SessionSaveValidation.validate(
                 painDuring: painDuring,
-                painAfter: painAfter,
+                painAfter: existing?.loggedPainAfter,
                 whatIDid: whatIDid,
                 sets: allSets
             ) {
@@ -723,7 +715,7 @@ struct SessionEditor: View {
 
         let storedDuring = painDuring ?? PainScore.notLogged
         let storedAfter = resolvedPainAfter()
-        let reuseId = existingId ?? draftReuseID(for: kind)
+        let reuseId = existingId ?? draftReuseID(for: persistKind)
         let existingRow = reuseId.flatMap { id in sessions.first { $0.id == id } }
         if existingId != nil && existingRow == nil {
             presentError("This session is no longer available.")
@@ -759,11 +751,15 @@ struct SessionEditor: View {
             modelContext.insert(row)
             isInsert = true
         }
-        row.isDraft = kind == .draft
+        row.isDraft = persistKind == .draft
+        let cancelPending24h = shouldWrite24h && apply24hIfNeeded(to: row)
 
         do {
             try modelContext.save()
-            applyNotifications(for: row, kind: kind, wasInsert: isInsert, wasDraft: wasDraft)
+            if cancelPending24h {
+                NotificationScheduler.cancelPending(sessionId: row.id)
+            }
+            applyNotifications(for: row, kind: persistKind, wasInsert: isInsert, wasDraft: wasDraft)
             Haptics.success()
             dismiss()
         } catch {
@@ -811,11 +807,45 @@ struct SessionEditor: View {
         }
     }
 
-    private func resolvedPainAfter() -> Int {
-        if let painAfter, PainScore.isLogged(painAfter) {
-            return painAfter
+    private func apply24hIfNeeded(to row: TrainingSession) -> Bool {
+        let priors = DecisionSuggester.priorsForSuggestion(
+            current: row.snapshot,
+            all: sessions.map(\.snapshot)
+        )
+        let suggested = response24hEdit.flatMap {
+            DecisionSuggester.suggest(response: $0, recentResolvedNonRest: priors)
         }
-        return PainScore.notLogged
+        let write = Session24hResolution.write(
+            selected: response24hEdit,
+            storedResponse: row.response24h,
+            storedDecision: row.decision,
+            storedResolvedAt: row.resolvedAt,
+            storedSnoozedUntil: row.snoozedUntil,
+            suggestedDecision: suggested,
+            now: Date()
+        )
+        row.response24h = write.response
+        row.decision = write.decision
+        row.resolvedAt = write.resolvedAt
+        row.snoozedUntil = write.snoozedUntil
+        return write.cancelsPendingNotification
+    }
+
+    private func deleteExisting() {
+        guard kind.showsDelete, let row = existing else { return }
+        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
+        modelContext.delete(row)
+        do {
+            try modelContext.save()
+            Haptics.warning()
+            dismiss()
+        } catch {
+            presentError(error.localizedDescription)
+        }
+    }
+
+    private func resolvedPainAfter() -> Int {
+        existing?.painAfter ?? PainScore.notLogged
     }
 
     private func presentError(_ message: String) {
