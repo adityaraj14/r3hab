@@ -1,8 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// History — chronological daily + session feed with backdate + delete (PR-09).
-/// Today adds entries; this tab is where the past lives.
+/// History — chronological daily + session feed with backdate.
+/// Workout rows open SessionEditor. Check-in rows still swipe-delete.
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
@@ -11,13 +11,10 @@ struct HistoryView: View {
     @State private var filter: Filter = .all
     @State private var editDailyDate: Date?
     @State private var editSessionId: UUID?
-    @State private var resolveSessionId: UUID?
-    @State private var afterPainSessionId: UUID?
     @State private var showBackdate = false
     @State private var backdateKind: BackdateKind = .daily
     @State private var backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
     @State private var deleteDailyKey: String?
-    @State private var deleteSessionId: UUID?
     @State private var pendingBackdateDaily: Date?
     @State private var pendingBackdateSession: Date?
 
@@ -109,22 +106,6 @@ struct HistoryView: View {
                     .preferredColorScheme(.dark)
                 }
             }
-            .sheet(isPresented: Binding(
-                get: { resolveSessionId != nil },
-                set: { if !$0 { resolveSessionId = nil } }
-            )) {
-                if let id = resolveSessionId {
-                    Resolve24hSheet(sessionId: id)
-                }
-            }
-            .sheet(isPresented: Binding(
-                get: { afterPainSessionId != nil },
-                set: { if !$0 { afterPainSessionId = nil } }
-            )) {
-                if let id = afterPainSessionId {
-                    AfterPainSheet(sessionId: id)
-                }
-            }
             .sheet(isPresented: $showBackdate) {
                 NavigationStack {
                     Form {
@@ -209,26 +190,6 @@ struct HistoryView: View {
                 }
                 Button("Cancel", role: .cancel) { deleteDailyKey = nil }
             }
-            .confirmationDialog(
-                "Delete this workout?",
-                isPresented: Binding(
-                    get: { deleteSessionId != nil },
-                    set: { if !$0 { deleteSessionId = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let id = deleteSessionId,
-                       let row = sessions.first(where: { $0.id == id }) {
-                        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
-                        modelContext.delete(row)
-                        try? modelContext.save()
-                        Haptics.warning()
-                    }
-                    deleteSessionId = nil
-                }
-                Button("Cancel", role: .cancel) { deleteSessionId = nil }
-            }
         }
     }
 
@@ -267,34 +228,6 @@ struct HistoryView: View {
                     editSessionId = session.id
                 } label: {
                     sessionRow(session)
-                }
-                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    if !session.isDraft, !session.hasLoggedPainAfter {
-                        Button {
-                            afterPainSessionId = session.id
-                        } label: {
-                            Label("After", systemImage: "bolt.heart")
-                        }
-                        .tint(.gray)
-                    }
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    if let action = History24hSwipe.action(
-                        isDraft: session.isDraft,
-                        response24h: session.response24h
-                    ) {
-                        Button {
-                            resolveSessionId = session.id
-                        } label: {
-                            Label(action.title, systemImage: "checkmark.circle")
-                        }
-                        .tint(.orange)
-                    }
-                    Button(role: .destructive) {
-                        deleteSessionId = session.id
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
                 }
             }
         }

@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Focused after-pain capture — opened from Today, History, or the 30-minute reminder.
+/// Focused after-pain capture — opened from Today or the 30-minute reminder.
 ///
 /// Takes a session id, not a model; the row is looked up on the current
 /// context for display and again at save time.
