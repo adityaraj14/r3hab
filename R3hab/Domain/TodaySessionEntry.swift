@@ -9,7 +9,6 @@ struct TodaySessionLoad: Equatable, Sendable {
     }
 }
 
-/// Today middle-row content. Rest cannot carry an HSR target string.
 enum TodaySessionEntry: Equatable, Sendable {
     case rest
     case resumeDraft
