@@ -210,10 +210,7 @@ final class TrainingSession {
     }
 
     static func formatLoad(_ lbs: Double) -> String {
-        if lbs.rounded() == lbs {
-            return String(Int(lbs))
-        }
-        return String(format: "%g", lbs)
+        LoadCopy.formatted(lbs)
     }
 
     var hasLoggedPainAfter: Bool {
