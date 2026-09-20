@@ -437,10 +437,10 @@ struct HomeView: View {
     ) -> String {
         var parts = [title]
         parts.append(contentsOf: lines)
-        if let status, !lines.isEmpty {
-            parts.append(status)
-        } else {
+        if lines.isEmpty {
             parts.append(trailing ?? placeholder.lowercased())
+        } else if let status {
+            parts.append(status)
         }
         return parts.joined(separator: ", ")
     }
