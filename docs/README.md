@@ -28,6 +28,7 @@ gh api -X POST repos/adityaraj14/r3hab/pages \
 
 - **App Privacy → Privacy Policy URL:** `https://adityaraj14.github.io/r3hab/privacy.html`
 - **App Information → Support URL:** `https://adityaraj14.github.io/r3hab/support.html`
+- **Guideline 2.1 screen recording:** [`APP_REVIEW_DEMO.md`](./APP_REVIEW_DEMO.md). That file is the recording script. It is not a public support URL.
 
 ## Editing
 
