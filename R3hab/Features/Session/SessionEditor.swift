@@ -760,7 +760,7 @@ struct SessionEditor: View {
                 NotificationScheduler.cancelPending(sessionId: row.id)
             }
             applyNotifications(for: row, kind: persistKind, wasInsert: isInsert, wasDraft: wasDraft)
-            Haptics.success()
+            Haptics.light()
             dismiss()
         } catch {
             presentError(error.localizedDescription)

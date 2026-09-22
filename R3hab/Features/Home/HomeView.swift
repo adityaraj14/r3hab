@@ -1,9 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today — one quiet streak count with the day's line under it, one bright
-/// next action, three quiet entry rows.
-/// Sized to fit a single viewport: History holds the past, Today adds to it.
+/// Today — the day's line large, the hard/rest chain beside the count,
+/// one bright next action, three quiet entry rows.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
@@ -17,6 +16,14 @@ struct HomeView: View {
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    /// Bumped to the live count only on the save that extends the chain, so the
+    /// new bead fills once instead of every time Today appears.
+    @State private var popToken = 0
+    /// True only after a non-empty session query has been seen, so the empty
+    /// first frame cannot zero the latch and then celebrate the real chain.
+    @State private var ritualsSawSessions = false
+    @AppStorage("r3hab.celebratedStreak") private var celebratedStreak = 0
+    @AppStorage("r3hab.closedDayKey") private var closedDayKey = ""
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -202,6 +209,9 @@ struct HomeView: View {
             .task {
                 _ = try? AppBootstrap.ensureSettings(context: modelContext)
             }
+            .onAppear(perform: noteRituals)
+            .onChange(of: streak.current) { _, _ in noteRituals() }
+            .onChange(of: nextAction) { _, _ in noteRituals() }
         }
     }
 
@@ -287,10 +297,16 @@ struct HomeView: View {
                 .buttonStyle(.primaryAction)
 
             case .restDay:
-                Label("Nothing to load today", systemImage: "leaf.fill")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.vertical, 6)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Rest day", systemImage: "leaf.fill")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("The chain holds. Nothing to load today.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 6)
 
             case .allDone:
                 Label("Today is logged", systemImage: "checkmark.seal.fill")
@@ -305,10 +321,7 @@ struct HomeView: View {
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
     }
 
     private func nextUpEyebrow(for action: TodayNextAction) -> String {
@@ -352,10 +365,7 @@ struct HomeView: View {
             ) { showPM = true }
         }
         .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
     }
 
     private var sessionEntryRow: some View {
@@ -491,45 +501,62 @@ struct HomeView: View {
         .accessibilityHint(logged ? "Edit" : "Log")
     }
 
-    // MARK: Streak — first thing on the screen
+    // MARK: Streak — the day's line, then the chain
 
-    /// Count, at most one short status word, and the day's line. The flame is
-    /// the one place gold appears outside the next-up button, and only while
-    /// the chain is live. Nothing here is tappable.
+    /// Quote and count share the card. The line stays a serif; the number is
+    /// the large counter. The chain sits under the quote. Nothing is tappable.
     private var streakCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                    .font(.title)
-                    .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WorkoutStreak.sessionWord(streak.current))
-                        .font(.title.monospacedDigit().weight(.bold))
-                        .foregroundStyle(.primary)
-                    if let streakStatus {
-                        Text(streakStatus)
-                            .font(.caption)
-                            .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
-                            .lineLimit(1)
-                    }
+        let picture = WorkoutStreak.picture(sessions: sessionSnaps, now: Date(), calendar: calendar)
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("“\(todayQuote.text)”")
+                    .font(.system(.title2, design: .serif))
+                    .foregroundStyle(AppTheme.ivory)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let attribution = todayQuote.attribution {
+                    Text(attribution)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.quiet)
                 }
-                Spacer(minLength: 0)
+                if picture.beads.isEmpty {
+                    Image(systemName: "link")
+                        .font(.body)
+                        .foregroundStyle(AppTheme.quiet)
+                        .accessibilityHidden(true)
+                } else {
+                    ChainBeads(
+                        beads: picture.beads,
+                        freshIndex: picture.freshIndex,
+                        popToken: popToken,
+                        liveCount: streak.current
+                    )
+                    .padding(.top, 4)
+                }
             }
-            Text(quoteLine)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("\(streak.current)")
+                    .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(AppTheme.gold)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text(streak.current == 1 ? "session" : "sessions")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.quiet)
+                if let streakStatus {
+                    Text(streakStatus)
+                        .font(.caption)
+                        .foregroundStyle(streak.miss == .twoMiss ? AppTheme.gold : AppTheme.quiet)
+                        .lineLimit(1)
+                        .padding(.top, 4)
+                }
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today-poster")
         .accessibilityLabel(streakAccessibilityLabel)
     }
 
@@ -547,11 +574,44 @@ struct HomeView: View {
         MotivationalQuotes.quote(on: today, calendar: calendar)
     }
 
-    private var quoteLine: String {
-        if let attribution = todayQuote.attribution {
-            return "“\(todayQuote.text)” — \(attribution)"
+    private var todayKey: String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: today)
+        return "\(parts.year ?? 0)-\(parts.month ?? 0)-\(parts.day ?? 0)"
+    }
+
+    /// Success only when the chain grows, or when Today first reaches all-done.
+    /// Opening an already-finished day does not buzz again.
+    private func noteRituals() {
+        // @Query is empty for a frame before SwiftData delivers rows. Writing
+        // 0 into the latch makes the real count look like a chain that just grew.
+        if sessions.isEmpty {
+            if ritualsSawSessions {
+                celebratedStreak = 0
+            }
+            return
         }
-        return todayQuote.text
+        ritualsSawSessions = true
+
+        let snap = streak
+        var celebratedChain = false
+        if snap.daysSinceLastHard == 0, snap.current > celebratedStreak {
+            celebratedStreak = snap.current
+            popToken = snap.current
+            Haptics.success()
+            celebratedChain = true
+        } else if celebratedStreak != snap.current {
+            celebratedStreak = snap.current
+        }
+
+        if case .allDone = nextAction {
+            let key = todayKey
+            if closedDayKey != key {
+                closedDayKey = key
+                if !celebratedChain {
+                    Haptics.success()
+                }
+            }
+        }
     }
 
     /// Miss state first (due today / missed), then the off day, then the
@@ -608,6 +668,74 @@ struct HomeView: View {
         NotificationScheduler.cancelPending(sessionId: session.id)
         Haptics.light()
         router.requestNotificationSync()
+    }
+}
+
+/// Hard beads are filled in the pop color. Rest days are hollow and neutral.
+/// The due day is a hollow bead in the pop — the open slot, not a miss.
+private struct ChainBeads: View {
+    var beads: [WorkoutStreak.ChainBead]
+    var freshIndex: Int?
+    var popToken: Int
+    var liveCount: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(beads.enumerated()), id: \.offset) { index, bead in
+                beadGlyph(
+                    bead,
+                    pops: bead == .hard && index == freshIndex && popToken == liveCount && liveCount > 0
+                )
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func beadGlyph(_ bead: WorkoutStreak.ChainBead, pops: Bool) -> some View {
+        let side: CGFloat = bead == .rest ? 8 : 13
+        return Circle()
+            .fill(fill(bead))
+            .overlay(Circle().strokeBorder(stroke(bead), lineWidth: bead == .hard ? 0 : 1.5))
+            .frame(width: side, height: side)
+            .modifier(PopIn(active: pops))
+    }
+
+    private func fill(_ bead: WorkoutStreak.ChainBead) -> Color {
+        switch bead {
+        case .hard: return AppTheme.gold
+        case .rest, .due: return .clear
+        }
+    }
+
+    private func stroke(_ bead: WorkoutStreak.ChainBead) -> Color {
+        switch bead {
+        case .hard: return .clear
+        case .rest: return AppTheme.rest
+        case .due: return AppTheme.gold
+        }
+    }
+}
+
+private struct PopIn: ViewModifier {
+    var active: Bool
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(active && !shown ? 0.2 : 1)
+            .onAppear {
+                guard active else { return }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) {
+                    shown = true
+                }
+            }
+            .onChange(of: active) { _, isActive in
+                guard isActive else { return }
+                shown = false
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) {
+                    shown = true
+                }
+            }
     }
 }
 

@@ -20,6 +20,7 @@ struct Resolve24hSheet: View {
     @State private var guidance: String?
     @State private var errorMessage: String?
     @State private var loadNudge: LoadNudge?
+    @State private var showDecisionChoices = false
 
     private var settings: AppSettings? { settingsList.first }
     private var session: TrainingSession? {
@@ -47,61 +48,83 @@ struct Resolve24hSheet: View {
     }
 
     private func form(for session: TrainingSession) -> some View {
-        Form {
-            Section("Session") {
-                Text(session.displayTitle)
-                    .font(.body.weight(.semibold))
-                if let resistance = session.resistanceSummary {
-                    Text(resistance)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-                LabeledContent("Date", value: session.date.formatted(date: .abbreviated, time: .omitted))
-                LabeledContent("During / after", value: "\(session.painDuring) → \(session.displayPainAfter)")
-            }
-
-            Section("How is the tendon next day?") {
-                Picker("24h response", selection: $response) {
-                    Text("Better").tag(Response24h.better)
-                    Text("Same").tag(Response24h.same)
-                    Text("Worse").tag(Response24h.worse)
-                }
-                .pickerStyle(.segmented)
-                .onChange(of: response) { _, new in
-                    applySuggestion(for: new)
-                }
-            }
-
-            Section("Decision") {
-                Picker("Decision", selection: $decision) {
-                    ForEach([SessionDecision.stay, .softCut, .progress, .hardDrop], id: \.self) { d in
-                        Text(d.title).tag(d)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(session.displayTitle)
+                        .font(.headline)
+                    if let resistance = session.resistanceSummary {
+                        Text(resistance)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
                     }
+                    Text(sessionContextLine(session))
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .onChange(of: decision) { _, new in
-                    guidance = DecisionSuggester.guidance(for: new)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .posterCard()
+
+                Text("HOW IS THE TENDON?")
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.1)
+                    .foregroundStyle(AppTheme.quiet)
+
+                ForEach([Response24h.better, .same, .worse], id: \.self) { option in
+                    responseCard(option)
                 }
+
+                Text(DecisionSuggester.closeLine(for: decision))
+                    .font(.system(.title3, design: .serif))
+                    .foregroundStyle(.primary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("close-line")
+                    .accessibilityLabel(DecisionSuggester.closeLine(for: decision))
 
                 if let guidance {
                     Text(guidance)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-            }
 
-            Section {
-                Button("Close as Rest (no 24h judgment)") {
+                DisclosureGroup(isExpanded: $showDecisionChoices) {
+                    VStack(spacing: 8) {
+                        ForEach([SessionDecision.stay, .progress, .softCut, .hardDrop], id: \.self) { choice in
+                            Button(choice.title) {
+                                decision = choice
+                                guidance = DecisionSuggester.guidance(for: choice)
+                                Haptics.light()
+                            }
+                            .buttonStyle(.quietAction)
+                        }
+                    }
+                    .padding(.top, 8)
+                } label: {
+                    Text("Choose a different call")
+                        .font(.subheadline)
+                        .foregroundStyle(AppTheme.quiet)
+                }
+                .tint(AppTheme.quiet)
+
+                Button("Close as rest, no judgment") {
                     closeAsRest()
                 }
-                .foregroundStyle(.orange)
-            } footer: {
-                Text("Use Rest if you want to clear this pending without Better/Same/Worse.")
-            }
+                .font(.footnote)
+                .foregroundStyle(AppTheme.quiet)
+                .frame(maxWidth: .infinity, alignment: .leading)
 
-            if let errorMessage {
-                Text(errorMessage).foregroundStyle(.red).font(.footnote)
+                if let errorMessage {
+                    Text(errorMessage)
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
             }
+            .padding()
         }
+        .appCanvas()
         .navigationTitle("Resolve 24h")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -136,6 +159,37 @@ struct Resolve24hSheet: View {
                 finalizeSave()
             }
         }
+    }
+
+    private func sessionContextLine(_ session: TrainingSession) -> String {
+        let date = session.date.formatted(date: .abbreviated, time: .omitted)
+        return "\(date) · during \(session.painDuring) → after \(session.displayPainAfter)"
+    }
+
+    private func responseCard(_ option: Response24h) -> some View {
+        let selected = response == option
+        return Button {
+            response = option
+            applySuggestion(for: option)
+            Haptics.light()
+        } label: {
+            Text(option.title)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(selected ? AppTheme.gold : .primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 18)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(AppTheme.surface)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(selected ? AppTheme.gold : AppTheme.cardHairline, lineWidth: selected ? 1.5 : 1)
+                )
+        }
+        .buttonStyle(.plain)
+        .accessibilityIdentifier("response-\(option.rawValue)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     private func applySuggestion(for response: Response24h) {
@@ -180,7 +234,7 @@ struct Resolve24hSheet: View {
         do {
             try modelContext.save()
             NotificationScheduler.cancelPending(sessionId: session.id)
-            Haptics.success()
+            Haptics.light()
             let shouldNudge = previousResponse == .pending || previousResponse != response
             if shouldNudge,
                let nudge = LoadNudgeEvaluator.afterResolve(

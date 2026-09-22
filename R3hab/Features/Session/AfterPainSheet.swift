@@ -101,7 +101,7 @@ struct AfterPainSheet: View {
         do {
             try modelContext.save()
             NotificationScheduler.cancelPainAfter(sessionId: session.id)
-            Haptics.success()
+            Haptics.light()
             router.requestNotificationSync()
             dismiss()
         } catch {

@@ -106,6 +106,8 @@ struct RehabProgressView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 40)
                     } else {
+                        interpretationCard(interpretation)
+
                         Picker("Range", selection: $range) {
                             ForEach(ProgressDayRange.allCases) { r in
                                 Text(r.pickerTitle).tag(r)
@@ -113,18 +115,6 @@ struct RehabProgressView: View {
                         }
                         .pickerStyle(.segmented)
                         .accessibilityLabel("Chart range")
-
-                        heroRow
-
-                        interpretationCard(interpretation)
-
-                        if let settings, settings.currentPhase == .aFlareDeLoad {
-                            phaseACard(settings)
-                        }
-
-                        if let phaseBCleanCount {
-                            phaseBCard(phaseBCleanCount)
-                        }
 
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Training volume vs next morning")
@@ -147,6 +137,20 @@ struct RehabProgressView: View {
                             RoundedRectangle(cornerRadius: 16, style: .continuous)
                                 .fill(Color(.secondarySystemBackground))
                         )
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                .strokeBorder(AppTheme.cardHairline, lineWidth: 1)
+                        )
+
+                        heroRow
+
+                        if let settings, settings.currentPhase == .aFlareDeLoad {
+                            phaseACard(settings)
+                        }
+
+                        if let phaseBCleanCount {
+                            phaseBCard(phaseBCleanCount)
+                        }
 
                         OutcomeMixCard(mix: outcomeMix)
                         ConsistencyCard(summary: consistency)
@@ -171,14 +175,28 @@ struct RehabProgressView: View {
         }
     }
 
+    private var rangeEyebrow: String {
+        switch range {
+        case .days7: return "Last 7 days"
+        case .days28: return "Last 28 days"
+        case .days90: return "Last 90 days"
+        case .all: return "All logged days"
+        }
+    }
+
     private func interpretationCard(_ readout: ProgressWindowReadout) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(rangeEyebrow.uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(1.1)
+                .foregroundStyle(AppTheme.quiet)
             Text(readout.headline)
-                .font(.headline)
+                .font(.title2.weight(.semibold))
             if let detail = readout.detail {
                 Text(detail)
-                    .font(.subheadline)
+                    .font(.body)
                     .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .padding()
@@ -187,7 +205,12 @@ struct RehabProgressView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(interpretationFill(readout.tone))
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .strokeBorder(AppTheme.cardHairline, lineWidth: 1)
+        )
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("progress-readout")
         .accessibilityLabel(
             [readout.headline, readout.detail].compactMap { $0 }.joined(separator: " ")
         )

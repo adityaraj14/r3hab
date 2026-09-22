@@ -65,6 +65,23 @@ enum DecisionSuggester {
             return nil
         }
     }
+
+    /// The one sentence under Better / Same / Worse. The card is the response;
+    /// this is the call.
+    static func closeLine(for decision: SessionDecision) -> String {
+        switch decision {
+        case .stay:
+            return "Stay. Same load next time."
+        case .progress:
+            return "Progress. A little more next time."
+        case .softCut:
+            return "Soft cut. A little less next time."
+        case .hardDrop:
+            return "Hard drop. Step back a phase."
+        case .rest:
+            return "Rest. No load judgment."
+        }
+    }
 }
 
 /// Gentle, non-blocking load hint after a morning log or 24h resolve.

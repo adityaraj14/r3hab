@@ -81,6 +81,7 @@ struct HistoryView: View {
                     } label: {
                         Image(systemName: "plus.circle")
                     }
+                    .accessibilityLabel("Add a past day")
                     .tint(AppTheme.quiet)
                 }
             }
