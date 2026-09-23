@@ -42,7 +42,7 @@ final class SessionDraftTests: XCTestCase {
             date: date ?? today,
             phase: .bIsometrics,
             sessionType: type,
-            whatIDid: "Seated extension",
+            whatIDid: "Seated leg extension",
             painDuring: isDraft ? PainScore.notLogged : 2,
             calendar: calendar
         )
@@ -55,7 +55,7 @@ final class SessionDraftTests: XCTestCase {
             date: today,
             phase: .bIsometrics,
             sessionType: .isometrics,
-            whatIDid: "Seated extension",
+            whatIDid: "Seated leg extension",
             painDuring: 2,
             calendar: calendar
         )

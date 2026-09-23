@@ -189,10 +189,20 @@ enum ProgressionEngine {
     }
 
     static func matchesPrimaryLoad(_ session: TrainingSessionSnapshot, title: String) -> Bool {
-        let needle = title.lowercased()
         let head = SessionSummary.displayTitle(whatIDid: session.whatIDid).lowercased()
-        if head.contains(needle) { return true }
-        return session.whatIDid.lowercased().contains(needle)
+        let body = session.whatIDid.lowercased()
+        return historyNeedles(for: title).contains { needle in
+            head.contains(needle) || body.contains(needle)
+        }
+    }
+
+    /// Current display title, plus the pre-rename short name for seated leg extension.
+    /// "Seated extension" stays accepted so historical logs are not orphaned.
+    private static func historyNeedles(for title: String) -> [String] {
+        let phrases = PrimaryLoadCatalog.all.first {
+            $0.title.compare(title, options: .caseInsensitive) == .orderedSame
+        }?.historyMatchPhrases ?? [title]
+        return phrases.map { $0.lowercased() }
     }
 
     static func lastPrimaryLoad(

@@ -23,7 +23,7 @@ final class AppSettings {
     var backTrackStageRaw: String = ""
     /// Injury id from `InjuryCatalog`. Retired ids (incl. `ql-strain`) remap on launch.
     var selectedInjuryID: String = "patellar-tendinopathy"
-    /// Primary movement from `PrimaryLoadCatalog`. Default is seated extension.
+    /// Primary movement from `PrimaryLoadCatalog`. Default is seated leg extension.
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {

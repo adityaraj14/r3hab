@@ -238,7 +238,7 @@ enum SessionSummary {
         return trimmed
     }
 
-    /// Auto-filled “what I did” looks like `Seated extension · 4×30s @ 35 lbs`.
+    /// Auto-filled “what I did” looks like `Seated leg extension · 4×30s @ 35 lbs`.
     static func looksStructuredWhatIDid(_ text: String) -> Bool {
         let lower = text.lowercased()
         return lower.contains("wu")

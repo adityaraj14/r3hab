@@ -138,7 +138,7 @@ final class BrandCopyTests: XCTestCase {
             "Choose the exercise you’ll use during the resistance training phase."
         )
         XCTAssertEqual(BrandCopy.primaryLiftTip, "Prefer something convenient and easy to stick with.")
-        XCTAssertEqual(PrimaryLoadCatalog.all.map(\.title), ["Seated extension", "Leg press"])
+        XCTAssertEqual(PrimaryLoadCatalog.all.map(\.title), ["Seated leg extension", "Leg press"])
     }
 
     func testSetupPageHasThreeSelectablePhasesWithInlineExplanations() {

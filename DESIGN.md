@@ -1422,7 +1422,7 @@ Only non-blocking user preferences remain. Clinical/control-flow items closed in
 | E | tennisSport | Short hitting | Tennis: short hitting session |
 | E | tennisSport | Match play | Tennis: match play |
 
-Knee chip row is the two loaders (seated extension / leg press) only; "Easy bike" and "Custom…" presets were removed (PR #18). Other session types remain reachable via the Type picker and free-text "What I did".
+Knee chip row is the two loaders (seated leg extension / leg press) only; "Easy bike" and "Custom…" presets were removed (PR #18). Other session types remain reachable via the Type picker and free-text "What I did".
 
 ---
 

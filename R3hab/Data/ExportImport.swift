@@ -357,7 +357,7 @@ enum ExportImportService {
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
             settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }
-        // Retired ids in old backups (QL loads, old knee primaries) remap to seated extension.
+        // Retired ids in old backups (QL loads, old knee primaries) remap to seated leg extension.
         if let loadID = dto.primaryLoadID, !loadID.isEmpty {
             settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
         } else {

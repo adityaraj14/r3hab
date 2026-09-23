@@ -283,6 +283,51 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .hold)
     }
 
+    func testLegacyShortNameStillCountsAsSeatedLegExtension() {
+        // Back-compat: older whatIDid rows used legacySeatedExtensionDisplayName.
+        var legacy = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 2)
+        legacy.whatIDid = "\(PrimaryLoadCatalog.legacySeatedExtensionDisplayName) · 3×8 @ 35 lbs"
+        var renamed = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 1)
+        renamed.whatIDid = "\(PrimaryLoadCatalog.seatedExtension.title) · 3×8 @ 35 lbs"
+        let oldHold = TrainingSessionSnapshot(
+            date: day(-6),
+            createdAt: day(-6),
+            sessionType: .isometrics,
+            response24h: .same,
+            decision: .stay,
+            resolvedAt: nil,
+            snoozedUntil: nil,
+            phase: .bIsometrics,
+            whatIDid: "\(PrimaryLoadCatalog.legacySeatedExtensionDisplayName) hold ~60°"
+        )
+        let newHold = TrainingSessionSnapshot(
+            date: day(-5),
+            createdAt: day(-5),
+            sessionType: .isometrics,
+            response24h: .same,
+            decision: .stay,
+            resolvedAt: nil,
+            snoozedUntil: nil,
+            phase: .bIsometrics,
+            whatIDid: "Seated leg extension hold ~60°"
+        )
+        let title = PrimaryLoadCatalog.seatedExtension.title
+        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(legacy, title: title))
+        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(renamed, title: title))
+        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(oldHold, title: title))
+        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(newHold, title: title))
+        XCTAssertFalse(ProgressionEngine.matchesPrimaryLoad(legacy, title: PrimaryLoadCatalog.legPress.title))
+
+        let result = ProgressionEngine.today(
+            sessions: [legacy, renamed],
+            checkIns: morningPair(for: [legacy, renamed], am: 2),
+            asOf: day0,
+            calendar: calendar
+        )
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
+        XCTAssertEqual(result.stance, .advance)
+    }
+
     func testEvaluateAfterSaveAdvancesWhenTheNewSessionCompletesThePair() {
         let first = hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 2)
         let second = hsr(dayOffset: -1, sets: 3, reps: 8, load: 35, pain: 2)
@@ -347,7 +392,7 @@ final class ProgressionEngineTests: XCTestCase {
             phase: .cHeavySlowResistance,
             painDuring: pain,
             painAfter: pain,
-            whatIDid: "Seated extension · \(sets)×\(reps) @ \(LoadCopy.labeled(load))",
+            whatIDid: "\(PrimaryLoadCatalog.seatedExtension.title) · \(sets)×\(reps) @ \(LoadCopy.labeled(load))",
             resistanceSets: rows
         )
     }
