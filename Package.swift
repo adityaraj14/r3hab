@@ -18,6 +18,8 @@ let package = Package(
                 "Models/ResistanceSet.swift",
                 "Models/PrimaryLoadCatalog.swift",
                 "Domain/DomainSnapshots.swift",
+                "Domain/ChartAggregates.swift",
+                "Domain/ProgressInterpretation.swift",
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
                 "Domain/ProgressionEngine.swift",
@@ -29,6 +31,8 @@ let package = Package(
             dependencies: ["R3habDomain"],
             path: "Tests/R3habTests",
             sources: [
+                "ChartAggregatesTests.swift",
+                "ProgressInterpretationTests.swift",
                 "ProgressionEngineTests.swift",
                 "SessionEditorChromeTests.swift",
                 "TodaySessionEntryTests.swift"

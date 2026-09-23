@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(R3hab)
 @testable import R3hab
+#else
+@testable import R3habDomain
+#endif
 
 final class ProgressInterpretationTests: XCTestCase {
     private var calendar: Calendar {
