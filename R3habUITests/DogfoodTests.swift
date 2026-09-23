@@ -37,7 +37,7 @@ final class DogfoodTests: XCTestCase {
         }
 
         let logSession = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Log seated extension")
+            NSPredicate(format: "label BEGINSWITH %@", "Log Workout")
         ).firstMatch
         if logSession.waitForExistence(timeout: 4) {
             logSession.tap()

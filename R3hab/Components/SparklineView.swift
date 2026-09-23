@@ -19,8 +19,8 @@ struct KneeExploreChart: View {
     let points: [DayExplorePoint]
     var height: CGFloat = 168
     var visibleDays: Int = 7
-    var volumeTitle: String = "Seated extension volume"
-    var emptyDescription: String = "Log morning or evening pain or a seated-extension session. Volume vs next morning is the insight."
+    var volumeTitle: String = "Seated leg extension volume"
+    var emptyDescription: String = "Log morning or evening pain or a seated leg extension session. Volume vs next morning is the insight."
 
     @State private var selectedDate: Date?
 

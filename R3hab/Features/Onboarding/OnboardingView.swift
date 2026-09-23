@@ -483,7 +483,7 @@ struct BrandCardRow: View {
 
 /// Applies first-run choices. Knee-only: the injury is always patellar
 /// tendinopathy. Skip: Phase B, notifications off, keep the chosen lift
-/// (unknown / retired ids fall back to seated extension).
+/// (unknown / retired ids fall back to seated leg extension).
 enum OnboardingCompletion {
     /// Pre-selected card on the Setup page.
     static let initialPhase: RehabPhase = .aFlareDeLoad

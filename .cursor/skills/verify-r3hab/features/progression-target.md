@@ -11,8 +11,8 @@ Today asks the engine for the next seated-extension HSR dose. The user sees `Tod
 
 ## How to get to it (user POV)
 
-- Today gold card `Log seated extension`
-- Today entry row for seated extension when nothing is logged
+- Today gold card `Log Workout`
+- Today entry row for seated leg extension when nothing is logged
 
 ## Driving it with swift test
 

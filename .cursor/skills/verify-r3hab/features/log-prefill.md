@@ -10,7 +10,7 @@ Opening a new HSR log fills working sets from the engine. Every field stays edit
 
 ## How to get to it (user POV)
 
-- Tap `Log seated extension` on Today
+- Tap `Log Workout` on Today
 - Save a completed session
 
 ## Driving it with swift test
