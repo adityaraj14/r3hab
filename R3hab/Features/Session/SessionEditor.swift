@@ -625,7 +625,6 @@ struct SessionEditor: View {
         }
         let prescription = ProgressionEngine.today(
             sessions: sessions.filter { $0.id != existingId }.map(\.snapshot),
-            checkIns: checkIns.map(\.snapshot),
             primaryLoadTitle: title,
             asOf: Date(),
             calendar: calendar
