@@ -20,7 +20,9 @@ extension TrainingSession {
             phase: phase,
             painDuring: painDuring,
             painAfter: painAfter,
-            isDraft: isDraft
+            isDraft: isDraft,
+            whatIDid: whatIDid,
+            resistanceSets: resistanceSets()
         )
     }
 }

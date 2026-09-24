@@ -136,4 +136,98 @@ enum WorkoutStreak {
     static func sessionWord(_ count: Int) -> String {
         count == 1 ? "1 session" : "\(count) sessions"
     }
+
+    /// One bead in the live chain. Rest days are drawn, not skipped.
+    enum ChainBead: Equatable, Sendable {
+        case hard
+        case rest
+        /// Today is the due day and no hard session is logged yet.
+        case due
+    }
+
+    struct ChainPicture: Equatable, Sendable {
+        var beads: [ChainBead]
+        /// Index of today's hard bead, when the chain grew today.
+        var freshIndex: Int?
+        static let maxVisible = 15
+    }
+
+    /// Beads for the live chain only. A broken chain draws nothing — the
+    /// count and the miss label carry that, instead of a dead chain that
+    /// still looks alive. Same-day doubles are two hard beads with no rest
+    /// between them.
+    static func picture(
+        sessions: [TrainingSessionSnapshot],
+        now: Date,
+        calendar: Calendar = .current
+    ) -> ChainPicture {
+        let hard = SessionDraft.finalized(sessions)
+            .filter { SessionSpacing.isHard($0.sessionType) }
+            .sorted { $0.date < $1.date || ($0.date == $1.date && $0.createdAt < $1.createdAt) }
+        guard let latest = hard.last else {
+            return ChainPicture(beads: [], freshIndex: nil)
+        }
+
+        var runStart = 0
+        for index in 1..<hard.count {
+            let gap = SessionSpacing.calendarDays(
+                from: hard[index - 1].date,
+                to: hard[index].date,
+                calendar: calendar
+            )
+            if gap > SessionSpacing.hardCadenceDays {
+                runStart = index
+            }
+        }
+
+        let days = SessionSpacing.calendarDays(from: latest.date, to: now, calendar: calendar)
+        guard days <= SessionSpacing.hardCadenceDays else {
+            return ChainPicture(beads: [], freshIndex: nil)
+        }
+
+        let chain = Array(hard[runStart...])
+        let today = calendar.startOfDay(for: now)
+        var counts: [Date: Int] = [:]
+        for session in chain {
+            let day = calendar.startOfDay(for: session.date)
+            counts[day, default: 0] += 1
+        }
+
+        var beads: [ChainBead] = []
+        var fresh: Int?
+        var day = calendar.startOfDay(for: chain[0].date)
+        while day <= today {
+            let count = counts[day] ?? 0
+            if count > 0 {
+                for _ in 0..<count {
+                    beads.append(.hard)
+                }
+                if day == today {
+                    fresh = beads.count - 1
+                }
+            } else if day == today && days == SessionSpacing.hardCadenceDays {
+                beads.append(.due)
+            } else {
+                beads.append(.rest)
+            }
+            guard let next = calendar.date(byAdding: .day, value: 1, to: day) else { break }
+            day = next
+        }
+        return windowed(ChainPicture(beads: beads, freshIndex: fresh))
+    }
+
+    private static func windowed(_ picture: ChainPicture) -> ChainPicture {
+        guard picture.beads.count > ChainPicture.maxVisible else { return picture }
+        let dropped = picture.beads.count - ChainPicture.maxVisible
+        let fresh: Int?
+        if let index = picture.freshIndex, index >= dropped {
+            fresh = index - dropped
+        } else {
+            fresh = nil
+        }
+        return ChainPicture(
+            beads: Array(picture.beads.suffix(ChainPicture.maxVisible)),
+            freshIndex: fresh
+        )
+    }
 }

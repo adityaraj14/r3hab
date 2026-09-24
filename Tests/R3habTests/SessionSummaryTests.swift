@@ -4,9 +4,9 @@ import XCTest
 final class SessionSummaryTests: XCTestCase {
     func testDisplayTitleTakesHeadBeforeDotSeparator() {
         let title = SessionSummary.displayTitle(
-            whatIDid: "Seated extension · WU 2×30s @ 15 lbs · 8r L @ 15 lbs, 8r R @ 15 lbs"
+            whatIDid: "Seated leg extension · WU 2×30s @ 15 lbs · 8r L @ 15 lbs, 8r R @ 15 lbs"
         )
-        XCTAssertEqual(title, "Seated extension")
+        XCTAssertEqual(title, "Seated leg extension")
     }
 
     func testDisplayTitleFallsBackWhenEmpty() {
@@ -14,7 +14,7 @@ final class SessionSummaryTests: XCTestCase {
     }
 
     func testLooksStructuredWhatIDid() {
-        XCTAssertTrue(SessionSummary.looksStructuredWhatIDid("Seated extension · 4×30s @ 35 lbs"))
+        XCTAssertTrue(SessionSummary.looksStructuredWhatIDid("Seated leg extension · 4×30s @ 35 lbs"))
         XCTAssertTrue(SessionSummary.looksStructuredWhatIDid("3x8 @ 20 lbs both"))
         XCTAssertFalse(SessionSummary.looksStructuredWhatIDid("easy bike and a walk"))
     }
@@ -27,7 +27,7 @@ final class SessionSummaryTests: XCTestCase {
             isWarmup: false
         )
         XCTAssertEqual(
-            SessionSummary.lastSessionLine(whatIDid: "Seated extension", sets: holds, painDuring: 2),
+            SessionSummary.lastSessionLine(whatIDid: "Seated leg extension", sets: holds, painDuring: 2),
             "Last: 4×30s @ 35 lbs · pain 2"
         )
     }
@@ -38,7 +38,7 @@ final class SessionSummaryTests: XCTestCase {
             SessionSummary.makePair(reps: 8, loadLbs: 15, holdSeconds: nil, isWarmup: false)
         }
         XCTAssertEqual(
-            SessionSummary.lastSessionLine(whatIDid: "Seated extension", sets: warmup + work, painDuring: 1),
+            SessionSummary.lastSessionLine(whatIDid: "Seated leg extension", sets: warmup + work, painDuring: 1),
             "Last: 3×8 @ 15 lbs · pain 1"
         )
     }

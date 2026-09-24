@@ -1,28 +1,25 @@
 import SwiftUI
 
-/// Near-black canvas, one bright gold reserved for the single next action,
-/// and quiet white/warm-gray for everything else.
-///
-/// Rule of thumb: if a screen has more than one gold element, one of them is
-/// wrong. Secondary buttons, chips, links, icons, and tab items use `quiet*`.
+/// True black, white type, one electric lime pop. Color is a highlight —
+/// the streak count, the chain, the next action — not a tint on every surface.
 enum AppTheme {
-    /// The one bright accent. Same value as the AccentColor asset.
-    static let gold = Color(red: 0.91, green: 0.73, blue: 0.23)
-    /// Text on top of a gold fill.
-    static let ink = Color(red: 0.07, green: 0.06, blue: 0.04)
-    /// One step off pure black so cards and text have a floor to sit on.
-    static let canvas = Color(red: 0.055, green: 0.055, blue: 0.06)
-    /// Card surface on the canvas.
-    static let surface = Color(.secondarySystemBackground)
-    /// Warm gray for secondary chrome (eyebrows, icons, chips) — quieter than
-    /// `.secondary`, never competes with gold.
-    static let quiet = Color(red: 0.66, green: 0.63, blue: 0.57)
-    /// Subtle hairline / fill for quiet controls.
+    /// Volt. Next action, streak count, hard-chain beads. Matches AccentColor.
+    static let gold = Color(red: 0.84, green: 1.0, blue: 0.18)
+    /// Text on top of the lime fill.
+    static let ink = Color(white: 0.05)
+    static let canvas = Color.black
+    /// One step up from black so a card is a shape, not a brown wash.
+    static let surface = Color(white: 0.11)
+    static let ivory = Color.white
+    static let quiet = Color(white: 0.72)
+    /// Rest-day bead. Neutral, so the only color on the chain is a hard day.
+    static let rest = Color(white: 0.55)
     static let quietFill = Color.white.opacity(0.08)
-    static let quietStroke = Color.white.opacity(0.14)
+    static let quietStroke = Color.white.opacity(0.18)
+    static let cardHairline = Color.white.opacity(0.16)
 }
 
-/// Bright gold fill. Use once per screen for the default next action.
+/// Lime fill. The default next action.
 /// Disabled is unmistakable: dim fill, dim text, no shadow of "half gold".
 struct PrimaryActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
@@ -87,5 +84,17 @@ extension View {
     func appListCanvas() -> some View {
         scrollContentBackground(.hidden)
             .background(AppTheme.canvas.ignoresSafeArea())
+    }
+
+    /// Surface card with a warm hairline. Padding stays with the caller.
+    func posterCard(radius: CGFloat = 16) -> some View {
+        background {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(AppTheme.surface)
+                .overlay {
+                    RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(AppTheme.cardHairline, lineWidth: 1)
+                }
+        }
     }
 }

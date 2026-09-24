@@ -252,7 +252,7 @@ struct DailyCheckInEditor: View {
             let current = try DailyCheckInStore.values(forDay: targetDate, context: modelContext, calendar: calendar)
             let merged = DailyCheckInMerge.merge(existing: current, draft: draft, focus: focus)
             try DailyCheckInStore.upsert(day: targetDate, values: merged, context: modelContext, calendar: calendar)
-            Haptics.success()
+            Haptics.light()
             let previousMorningPain = current?.restingPainAM
             if showsMorning, previousMorningPain != restingPainAM, let nudge = morningNudge() {
                 loadNudge = nudge

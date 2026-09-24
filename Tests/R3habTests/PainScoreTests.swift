@@ -21,7 +21,7 @@ final class PainScoreTests: XCTestCase {
             SessionSaveValidation.validate(
                 painDuring: nil,
                 painAfter: nil,
-                whatIDid: "Seated extension",
+                whatIDid: "Seated leg extension",
                 sets: []
             ),
             .missingPainDuring
@@ -30,7 +30,7 @@ final class PainScoreTests: XCTestCase {
             SessionSaveValidation.validate(
                 painDuring: 3,
                 painAfter: nil,
-                whatIDid: "Seated extension",
+                whatIDid: "Seated leg extension",
                 sets: []
             )
         )
@@ -38,7 +38,7 @@ final class PainScoreTests: XCTestCase {
             SessionSaveValidation.validate(
                 painDuring: 3,
                 painAfter: -1,
-                whatIDid: "Seated extension",
+                whatIDid: "Seated leg extension",
                 sets: []
             ),
             .painAfterOutOfRange

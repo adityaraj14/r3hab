@@ -72,8 +72,7 @@ private struct RootTabContent: View {
 
     var body: some View {
         @Bindable var router = router
-        // Tab bar is white (quiet chrome); each tab re-tints its own subtree so
-        // controls inside keep the single gold accent.
+        // Tab bar stays white. Volt tints the selected tab and the controls inside.
         TabView(selection: $router.selectedTab) {
             HomeView()
                 .tint(AppTheme.gold)

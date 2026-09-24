@@ -4,7 +4,8 @@ import XCTest
 final class PrimaryLoadCatalogTests: XCTestCase {
     func testDefaultIsSeatedExtension() {
         XCTAssertEqual(PrimaryLoadCatalog.defaultID, "seated-extension")
-        XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.title, "Seated extension")
+        XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.title, "Seated leg extension")
+        XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.logCTA, "Log Workout")
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "seated-extension").isometricPresetID, "ext")
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "seated-extension").hsrPresetID, "ke")
         XCTAssertFalse(PrimaryLoadCatalog.defaultSelectable.title.contains("HSR"))
@@ -13,7 +14,8 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     func testCatalogIsOnlySeatedExtensionAndLegPress() {
         let options = PrimaryLoadCatalog.all
         XCTAssertEqual(options.map(\.id), ["seated-extension", "leg-press"])
-        XCTAssertEqual(options.map(\.title), ["Seated extension", "Leg press"])
+        XCTAssertEqual(options.map(\.title), ["Seated leg extension", "Leg press"])
+        XCTAssertEqual(options.map(\.logCTA), ["Log Workout", "Log leg press"])
         XCTAssertFalse(options.contains { $0.title.contains("HSR") })
         XCTAssertFalse(PrimaryLoadCatalog.contains("spanish-squat"))
         XCTAssertFalse(PrimaryLoadCatalog.contains("wall-sit"))
@@ -50,7 +52,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     func testPhaseBPrefersIsometricVariant() {
         let seated = SessionPreset.preferred(for: .bIsometrics, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
         XCTAssertEqual(seated.id, "ext")
-        XCTAssertEqual(seated.label, "Seated extension")
+        XCTAssertEqual(seated.label, "Seated leg extension")
         XCTAssertTrue(seated.tracksResistance)
         XCTAssertTrue(seated.usesIsoHoldLogging)
 
@@ -66,7 +68,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     func testPhaseCPrefersHSRVariant() {
         let seated = SessionPreset.preferred(for: .cHeavySlowResistance, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
         XCTAssertEqual(seated.id, "ke")
-        XCTAssertEqual(seated.label, "Seated extension")
+        XCTAssertEqual(seated.label, "Seated leg extension")
         XCTAssertFalse(seated.label.contains("HSR"))
         XCTAssertTrue(seated.tracksResistance)
         XCTAssertTrue(seated.usesPerSetLogging)
@@ -107,7 +109,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
 
         let phaseB = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
         XCTAssertEqual(phaseB.map(\.id), ["ext", "lp-iso"])
-        XCTAssertEqual(phaseB.map(\.label), ["Seated extension", "Leg press"])
+        XCTAssertEqual(phaseB.map(\.label), ["Seated leg extension", "Leg press"])
 
         let phaseA = SessionPreset.forPhase(.aFlareDeLoad, primaryLoadID: PrimaryLoadCatalog.legPress.id)
         XCTAssertEqual(phaseA.map(\.id), ["lp-iso", "ext"])
@@ -129,14 +131,14 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         }
     }
 
-    func testChartVolumeTitleKeepsSeatedExtensionLabel() {
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartVolumeTitle, "Seated extension volume")
+    func testChartVolumeTitleUsesDisplayName() {
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.chartVolumeTitle, "Seated leg extension volume")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.chartVolumeTitle, "Leg press volume")
     }
 
     func testNextUpCTAResumesTheLiftWhenADraftExists() {
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: false), "Log seated extension")
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: true), "Resume seated extension")
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: false), "Log Workout")
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: true), "Resume seated leg extension")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: false), "Log leg press")
         XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: true), "Resume leg press")
     }

@@ -1,9 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Today — one quiet streak count with the day's line under it, one bright
-/// next action, three quiet entry rows.
-/// Sized to fit a single viewport: History holds the past, Today adds to it.
+/// Today — the day's line large, the hard/rest chain beside the count,
+/// one bright next action, three quiet entry rows.
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppRouter.self) private var router
@@ -17,6 +16,14 @@ struct HomeView: View {
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    /// Bumped to the live count only on the save that extends the chain, so the
+    /// new bead fills once instead of every time Today appears.
+    @State private var popToken = 0
+    /// True only after a non-empty session query has been seen, so the empty
+    /// first frame cannot zero the latch and then celebrate the real chain.
+    @State private var ritualsSawSessions = false
+    @AppStorage("r3hab.celebratedStreak") private var celebratedStreak = 0
+    @AppStorage("r3hab.closedDayKey") private var closedDayKey = ""
 
     private var calendar: Calendar { .current }
     private var today: Date { calendar.startOfDay(for: Date()) }
@@ -82,6 +89,15 @@ struct HomeView: View {
         settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
     }
 
+    private var todayProgression: ProgressionResult {
+        ProgressionEngine.today(
+            sessions: sessionSnaps,
+            primaryLoadTitle: activePrimaryLoad.title,
+            asOf: Date(),
+            calendar: calendar
+        )
+    }
+
     private var nextAction: TodayNextAction {
         let now = Date()
         return TodayPlanner.nextAction(
@@ -102,9 +118,14 @@ struct HomeView: View {
         )
     }
 
-    /// Rest-day framing for the lift row: nothing due, still tappable.
-    private var isRestDayRow: Bool {
-        streak.isRestDay && todaySessions.isEmpty
+    private var sessionEntry: TodaySessionEntry {
+        TodaySessionEntry.resolve(
+            isRestDay: streak.isRestDay,
+            hasDraft: todayDraftId != nil,
+            todaySessions: todaySessions.map(\.snapshot),
+            target: todayProgression.target,
+            laterality: todayProgression.laterality
+        )
     }
 
     var body: some View {
@@ -191,6 +212,9 @@ struct HomeView: View {
             .task {
                 _ = try? AppBootstrap.ensureSettings(context: modelContext)
             }
+            .onAppear(perform: noteRituals)
+            .onChange(of: streak.current) { _, _ in noteRituals() }
+            .onChange(of: nextAction) { _, _ in noteRituals() }
         }
     }
 
@@ -214,14 +238,18 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
-    /// Eyebrow + the one action. No explanatory line under a prompt; the
-    /// sheets carry their own context. Only the done state keeps a status line.
+    /// Eyebrow, the stance, then the one action. The dose button carries
+    /// the stance with it. Other actions keep the same line on the card.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(TodayPlanner.eyebrow(for: action, hasSessionDraft: todayDraftId != nil).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
+
+            if !actionShowsDose(action) {
+                stanceLine(todayProgression, onGold: false)
+            }
 
             switch action {
             case .resolvePending(let id, _):
@@ -259,10 +287,16 @@ struct HomeView: View {
 
             case .logSession:
                 Button { showSession = true } label: {
-                    Label(nextUpSessionTitle, systemImage: InjuryCatalog.systemImage)
+                    VStack(alignment: .leading, spacing: 8) {
+                        stanceLine(todayProgression, onGold: true)
+                        Label(nextUpSessionTitle, systemImage: InjuryCatalog.systemImage)
+                        Text(todayProgression.target.lastTimeLine)
+                            .font(.subheadline.weight(.medium))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
-                .accessibilityLabel(nextUpSessionTitle)
+                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(nextUpSessionTitle). \(todayProgression.target.lastTimeLine)")
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -271,10 +305,16 @@ struct HomeView: View {
                 .buttonStyle(.primaryAction)
 
             case .restDay:
-                Label("Nothing to load today", systemImage: "leaf.fill")
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
-                    .padding(.vertical, 6)
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Rest day", systemImage: "leaf.fill")
+                        .font(.headline.weight(.semibold))
+                        .foregroundStyle(.primary)
+                    Text("The chain holds. Nothing to load today.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 6)
 
             case .allDone:
                 Label("Today is logged", systemImage: "checkmark.seal.fill")
@@ -286,13 +326,50 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            if let pendingID = todayProgression.pendingResolveID, !actionResolves24h(action) {
+                Button("Resolve 24h response") { resolveTargetId = pendingID }
+                    .buttonStyle(.quietCompact)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
+    }
+
+    @ViewBuilder
+    private func stanceLine(_ result: ProgressionResult, onGold: Bool) -> some View {
+        let ink = onGold ? AppTheme.ink : AppTheme.ivory
+        let reason = onGold ? AppTheme.ink.opacity(0.8) : AppTheme.quiet
+        VStack(alignment: .leading, spacing: 4) {
+            Text(result.stance.label)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(ink)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(onGold ? AppTheme.ink.opacity(0.12) : AppTheme.quietFill, in: Capsule())
+                .overlay {
+                    if !onGold {
+                        Capsule().strokeBorder(AppTheme.quietStroke, lineWidth: 1)
+                    }
+                }
+            Text(result.reason)
+                .font(.subheadline)
+                .foregroundStyle(reason)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.stance.label). \(result.reason)")
+    }
+
+    private func actionShowsDose(_ action: TodayNextAction) -> Bool {
+        if case .logSession = action { return true }
+        return false
+    }
+
+    private func actionResolves24h(_ action: TodayNextAction) -> Bool {
+        if case .resolvePending = action { return true }
+        return false
     }
 
     // MARK: Phase A (only while in Phase A)
@@ -317,13 +394,7 @@ struct HomeView: View {
                 logged: hasMorningPain
             ) { showAM = true }
             Divider().overlay(AppTheme.quietStroke)
-            entryRow(
-                icon: isRestDayRow ? "leaf" : InjuryCatalog.systemImage,
-                title: isRestDayRow ? "Rest day" : activePrimaryLoad.title,
-                value: sessionRowValue,
-                placeholder: isRestDayRow ? "Optional" : "Not logged",
-                logged: !todaySessions.isEmpty
-            ) { showSession = true }
+            sessionEntryRow
             Divider().overlay(AppTheme.quietStroke)
             entryRow(
                 icon: "moon.stars",
@@ -333,22 +404,94 @@ struct HomeView: View {
             ) { showPM = true }
         }
         .padding(.horizontal, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
     }
 
-    private var sessionRowValue: String? {
-        if todaySessions.isEmpty, todayDraftId != nil {
+    private var sessionEntryRow: some View {
+        let entry = sessionEntry
+        let isRest = entry == .rest
+        let title = isRest ? "Rest day" : activePrimaryLoad.title
+        let placeholder = isRest ? "Optional" : "Not logged"
+        let logged = !todaySessions.isEmpty
+        let trailing = sessionTrailingValue(entry)
+        let lines = sessionDetailLines(entry)
+        return Button {
+            showSession = true
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: logged ? "checkmark.circle.fill" : (isRest ? "leaf" : InjuryCatalog.systemImage))
+                    .font(.body)
+                    .foregroundStyle(logged ? Color.green : AppTheme.quiet)
+                    .frame(width: 22)
+                    .padding(.top, 1)
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.body)
+                            .foregroundStyle(.primary)
+                        Spacer(minLength: 8)
+                        if lines.isEmpty {
+                            Text(trailing ?? placeholder)
+                                .font(.subheadline.monospacedDigit())
+                                .foregroundStyle(trailing == nil ? Color.secondary.opacity(0.7) : Color.secondary)
+                                .lineLimit(1)
+                        }
+                    }
+                    ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                        Text(line)
+                            .font(.subheadline.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
+                    if let status = entry.loggedStatus, !lines.isEmpty {
+                        Text(status)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 4)
+            }
+            .padding(.vertical, 13)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(sessionAccessibilityLabel(title: title, trailing: trailing, placeholder: placeholder, lines: lines, status: entry.loggedStatus))
+        .accessibilityHint(logged ? "Edit" : "Log")
+    }
+
+    private func sessionTrailingValue(_ entry: TodaySessionEntry) -> String? {
+        switch entry {
+        case .resumeDraft:
             return "Resume draft"
+        case .logged(let load, let status) where !load.hasLines:
+            return status
+        case .rest, .target, .logged:
+            return nil
         }
-        let count = todaySessions.count
-        guard count > 0 else { return nil }
-        if let pending = todaySessions.first(where: { !$0.hasLoggedPainAfter }) {
-            return "During \(pending.painDuring) · after not logged"
+    }
+
+    private func sessionDetailLines(_ entry: TodaySessionEntry) -> [String] {
+        guard let load = entry.load, load.hasLines else { return [] }
+        return [load.warmupNote].compactMap { $0 } + load.workLines
+    }
+
+    private func sessionAccessibilityLabel(
+        title: String,
+        trailing: String?,
+        placeholder: String,
+        lines: [String],
+        status: String?
+    ) -> String {
+        var parts = [title]
+        parts.append(contentsOf: lines)
+        if lines.isEmpty {
+            parts.append(trailing ?? placeholder.lowercased())
+        } else if let status {
+            parts.append(status)
         }
-        return count == 1 ? "Logged" : "\(count) logged"
+        return parts.joined(separator: ", ")
     }
 
     private var eveningRowValue: String? {
@@ -397,45 +540,62 @@ struct HomeView: View {
         .accessibilityHint(logged ? "Edit" : "Log")
     }
 
-    // MARK: Streak — first thing on the screen
+    // MARK: Streak — the day's line, then the chain
 
-    /// Count, at most one short status word, and the day's line. The flame is
-    /// the one place gold appears outside the next-up button, and only while
-    /// the chain is live. Nothing here is tappable.
+    /// Quote and count share the card. The line stays a serif; the number is
+    /// the large counter. The chain sits under the quote. Nothing is tappable.
     private var streakCard: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .center, spacing: 14) {
-                Image(systemName: streak.current > 0 ? "flame.fill" : "link")
-                    .font(.title)
-                    .foregroundStyle(streak.current > 0 ? AppTheme.gold : AppTheme.quiet)
-                    .accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(WorkoutStreak.sessionWord(streak.current))
-                        .font(.title.monospacedDigit().weight(.bold))
-                        .foregroundStyle(.primary)
-                    if let streakStatus {
-                        Text(streakStatus)
-                            .font(.caption)
-                            .foregroundStyle(streak.miss == .twoMiss ? Color.orange : Color.secondary)
-                            .lineLimit(1)
-                    }
+        let picture = WorkoutStreak.picture(sessions: sessionSnaps, now: Date(), calendar: calendar)
+        return HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("“\(todayQuote.text)”")
+                    .font(.system(.title2, design: .serif))
+                    .foregroundStyle(AppTheme.ivory)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let attribution = todayQuote.attribution {
+                    Text(attribution)
+                        .font(.caption)
+                        .foregroundStyle(AppTheme.quiet)
                 }
-                Spacer(minLength: 0)
+                if picture.beads.isEmpty {
+                    Image(systemName: "link")
+                        .font(.body)
+                        .foregroundStyle(AppTheme.quiet)
+                        .accessibilityHidden(true)
+                } else {
+                    ChainBeads(
+                        beads: picture.beads,
+                        freshIndex: picture.freshIndex,
+                        popToken: popToken,
+                        liveCount: streak.current
+                    )
+                    .padding(.top, 4)
+                }
             }
-            Text(quoteLine)
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 0) {
+                Text("\(streak.current)")
+                    .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
+                    .foregroundStyle(AppTheme.gold)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                Text(streak.current == 1 ? "session" : "sessions")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(AppTheme.quiet)
+                if let streakStatus {
+                    Text(streakStatus)
+                        .font(.caption)
+                        .foregroundStyle(streak.miss == .twoMiss ? AppTheme.gold : AppTheme.quiet)
+                        .lineLimit(1)
+                        .padding(.top, 4)
+                }
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .fill(AppTheme.surface)
-        )
+        .posterCard()
         .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("today-poster")
         .accessibilityLabel(streakAccessibilityLabel)
     }
 
@@ -453,11 +613,44 @@ struct HomeView: View {
         MotivationalQuotes.quote(on: today, calendar: calendar)
     }
 
-    private var quoteLine: String {
-        if let attribution = todayQuote.attribution {
-            return "“\(todayQuote.text)” — \(attribution)"
+    private var todayKey: String {
+        let parts = calendar.dateComponents([.year, .month, .day], from: today)
+        return "\(parts.year ?? 0)-\(parts.month ?? 0)-\(parts.day ?? 0)"
+    }
+
+    /// Success only when the chain grows, or when Today first reaches all-done.
+    /// Opening an already-finished day does not buzz again.
+    private func noteRituals() {
+        // @Query is empty for a frame before SwiftData delivers rows. Writing
+        // 0 into the latch makes the real count look like a chain that just grew.
+        if sessions.isEmpty {
+            if ritualsSawSessions {
+                celebratedStreak = 0
+            }
+            return
         }
-        return todayQuote.text
+        ritualsSawSessions = true
+
+        let snap = streak
+        var celebratedChain = false
+        if snap.daysSinceLastHard == 0, snap.current > celebratedStreak {
+            celebratedStreak = snap.current
+            popToken = snap.current
+            Haptics.success()
+            celebratedChain = true
+        } else if celebratedStreak != snap.current {
+            celebratedStreak = snap.current
+        }
+
+        if case .allDone = nextAction {
+            let key = todayKey
+            if closedDayKey != key {
+                closedDayKey = key
+                if !celebratedChain {
+                    Haptics.success()
+                }
+            }
+        }
     }
 
     /// Miss state first (due today / missed), then the off day, then the
@@ -514,6 +707,74 @@ struct HomeView: View {
         NotificationScheduler.cancelPending(sessionId: session.id)
         Haptics.light()
         router.requestNotificationSync()
+    }
+}
+
+/// Hard beads are filled in the pop color. Rest days are hollow and neutral.
+/// The due day is a hollow bead in the pop — the open slot, not a miss.
+private struct ChainBeads: View {
+    var beads: [WorkoutStreak.ChainBead]
+    var freshIndex: Int?
+    var popToken: Int
+    var liveCount: Int
+
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(Array(beads.enumerated()), id: \.offset) { index, bead in
+                beadGlyph(
+                    bead,
+                    pops: bead == .hard && index == freshIndex && popToken == liveCount && liveCount > 0
+                )
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private func beadGlyph(_ bead: WorkoutStreak.ChainBead, pops: Bool) -> some View {
+        let side: CGFloat = bead == .rest ? 8 : 13
+        return Circle()
+            .fill(fill(bead))
+            .overlay(Circle().strokeBorder(stroke(bead), lineWidth: bead == .hard ? 0 : 1.5))
+            .frame(width: side, height: side)
+            .modifier(PopIn(active: pops))
+    }
+
+    private func fill(_ bead: WorkoutStreak.ChainBead) -> Color {
+        switch bead {
+        case .hard: return AppTheme.gold
+        case .rest, .due: return .clear
+        }
+    }
+
+    private func stroke(_ bead: WorkoutStreak.ChainBead) -> Color {
+        switch bead {
+        case .hard: return .clear
+        case .rest: return AppTheme.rest
+        case .due: return AppTheme.gold
+        }
+    }
+}
+
+private struct PopIn: ViewModifier {
+    var active: Bool
+    @State private var shown = false
+
+    func body(content: Content) -> some View {
+        content
+            .scaleEffect(active && !shown ? 0.2 : 1)
+            .onAppear {
+                guard active else { return }
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) {
+                    shown = true
+                }
+            }
+            .onChange(of: active) { _, isActive in
+                guard isActive else { return }
+                shown = false
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.55)) {
+                    shown = true
+                }
+            }
     }
 }
 

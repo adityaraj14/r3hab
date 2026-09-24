@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(R3hab)
 @testable import R3hab
+#else
+@testable import R3habDomain
+#endif
 
 final class ChartAggregatesTests: XCTestCase {
     private var calendar: Calendar {
@@ -155,6 +159,10 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertNil(points[3].pain)
         XCTAssertNil(points[3].morningPain)
         XCTAssertNil(points[3].eveningPain)
+        XCTAssertNil(points[0].steps)
+        XCTAssertTrue(points[0].hasValues)
+        XCTAssertEqual(points[3].steps, 1000)
+        XCTAssertTrue(points[3].hasValues)
     }
 
     func testExplorePointsMapsSessionVolumeOntoTheDay() {
@@ -425,5 +433,117 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(summary.morningDays, 1)
         XCTAssertEqual(summary.sessionDays, 1)
         XCTAssertEqual(summary.sessionCount, 1)
+    }
+
+    func testExplorePointsMapsStepsAndKeepsMissingDaysEmpty() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [
+                DailyMetricSnapshot(date: day(-2, from: today), restingPainAM: nil, dailyPainPM: nil, steps: 0),
+                DailyMetricSnapshot(date: today, restingPainAM: 2, dailyPainPM: nil, steps: 6400)
+            ],
+            sessions: [
+                SessionLoadSnapshot(date: today, volume: 980)
+            ],
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points.count, 3)
+        XCTAssertEqual(points[0].steps, 0)
+        XCTAssertNil(points[0].pain)
+        XCTAssertNil(points[0].volume)
+        XCTAssertTrue(points[0].hasValues)
+        XCTAssertNil(points[1].steps)
+        XCTAssertNil(points[1].pain)
+        XCTAssertNil(points[1].volume)
+        XCTAssertFalse(points[1].hasValues)
+        XCTAssertEqual(points[2].steps, 6400)
+        XCTAssertEqual(points[2].pain, 2)
+        XCTAssertEqual(points[2].volume, 980)
+        XCTAssertTrue(points[2].hasValues)
+    }
+
+    func testProgressChartStyleIdsRoundTripAndFallBack() {
+        XCTAssertEqual(
+            ProgressChartStyle.allCases,
+            [.ribbon, .orbit, .heatlane, .glassDial, .emberTide]
+        )
+        XCTAssertGreaterThanOrEqual(ProgressChartStyle.allCases.count, 4)
+        XCTAssertEqual(ProgressChartStyle.storageKey, "r3hab.progressChartStyle")
+        for style in ProgressChartStyle.allCases {
+            XCTAssertEqual(ProgressChartStyle.resolved(style.rawValue), style)
+            XCTAssertFalse(style.pickerTitle.isEmpty)
+            XCTAssertFalse(style.intent.isEmpty)
+        }
+        XCTAssertEqual(ProgressChartStyle.resolved("not-a-style"), .ribbon)
+        XCTAssertEqual(ProgressChartStyle.ribbon.rawValue, "ribbon")
+        XCTAssertEqual(ProgressChartStyle.orbit.rawValue, "orbit")
+        XCTAssertEqual(ProgressChartStyle.heatlane.rawValue, "heatlane")
+        XCTAssertEqual(ProgressChartStyle.glassDial.rawValue, "glassDial")
+        XCTAssertEqual(ProgressChartStyle.emberTide.rawValue, "emberTide")
+    }
+
+    func testSignalScaleKeepsGapsAndZeros() {
+        XCTAssertNil(ExploreSignalScale.unit(nil, peak: 10))
+        XCTAssertEqual(ExploreSignalScale.unit(0, peak: 10), 0)
+        XCTAssertEqual(ExploreSignalScale.unit(5, peak: 10), 0.5)
+        XCTAssertEqual(ExploreSignalScale.unit(12, peak: 10), 1)
+        XCTAssertEqual(ExploreSignalScale.peak([nil, 0, 4]), 4)
+        XCTAssertEqual(ExploreSignalScale.peak([nil]), 1)
+        XCTAssertEqual(ExploreSignalScale.peak([0]), 1)
+    }
+
+    func testContiguousSegmentsSplitOnMissingDaysButKeepZeros() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let values: [Double?] = [1, nil, 0, 2, nil]
+        let points = values.enumerated().map { index, value in
+            let date = day(index, from: today)
+            return DayExplorePoint(
+                dayKey: CalendarDay.dayKey(date, calendar: calendar),
+                date: date,
+                pain: value
+            )
+        }
+        let segments = ExploreSeries.contiguousSegments(points, value: \.pain)
+        XCTAssertEqual(segments.count, 2)
+        XCTAssertEqual(segments[0].map(\.pain), [1])
+        XCTAssertEqual(segments[1].map(\.pain), [0, 2])
+    }
+
+    func testPlotXAndNeighborMatchTheDaySeries() {
+        let today = calendar.date(from: DateComponents(year: 2026, month: 9, day: 3))!
+        let points: [DayExplorePoint] = (0..<28).map { offset in
+            let date = calendar.date(byAdding: .day, value: offset - 27, to: today)!
+            return DayExplorePoint(
+                dayKey: CalendarDay.dayKey(date, calendar: calendar),
+                date: date,
+                pain: 2,
+                volume: 560,
+                steps: 4000
+            )
+        }
+
+        XCTAssertEqual(ChartDaySelection.plotX(for: points[0].date, in: points, width: 270), 0)
+        XCTAssertEqual(ChartDaySelection.plotX(for: points[27].date, in: points, width: 270), 270)
+        XCTAssertEqual(
+            ChartDaySelection.neighbor(of: points[5].date, in: points, step: 1)?.dayKey,
+            points[6].dayKey
+        )
+        XCTAssertEqual(
+            ChartDaySelection.neighbor(of: points[0].date, in: points, step: -1)?.dayKey,
+            points[0].dayKey
+        )
+        XCTAssertEqual(
+            ChartDaySelection.neighbor(of: points[27].date, in: points, step: 1)?.dayKey,
+            points[27].dayKey
+        )
+        let roundTrip = ChartDaySelection.point(
+            atPlotX: ChartDaySelection.plotX(for: points[10].date, in: points, width: 270),
+            width: 270,
+            points: points
+        )
+        XCTAssertEqual(roundTrip?.dayKey, points[10].dayKey)
+        XCTAssertEqual(roundTrip?.steps, 4000)
     }
 }

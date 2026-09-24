@@ -54,6 +54,51 @@ enum ProgressDayRange: CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
+/// Prototype visual languages for the combined Progress chart.
+/// Raw values are persisted, so they stay stable once shipped.
+enum ProgressChartStyle: String, CaseIterable, Identifiable, Hashable, Sendable {
+    case ribbon
+    case orbit
+    case heatlane
+    case glassDial
+    case emberTide
+
+    var id: String { rawValue }
+
+    /// UserDefaults key. A prototype picker, not a clinical setting, so it stays out of SwiftData.
+    static let storageKey = "r3hab.progressChartStyle"
+
+    var pickerTitle: String {
+        switch self {
+        case .ribbon: return "Ribbon"
+        case .orbit: return "Orbit"
+        case .heatlane: return "Heatlane"
+        case .glassDial: return "Glass dial"
+        case .emberTide: return "Ember tide"
+        }
+    }
+
+    /// One line a reviewer can read without opening the chart.
+    var intent: String {
+        switch self {
+        case .ribbon:
+            return "Pain as a soft band, load as bars, steps as a thin line."
+        case .orbit:
+            return "Each day a small glyph with three arcs."
+        case .heatlane:
+            return "Three heat lanes sharing one cursor."
+        case .glassDial:
+            return "Large day readout with a quiet spark behind it."
+        case .emberTide:
+            return "Ember columns: height is steps, heat is pain, a notch is load."
+        }
+    }
+
+    static func resolved(_ raw: String) -> ProgressChartStyle {
+        ProgressChartStyle(rawValue: raw) ?? .ribbon
+    }
+}
+
 struct DayValue: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
     var dayKey: String
@@ -123,9 +168,11 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var afterPain: Double? = nil
     /// Daily session volume (Σ work-set reps × lb). Nil days stay gaps.
     var volume: Double?
+    /// Check-in step count. Nil when that day was not logged. Zero is a real HealthKit zero.
+    var steps: Double? = nil
 
     var hasValues: Bool {
-        pain != nil || duringPain != nil || afterPain != nil || volume != nil
+        pain != nil || duringPain != nil || afterPain != nil || volume != nil || steps != nil
     }
 }
 
@@ -197,6 +244,63 @@ enum ChartDaySelection {
         let t = max(0, min(1, x / width))
         let target = Date(timeIntervalSinceReferenceDate: first + t * span)
         return nearestPoint(to: target, in: points)
+    }
+
+    /// Inverse of `point(atPlotX:width:points:)`. Endpoints sit on the plot edges.
+    static func plotX(for date: Date, in points: [DayExplorePoint], width: Double) -> Double {
+        guard width > 0, let first = points.first?.date, let last = points.last?.date else { return 0 }
+        let span = last.timeIntervalSince(first)
+        guard span > 0 else { return width / 2 }
+        let t = date.timeIntervalSince(first) / span
+        return min(width, max(0, t * width))
+    }
+
+    /// Move `step` days from the nearest point. Clamps at the ends of the series.
+    static func neighbor(of date: Date, in points: [DayExplorePoint], step: Int) -> DayExplorePoint? {
+        guard let current = nearestPoint(to: date, in: points),
+              let index = points.firstIndex(where: { $0.dayKey == current.dayKey }) else {
+            return points.first
+        }
+        let next = index + step
+        guard points.indices.contains(next) else { return points[index] }
+        return points[next]
+    }
+}
+
+/// Shared scale for the combined chart. Nil stays a gap. Zero stays zero.
+enum ExploreSignalScale {
+    static func peak(_ values: [Double?], floor: Double = 1) -> Double {
+        let logged = values.compactMap { $0 }
+        return max(logged.max() ?? floor, floor)
+    }
+
+    static func unit(_ value: Double?, peak: Double) -> Double? {
+        guard let value else { return nil }
+        guard peak > 0 else { return 0 }
+        return min(1, max(0, value / peak))
+    }
+}
+
+/// Splits a series so a missing day does not become an interpolated zero.
+enum ExploreSeries {
+    static func contiguousSegments(
+        _ points: [DayExplorePoint],
+        value: (DayExplorePoint) -> Double?
+    ) -> [[DayExplorePoint]] {
+        var segments: [[DayExplorePoint]] = []
+        var current: [DayExplorePoint] = []
+        for point in points {
+            if value(point) != nil {
+                current.append(point)
+            } else if !current.isEmpty {
+                segments.append(current)
+                current = []
+            }
+        }
+        if !current.isEmpty {
+            segments.append(current)
+        }
+        return segments
     }
 }
 
@@ -308,7 +412,9 @@ enum ChartMetricBuilder {
                     eveningPain: row?.dailyPainPM.map(Double.init),
                     duringPain: duringByDay[key].map(Double.init),
                     afterPain: afterByDay[key].map(Double.init),
-                    volume: volumeByDay[key]
+                    volume: volumeByDay[key],
+                    // Same check-in row the evening editor fills from HealthKit. Nil = not logged.
+                    steps: row?.steps.map(Double.init)
                 )
             )
         }

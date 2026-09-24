@@ -19,6 +19,8 @@ enum DecisionSuggester {
                 && streak.allSatisfy { $0 == .better || $0 == .same }
             return allClean ? .progress : .stay
         case .worse:
+            // Advice only. Option B holds the gold-card load on Worse;
+            // soft cut does not rewrite that prescription.
             if recentResolvedNonRest.first == .worse {
                 return .hardDrop
             }
@@ -65,6 +67,23 @@ enum DecisionSuggester {
             return nil
         }
     }
+
+    /// The one sentence under Better / Same / Worse. The card is the response;
+    /// this is the call.
+    static func closeLine(for decision: SessionDecision) -> String {
+        switch decision {
+        case .stay:
+            return "Stay. Same load next time."
+        case .progress:
+            return "Progress. A little more next time."
+        case .softCut:
+            return "Soft cut. A little less next time."
+        case .hardDrop:
+            return "Hard drop. Step back a phase."
+        case .rest:
+            return "Rest. No load judgment."
+        }
+    }
 }
 
 /// Gentle, non-blocking load hint after a morning log or 24h resolve.
@@ -89,7 +108,7 @@ enum LoadNudge: Equatable, Identifiable {
         case .easeOffMorning, .easeOffWorse:
             return "Take the next session easier"
         case .progress:
-            return "Looks like you could progress"
+            return "Ready to add load"
         }
     }
 
@@ -99,8 +118,8 @@ enum LoadNudge: Equatable, Identifiable {
             return "This morning’s pain is \(current), up from \(previous) the morning of your last workout. Next time, try a bit less — lower the load, do fewer reps, or shorten the holds. One change is enough."
         case .easeOffWorse:
             return "Pain was worse after that session. Next time, try a bit less — about 20–30% less load, fewer sets, or shorter holds. One change is enough."
-        case .progress(let count):
-            return "You’ve had \(count) workouts in a row without pain going up. Next time you could try a little more — a bit more load, a couple extra reps, or a longer hold. Change only one of those."
+        case .progress:
+            return "Pain held steady — next time, try a bit more weight with the same sets and reps."
         }
     }
 }

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The user’s chosen primary loading movement. Knee only: seated extension
+/// The user’s chosen primary loading movement. Knee only: seated leg extension
 /// (default) or leg press.
 struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var id: String
@@ -14,7 +14,16 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     var homeObjective: String
 
     var chartVolumeTitle: String {
-        id == "seated-extension" ? "Seated extension volume" : "\(title) volume"
+        "\(title) volume"
+    }
+
+    /// Phrases that identify this lift in free-text `whatIDid`.
+    /// Seated leg extension also accepts the pre-rename short name.
+    var historyMatchPhrases: [String] {
+        if id == "seated-extension" {
+            return [title, PrimaryLoadCatalog.legacySeatedExtensionDisplayName]
+        }
+        return [title]
     }
 
     func nextUpCTA(hasDraft: Bool) -> String {
@@ -24,7 +33,7 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
 
 enum PrimaryLoadCatalog {
     /// Retired ids (old knee primaries and the removed QL template). Existing
-    /// settings / backups remap to seated extension.
+    /// settings / backups remap to seated leg extension.
     static let retiredIDs: Set<String> = [
         "spanish-squat",
         "wall-sit",
@@ -33,20 +42,24 @@ enum PrimaryLoadCatalog {
         "ql-walk"
     ]
 
+    /// Display string stored in `whatIDid` before this lift was renamed.
+    /// History matching still accepts it. Not a current label.
+    static let legacySeatedExtensionDisplayName = "Seated extension"
+
     static let seatedExtension = PrimaryLoadOption(
         id: "seated-extension",
-        title: "Seated extension",
+        title: "Seated leg extension",
         subtitle: "Default · iso holds, then heavy slow on the machine",
         isometricPresetID: "ext",
         hsrPresetID: "ke",
-        logCTA: "Log seated extension",
-        homeObjective: "Primary load is seated extension. Build tendon capacity without next-morning flares."
+        logCTA: "Log Workout",
+        homeObjective: "Primary load is seated leg extension. Build tendon capacity without next-morning flares."
     )
 
     static let legPress = PrimaryLoadOption(
         id: "leg-press",
         title: "Leg press",
-        subtitle: "Same load logger as seated extension · holds, then heavy slow",
+        subtitle: "Same load logger as seated leg extension · holds, then heavy slow",
         isometricPresetID: "lp-iso",
         hsrPresetID: "lp",
         logCTA: "Log leg press",

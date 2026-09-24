@@ -299,4 +299,42 @@ final class WorkoutStreakTests: XCTestCase {
                 && quote.attribution != "R3hab"
         })
     }
+
+    func testChainDrawsTheRestDayBetweenHardSessions() {
+        let sessions = [snap(createdAt: at(day: 0, hour: 7))]
+        let rest = WorkoutStreak.picture(sessions: sessions, now: at(day: 1, hour: 9), calendar: calendar)
+        XCTAssertEqual(rest.beads, [.hard, .rest])
+        XCTAssertNil(rest.freshIndex)
+
+        let due = WorkoutStreak.picture(sessions: sessions, now: at(day: 2, hour: 9), calendar: calendar)
+        XCTAssertEqual(due.beads, [.hard, .rest, .due])
+        XCTAssertNil(due.freshIndex)
+    }
+
+    func testChainFillsTodaysHardBead() {
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 2, hour: 17))
+        ]
+        let picture = WorkoutStreak.picture(sessions: sessions, now: at(day: 2, hour: 18), calendar: calendar)
+        XCTAssertEqual(picture.beads, [.hard, .rest, .hard])
+        XCTAssertEqual(picture.freshIndex, 2)
+    }
+
+    func testSameDayDoublesAreTwoHardBeads() {
+        let sessions = [
+            snap(createdAt: at(day: 0, hour: 7)),
+            snap(createdAt: at(day: 0, hour: 18))
+        ]
+        let picture = WorkoutStreak.picture(sessions: sessions, now: at(day: 0, hour: 19), calendar: calendar)
+        XCTAssertEqual(picture.beads, [.hard, .hard])
+        XCTAssertEqual(picture.freshIndex, 1)
+    }
+
+    func testBrokenChainDrawsNoBeads() {
+        let sessions = [snap(createdAt: at(day: 0, hour: 7))]
+        let picture = WorkoutStreak.picture(sessions: sessions, now: at(day: 3, hour: 9), calendar: calendar)
+        XCTAssertTrue(picture.beads.isEmpty)
+        XCTAssertNil(picture.freshIndex)
+    }
 }

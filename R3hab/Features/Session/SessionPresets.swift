@@ -7,7 +7,7 @@ struct SessionPreset: Identifiable, Hashable {
     let whatIDid: String
     let phases: Set<RehabPhase>?
     let tracksResistance: Bool
-    /// Prefer multi-set editor (HSR seated extension).
+    /// Prefer multi-set editor (HSR seated leg extension).
     let usesPerSetLogging: Bool
     /// Prefer isometric hold fields (reps × time × load).
     let usesIsoHoldLogging: Bool
@@ -38,9 +38,9 @@ struct SessionPreset: Identifiable, Hashable {
     static let all: [SessionPreset] = [
         .init(
             id: "ext",
-            label: "Seated extension",
+            label: "Seated leg extension",
             sessionType: .isometrics,
-            whatIDid: "Seated extension hold ~60°",
+            whatIDid: "Seated leg extension hold ~60°",
             phases: [.bIsometrics, .aFlareDeLoad],
             tracksResistance: true,
             usesPerSetLogging: true,
@@ -48,9 +48,9 @@ struct SessionPreset: Identifiable, Hashable {
         ),
         .init(
             id: "ke",
-            label: "Seated extension",
+            label: "Seated leg extension",
             sessionType: .hsrStrength,
-            whatIDid: "Seated extension",
+            whatIDid: "Seated leg extension",
             phases: [.cHeavySlowResistance],
             tracksResistance: true,
             usesPerSetLogging: true,
@@ -89,7 +89,7 @@ struct SessionPreset: Identifiable, Hashable {
         preferred(for: phase, primaryLoadID: PrimaryLoadCatalog.defaultID)
     }
 
-    /// Iso variant in A/B; HSR variant in C. Unknown ids fall back to seated extension.
+    /// Iso variant in A/B; HSR variant in C. Unknown ids fall back to seated leg extension.
     static func preferred(for phase: RehabPhase, primaryLoadID: String) -> SessionPreset {
         let option = PrimaryLoadCatalog.option(for: primaryLoadID)
         let presetID: String

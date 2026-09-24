@@ -15,7 +15,7 @@ enum SettingsSeedPolicy {
     }
 
     /// Retired knee primaries and the removed QL loads (hip thrust / side bend /
-    /// walking) rewrite to seated extension.
+    /// walking) rewrite to seated leg extension.
     static func shouldRemapPrimaryLoad(_ id: String) -> Bool {
         PrimaryLoadCatalog.needsRemap(id)
     }

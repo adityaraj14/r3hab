@@ -117,7 +117,7 @@ final class SessionVolumeTests: XCTestCase {
             date: Date(timeIntervalSince1970: 1_700_000_000),
             phase: .cHeavySlowResistance,
             sessionType: .hsrStrength,
-            whatIDid: "Seated extension",
+            whatIDid: "Seated leg extension",
             painDuring: 2,
             sets: sets,
             reps: reps,
