@@ -64,6 +64,10 @@ struct HomeView: View {
         )
     }
 
+    private var nextUpSessionTitle: String {
+        activePrimaryLoad.nextUpCTA(hasDraft: todayDraftId != nil)
+    }
+
     private var phaseAStatus: PhaseAExitStatus? {
         guard let settings, settings.currentPhase == .aFlareDeLoad else { return nil }
         return PhaseAExitEvaluator.evaluate(
@@ -238,7 +242,7 @@ struct HomeView: View {
     /// the stance with it. Other actions keep the same line on the card.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(nextUpEyebrow(for: action).uppercased())
+            Text(TodayPlanner.eyebrow(for: action, hasSessionDraft: todayDraftId != nil).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
@@ -285,14 +289,14 @@ struct HomeView: View {
                 Button { showSession = true } label: {
                     VStack(alignment: .leading, spacing: 8) {
                         stanceLine(todayProgression, onGold: true)
-                        Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
+                        Label(nextUpSessionTitle, systemImage: InjuryCatalog.systemImage)
                         Text(todayProgression.target.lastTimeLine)
                             .font(.subheadline.weight(.medium))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
-                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(activePrimaryLoad.logCTA). \(todayProgression.target.lastTimeLine)")
+                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(nextUpSessionTitle). \(todayProgression.target.lastTimeLine)")
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -366,15 +370,6 @@ struct HomeView: View {
     private func actionResolves24h(_ action: TodayNextAction) -> Bool {
         if case .resolvePending = action { return true }
         return false
-    }
-
-    private func nextUpEyebrow(for action: TodayNextAction) -> String {
-        switch action {
-        case .resolvePending: return "Needs your 24h call"
-        case .restDay: return "Rest day"
-        case .allDone: return "Today"
-        default: return "Next up"
-        }
     }
 
     // MARK: Phase A (only while in Phase A)

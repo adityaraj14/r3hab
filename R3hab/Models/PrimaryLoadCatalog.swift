@@ -25,6 +25,10 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
         }
         return [title]
     }
+
+    func nextUpCTA(hasDraft: Bool) -> String {
+        hasDraft ? "Resume \(title.lowercased())" : logCTA
+    }
 }
 
 enum PrimaryLoadCatalog {

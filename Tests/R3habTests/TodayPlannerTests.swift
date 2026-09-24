@@ -86,6 +86,23 @@ final class TodayPlannerTests: XCTestCase {
         XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, evening: true, restDay: true)), .allDone)
     }
 
+    func testLogSessionEyebrowSignalsASavedDraft() {
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession), "Next up")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession, hasSessionDraft: true), "Draft saved")
+    }
+
+    func testDraftDoesNotRewriteOtherNextUpEyebrows() {
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logMorning, hasSessionDraft: true), "Next up")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logEvening, hasSessionDraft: true), "Next up")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logAfterPain(sessionID: a), hasSessionDraft: true), "Next up")
+        XCTAssertEqual(
+            TodayPlanner.eyebrow(for: .resolvePending(sessionID: a, remaining: 0), hasSessionDraft: true),
+            "Needs your 24h call"
+        )
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .restDay, hasSessionDraft: true), "Rest day")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .allDone, hasSessionDraft: true), "Today")
+    }
+
     func testAllDoneLineIsAdisSignOff() {
         XCTAssertEqual(TodayPlanner.allDoneLine, "All done for the day. Let’s pick it back up tomorrow.")
         XCTAssertFalse(TodayPlanner.allDoneLine.contains("Judge it by tomorrow morning"))
