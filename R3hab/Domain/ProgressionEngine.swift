@@ -14,27 +14,45 @@ struct LoadPrescription: Equatable, Sendable {
     var todayLine: String {
         "Today: \(displayLine)"
     }
+
+    /// Last logged dose. Not a computed next load.
+    var lastTimeLine: String {
+        "Last time: \(displayLine)"
+    }
 }
 
 enum ProgressionGate: String, Equatable, CaseIterable, Sendable {
-    case consecutiveTopReps
     case painDuring
-    case nextMorningBaseline
-    case weekOverWeekCreep
+    case awaiting24h
+    case responseWorse
+    case consecutiveCleanHits
 }
 
 enum ProgressionStance: String, Equatable, Sendable {
     case hold
     case advance
     case drop
+
+    /// Advice only. The form still opens on last session’s weight.
+    var label: String {
+        switch self {
+        case .hold: return "Hold load"
+        case .advance: return "Increase load"
+        case .drop: return "Decrease load"
+        }
+    }
 }
 
 struct ProgressionResult: Equatable, Sendable {
     var target: LoadPrescription
     var current: LoadPrescription
     var stance: ProgressionStance
+    /// One line for the gold card. Never empty.
+    var reason: String
     var blockedBy: [ProgressionGate]
     var laterality: SetLaterality
+    /// Set when the latest primary-load session still needs a 24h resolve.
+    var pendingResolveID: UUID?
 }
 
 enum SessionPrefill {
@@ -57,36 +75,43 @@ enum SessionPrefill {
     }
 }
 
-/// Pain-gated double progression in an HSR shell.
-///
-/// Ladder at a fixed load: 3×8 → 3×10 → 3×12 → 4×8 → 4×10 → 4×12 → +5 lb, 4×8.
-/// Today's target is derived from completed primary-load HSR logs. Nothing is stored.
+/// Option B gates. Stance is advice. Prefill weight is the last working load.
+/// Set and rep shape snaps into 3×8–12. The engine does not write +5 or −5.
 enum ProgressionEngine {
-    static let painDuringLimit = 5
-    static let loadBumpLbs = 5.0
-    static let minLoadLbs = 5.0
+    static let painDuringLimit = 3
     static let defaultSets = 3
     static let defaultReps = 8
-    static let weekWindowDays = 7
-    static let creepDelta = 1.0
-    static let minWeekSamples = 2
+    static let repFloor = 8
+    static let repCeiling = 12
+    static let repHardMax = 15
 
-    static let pattern: [(sets: Int, reps: Int)] = [
-        (3, 8), (3, 10), (3, 12), (4, 8), (4, 10), (4, 12)
-    ]
+    static let reasonWaitingOn24h = "Waiting on 24h check-in"
+    static let reasonWorseHolding = "24h Worse — holding load"
+    static let reasonTwoCleanIncrease = "Two clean hits — increase load"
+    static let reasonOneClean = "One clean hit — holding load"
+    static let reasonShortReps = "Reps were short — holding load"
+    static let reasonStart = "Start at 3×8"
+    static let reasonNotApplicable = "24h not applicable — holding load"
+    static let reasonPainUnlogged = "Pain during was not logged"
+    static let reasonHolding = "Holding load"
+
+    static func reasonPain(_ pain: Int) -> String {
+        "Pain during was \(pain)"
+    }
 
     static func today(
         sessions: [TrainingSessionSnapshot],
-        checkIns: [DailyCheckInSnapshot],
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
         calendar: Calendar = .current
     ) -> ProgressionResult {
+        let asOfDay = calendar.startOfDay(for: asOf)
         let history = hsrHistory(
             sessions: sessions,
             primaryLoadTitle: primaryLoadTitle,
             calendar: calendar
-        )
+        ).filter { calendar.startOfDay(for: $0.date) <= asOfDay }
+
         let laterality = history.last.map {
             SessionSummary.inferredLaterality(workSets: $0.resistanceSets)
         } ?? .bilateral
@@ -104,52 +129,105 @@ enum ProgressionEngine {
                 target: seed,
                 current: seed,
                 stance: .hold,
+                reason: reasonStart,
                 blockedBy: [],
-                laterality: laterality
+                laterality: laterality,
+                pendingResolveID: nil
             )
         }
 
-        let current = inferPrescription(latest) ?? LoadPrescription(
+        let raw = inferPrescription(latest) ?? LoadPrescription(
             workingSets: defaultSets,
             reps: defaultReps,
             loadLbs: latest.chartLoad
         )
-        let blocked = blockedGates(
-            latest: latest,
-            atLevel: sessionsAtLevel(history, prescription: current),
-            checkIns: checkIns,
-            asOf: asOf,
-            calendar: calendar
-        )
-        let stance = stance(for: blocked, latest: latest, checkIns: checkIns, calendar: calendar)
-        let target: LoadPrescription
-        switch stance {
-        case .advance:
-            target = advanced(from: current)
-        case .drop:
-            target = dropped(from: current)
-        case .hold:
-            target = current
+        let current = snap(raw)
+        let pendingID: UUID? = latest.response24h == .pending ? latest.id : nil
+        let pain = peakPain(in: latest)
+
+        if let pain, pain > painDuringLimit {
+            return make(
+                target: current,
+                current: current,
+                stance: .drop,
+                reason: reasonPain(pain),
+                blockedBy: [.painDuring],
+                laterality: laterality,
+                pendingResolveID: pendingID
+            )
         }
-        return ProgressionResult(
-            target: target,
+
+        switch latest.response24h {
+        case .pending:
+            return make(
+                target: current,
+                current: current,
+                stance: .hold,
+                reason: reasonWaitingOn24h,
+                blockedBy: [.awaiting24h],
+                laterality: laterality,
+                pendingResolveID: pendingID
+            )
+        case .worse:
+            return make(
+                target: current,
+                current: current,
+                stance: .hold,
+                reason: reasonWorseHolding,
+                blockedBy: [.responseWorse],
+                laterality: laterality,
+                pendingResolveID: nil
+            )
+        case .notApplicable:
+            return make(
+                target: current,
+                current: current,
+                stance: .hold,
+                reason: reasonNotApplicable,
+                blockedBy: [.awaiting24h],
+                laterality: laterality,
+                pendingResolveID: nil
+            )
+        case .better, .same:
+            break
+        }
+
+        let atLoad = sessionsAtLoad(history, loadLbs: current.loadLbs)
+        let recent = Array(atLoad.suffix(2))
+        let twoClean = recent.count == 2 && recent.allSatisfy {
+            isCleanHit($0, loadLbs: current.loadLbs)
+        }
+        if twoClean {
+            return make(
+                target: current,
+                current: current,
+                stance: .advance,
+                reason: reasonTwoCleanIncrease,
+                blockedBy: [],
+                laterality: laterality,
+                pendingResolveID: nil
+            )
+        }
+
+        return make(
+            target: current,
             current: current,
-            stance: stance,
-            blockedBy: blocked,
-            laterality: laterality
+            stance: .hold,
+            reason: holdReason(latest: latest, loadLbs: current.loadLbs),
+            blockedBy: [.consecutiveCleanHits],
+            laterality: laterality,
+            pendingResolveID: nil
         )
     }
 
     static func evaluateAfterSave(
         sessions: [TrainingSessionSnapshot],
-        checkIns: [DailyCheckInSnapshot],
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
         calendar: Calendar = .current
     ) -> ProgressionResult {
         today(
             sessions: sessions,
-            checkIns: checkIns,
             primaryLoadTitle: primaryLoadTitle,
             asOf: asOf,
             calendar: calendar
@@ -224,21 +302,22 @@ enum ProgressionEngine {
         let minReps = pairs.compactMap(\.reps).min() ?? defaultReps
         let loads = pairs.compactMap(\.leftLoad)
         let load = modalLoad(loads) ?? loads.max()
-        let sets: Int
-        if pairs.count >= 4 {
-            sets = 4
-        } else {
-            sets = 3
-        }
+        return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: load)
+    }
+
+    /// Keep the logged load. Collapse set-count climbs into 3 sets.
+    /// Reps land in 8–12. Anything above the hard max (15) is pulled back too.
+    static func snap(_ raw: LoadPrescription) -> LoadPrescription {
+        let capped = min(raw.reps, repHardMax)
         let reps: Int
-        if minReps >= 12 {
-            reps = 12
-        } else if minReps >= 10 {
-            reps = 10
+        if capped < repFloor {
+            reps = repFloor
+        } else if capped > repCeiling {
+            reps = repCeiling
         } else {
-            reps = 8
+            reps = capped
         }
-        return LoadPrescription(workingSets: sets, reps: reps, loadLbs: load)
+        return LoadPrescription(workingSets: defaultSets, reps: reps, loadLbs: raw.loadLbs)
     }
 
     static func hitTopReps(_ session: TrainingSessionSnapshot, target: LoadPrescription) -> Bool {
@@ -269,204 +348,80 @@ enum ProgressionEngine {
         return values.max()
     }
 
-    // MARK: Gates
+    // MARK: Private
 
-    static func blockedGates(
+    private static func make(
+        target: LoadPrescription,
+        current: LoadPrescription,
+        stance: ProgressionStance,
+        reason: String,
+        blockedBy: [ProgressionGate],
+        laterality: SetLaterality,
+        pendingResolveID: UUID?
+    ) -> ProgressionResult {
+        ProgressionResult(
+            target: target,
+            current: current,
+            stance: stance,
+            reason: reason,
+            blockedBy: blockedBy,
+            laterality: laterality,
+            pendingResolveID: pendingResolveID
+        )
+    }
+
+    private static func holdReason(
         latest: TrainingSessionSnapshot,
-        atLevel: [TrainingSessionSnapshot],
-        checkIns: [DailyCheckInSnapshot],
-        asOf: Date,
-        calendar: Calendar
-    ) -> [ProgressionGate] {
-        guard let current = inferPrescription(latest) else {
-            return [.consecutiveTopReps]
+        loadLbs: Double?
+    ) -> String {
+        if peakPain(in: latest) == nil {
+            return reasonPainUnlogged
         }
-        var blocked: [ProgressionGate] = []
-
-        let consecutive = atLevel.suffix(2)
-        let twoHits = consecutive.count == 2
-            && consecutive.allSatisfy { hitTopReps($0, target: current) }
-        if !twoHits {
-            blocked.append(.consecutiveTopReps)
+        let floor = LoadPrescription(workingSets: defaultSets, reps: repFloor, loadLbs: loadLbs)
+        if !hitTopReps(latest, target: floor) {
+            return reasonShortReps
         }
-
-        if let pain = peakPain(in: latest), pain > painDuringLimit {
-            blocked.append(.painDuring)
-        } else if consecutive.count == 2 {
-            let anyHigh = consecutive.contains { session in
-                guard let pain = peakPain(in: session) else { return false }
-                return pain > painDuringLimit
-            }
-            if anyHigh { blocked.append(.painDuring) }
+        if isCleanHit(latest, loadLbs: loadLbs) {
+            return reasonOneClean
         }
-
-        let morning = consecutiveMorningVerdict(consecutive, checkIns: checkIns, calendar: calendar)
-        switch morning {
-        case .fail:
-            blocked.append(.nextMorningBaseline)
-        case .unknown:
-            if twoHits { blocked.append(.nextMorningBaseline) }
-        case .pass:
-            break
-        }
-
-        if weekOverWeekCreep(checkIns: checkIns, asOf: asOf, calendar: calendar) {
-            blocked.append(.weekOverWeekCreep)
-        }
-        return blocked
+        return reasonHolding
     }
 
-    private static func stance(
-        for blocked: [ProgressionGate],
-        latest: TrainingSessionSnapshot,
-        checkIns: [DailyCheckInSnapshot],
-        calendar: Calendar
-    ) -> ProgressionStance {
-        if blocked.isEmpty { return .advance }
-        if blocked.contains(.weekOverWeekCreep) { return .drop }
-        let dropSignals: Set<ProgressionGate> = [.painDuring, .nextMorningBaseline]
-        let shouldDrop = blocked.contains { dropSignals.contains($0) }
-            && latestDropKnown(latest, checkIns: checkIns, calendar: calendar)
-        if shouldDrop { return .drop }
-        return .hold
-    }
-
-    /// Drop only when a logged signal failed, not when a gate is still unknown.
-    private static func latestDropKnown(
-        _ latest: TrainingSessionSnapshot,
-        checkIns: [DailyCheckInSnapshot],
-        calendar: Calendar
-    ) -> Bool {
-        if let pain = peakPain(in: latest), pain > painDuringLimit { return true }
-        if morningVerdict(latest, checkIns: checkIns, calendar: calendar) == .fail { return true }
-        return false
-    }
-
-    private static func sessionsAtLevel(
-        _ history: [TrainingSessionSnapshot],
-        prescription: LoadPrescription
-    ) -> [TrainingSessionSnapshot] {
-        history.filter { inferPrescription($0) == prescription }
-    }
-
-    // MARK: Ladder
-
-    static func advanced(from current: LoadPrescription) -> LoadPrescription {
-        let index = patternIndex(sets: current.workingSets, reps: current.reps)
-        if index < pattern.count - 1 {
-            let next = pattern[index + 1]
-            return LoadPrescription(
-                workingSets: next.sets,
-                reps: next.reps,
-                loadLbs: current.loadLbs
-            )
-        }
-        let bumped = (current.loadLbs ?? 0) + loadBumpLbs
-        return LoadPrescription(workingSets: 4, reps: 8, loadLbs: bumped)
-    }
-
-    static func dropped(from current: LoadPrescription) -> LoadPrescription {
-        let index = patternIndex(sets: current.workingSets, reps: current.reps)
-        if index > 0 {
-            let prev = pattern[index - 1]
-            return LoadPrescription(
-                workingSets: prev.sets,
-                reps: prev.reps,
-                loadLbs: current.loadLbs
-            )
-        }
-        let reduced = max(minLoadLbs, (current.loadLbs ?? minLoadLbs) - loadBumpLbs)
-        return LoadPrescription(workingSets: 3, reps: 8, loadLbs: current.loadLbs == nil ? nil : reduced)
-    }
-
-    static func patternIndex(sets: Int, reps: Int) -> Int {
-        pattern.firstIndex { $0.sets == sets && $0.reps == reps } ?? 0
-    }
-
-    // MARK: Morning / week
-
-    enum MorningVerdict: Equatable {
-        case pass
-        case fail
-        case unknown
-    }
-
-    static func morningVerdict(
+    private static func isCleanHit(
         _ session: TrainingSessionSnapshot,
-        checkIns: [DailyCheckInSnapshot],
-        calendar: Calendar
-    ) -> MorningVerdict {
-        let sessionDay = calendar.startOfDay(for: session.date)
-        guard let nextDay = calendar.date(byAdding: .day, value: 1, to: sessionDay) else {
-            return .unknown
-        }
-        guard let nextAM = am(on: nextDay, checkIns: checkIns, calendar: calendar) else {
-            return .unknown
-        }
-        guard let baseline = LoadNudgeEvaluator.baselineMorningPain(
-            onOrBefore: sessionDay,
-            checkIns: checkIns,
-            calendar: calendar
-        ) else {
-            return .pass
-        }
-        return nextAM <= baseline ? .pass : .fail
-    }
-
-    private static func consecutiveMorningVerdict(
-        _ sessions: ArraySlice<TrainingSessionSnapshot>,
-        checkIns: [DailyCheckInSnapshot],
-        calendar: Calendar
-    ) -> MorningVerdict {
-        guard sessions.count == 2 else { return .unknown }
-        let verdicts = sessions.map { morningVerdict($0, checkIns: checkIns, calendar: calendar) }
-        if verdicts.contains(.fail) { return .fail }
-        if verdicts.contains(.unknown) { return .unknown }
-        return .pass
-    }
-
-    static func weekOverWeekCreep(
-        checkIns: [DailyCheckInSnapshot],
-        asOf: Date,
-        calendar: Calendar
+        loadLbs: Double?
     ) -> Bool {
-        let today = calendar.startOfDay(for: asOf)
-        guard
-            let thisStart = calendar.date(byAdding: .day, value: -weekWindowDays, to: today),
-            let lastStart = calendar.date(byAdding: .day, value: -weekWindowDays * 2, to: today)
-        else {
+        switch session.response24h {
+        case .better, .same:
+            break
+        case .pending, .worse, .notApplicable:
             return false
         }
-        let thisWeek = amScores(checkIns, from: thisStart, to: today, calendar: calendar)
-        let lastWeek = amScores(checkIns, from: lastStart, to: thisStart, calendar: calendar)
-        guard thisWeek.count >= minWeekSamples, lastWeek.count >= minWeekSamples else {
+        guard let pain = peakPain(in: session), pain <= painDuringLimit else { return false }
+        let floor = LoadPrescription(workingSets: defaultSets, reps: repFloor, loadLbs: loadLbs)
+        return hitTopReps(session, target: floor)
+    }
+
+    private static func sessionsAtLoad(
+        _ history: [TrainingSessionSnapshot],
+        loadLbs: Double?
+    ) -> [TrainingSessionSnapshot] {
+        history.filter { sameLoad(inferredLoad($0), loadLbs) }
+    }
+
+    private static func inferredLoad(_ session: TrainingSessionSnapshot) -> Double? {
+        inferPrescription(session)?.loadLbs
+    }
+
+    private static func sameLoad(_ lhs: Double?, _ rhs: Double?) -> Bool {
+        switch (lhs, rhs) {
+        case (nil, nil):
+            return true
+        case let (left?, right?):
+            return abs(left - right) < 0.001
+        default:
             return false
         }
-        let thisMean = Double(thisWeek.reduce(0, +)) / Double(thisWeek.count)
-        let lastMean = Double(lastWeek.reduce(0, +)) / Double(lastWeek.count)
-        return thisMean >= lastMean + creepDelta
-    }
-
-    private static func amScores(
-        _ checkIns: [DailyCheckInSnapshot],
-        from start: Date,
-        to end: Date,
-        calendar: Calendar
-    ) -> [Int] {
-        checkIns.compactMap { row in
-            let day = calendar.startOfDay(for: row.date)
-            guard day >= start, day < end else { return nil }
-            return row.restingPainAM
-        }
-    }
-
-    private static func am(
-        on day: Date,
-        checkIns: [DailyCheckInSnapshot],
-        calendar: Calendar
-    ) -> Int? {
-        let start = calendar.startOfDay(for: day)
-        return checkIns.first { calendar.isDate($0.date, inSameDayAs: start) }?.restingPainAM
     }
 
     private static func modalLoad(_ loads: [Double]) -> Double? {

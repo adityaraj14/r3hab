@@ -53,11 +53,12 @@ Write stdout to `/tmp/r3hab-verify/domain-tests.txt`. Keep that file after clean
 
 Proof is a zero exit from `./scripts/test-domain.sh` plus these literals in the log:
 
-- `testUserHistoryClimbsTowardThreeByTenAt35` passed
+- `testTwoCleanHitsAdviseIncreaseWithoutChangingPrefill` passed
+- `testPainDuringAboveThreeDropsLoad` passed
+- `testWorseHoldsLoadAndSoftCutStaysAdvice` passed
+- `testMissing24hHoldsAndAsks` passed
+- `testMidLadderSnapsIntoBandAtSameLoad` passed
 - `testPrefillBuildsEditableWorkingPairs` passed
-- `testPainDuringAboveFiveDropsOneStep` passed
-- `testNextMorningAboveBaselineDrops` passed
-- `testWeekOverWeekCreepDrops` passed
 - `testLegacyResistanceSetJSONDecodesWithoutPain` passed
 
 ## Cleanup

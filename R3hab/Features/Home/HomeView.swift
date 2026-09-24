@@ -88,7 +88,6 @@ struct HomeView: View {
     private var todayProgression: ProgressionResult {
         ProgressionEngine.today(
             sessions: sessionSnaps,
-            checkIns: checkIns.map(\.snapshot),
             primaryLoadTitle: activePrimaryLoad.title,
             asOf: Date(),
             calendar: calendar
@@ -235,14 +234,18 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
-    /// Eyebrow + the one action. No explanatory line under a prompt; the
-    /// sheets carry their own context. Only the done state keeps a status line.
+    /// Eyebrow, the stance, then the one action. The dose button carries
+    /// the stance with it. Other actions keep the same line on the card.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(nextUpEyebrow(for: action).uppercased())
                 .font(.caption.weight(.semibold))
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
+
+            if !actionShowsDose(action) {
+                stanceLine(todayProgression, onGold: false)
+            }
 
             switch action {
             case .resolvePending(let id, _):
@@ -280,15 +283,16 @@ struct HomeView: View {
 
             case .logSession:
                 Button { showSession = true } label: {
-                    VStack(alignment: .leading, spacing: 4) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        stanceLine(todayProgression, onGold: true)
                         Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
-                        Text(todayProgression.target.todayLine)
+                        Text(todayProgression.target.lastTimeLine)
                             .font(.subheadline.weight(.medium))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
-                .accessibilityLabel("\(activePrimaryLoad.logCTA). \(todayProgression.target.todayLine)")
+                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(activePrimaryLoad.logCTA). \(todayProgression.target.lastTimeLine)")
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -318,10 +322,50 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
+
+            if let pendingID = todayProgression.pendingResolveID, !actionResolves24h(action) {
+                Button("Resolve 24h response") { resolveTargetId = pendingID }
+                    .buttonStyle(.quietCompact)
+            }
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
         .posterCard()
+    }
+
+    @ViewBuilder
+    private func stanceLine(_ result: ProgressionResult, onGold: Bool) -> some View {
+        let ink = onGold ? AppTheme.ink : AppTheme.ivory
+        let reason = onGold ? AppTheme.ink.opacity(0.8) : AppTheme.quiet
+        VStack(alignment: .leading, spacing: 4) {
+            Text(result.stance.label)
+                .font(.caption.weight(.bold))
+                .foregroundStyle(ink)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(onGold ? AppTheme.ink.opacity(0.12) : AppTheme.quietFill, in: Capsule())
+                .overlay {
+                    if !onGold {
+                        Capsule().strokeBorder(AppTheme.quietStroke, lineWidth: 1)
+                    }
+                }
+            Text(result.reason)
+                .font(.subheadline)
+                .foregroundStyle(reason)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(result.stance.label). \(result.reason)")
+    }
+
+    private func actionShowsDose(_ action: TodayNextAction) -> Bool {
+        if case .logSession = action { return true }
+        return false
+    }
+
+    private func actionResolves24h(_ action: TodayNextAction) -> Bool {
+        if case .resolvePending = action { return true }
+        return false
     }
 
     private func nextUpEyebrow(for action: TodayNextAction) -> String {

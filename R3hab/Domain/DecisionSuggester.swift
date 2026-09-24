@@ -19,6 +19,8 @@ enum DecisionSuggester {
                 && streak.allSatisfy { $0 == .better || $0 == .same }
             return allClean ? .progress : .stay
         case .worse:
+            // Advice only. Option B holds the gold-card load on Worse;
+            // soft cut does not rewrite that prescription.
             if recentResolvedNonRest.first == .worse {
                 return .hardDrop
             }
