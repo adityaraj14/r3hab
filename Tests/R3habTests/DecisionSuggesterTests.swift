@@ -1,5 +1,9 @@
 import XCTest
+#if canImport(R3hab)
 @testable import R3hab
+#else
+@testable import R3habDomain
+#endif
 
 final class DecisionSuggesterTests: XCTestCase {
     private var calendar: Calendar {
@@ -199,6 +203,18 @@ final class LoadNudgeEvaluatorTests: XCTestCase {
             LoadNudgeEvaluator.afterResolve(response: .worse, current: current, all: [current]),
             .easeOffWorse
         )
+    }
+
+    func testProgressCelebrationCopyFavorsWeight() {
+        let nudge = LoadNudge.progress(cleanCount: 15)
+        XCTAssertEqual(nudge.title, "Ready to add load")
+        XCTAssertEqual(
+            nudge.message,
+            "Pain held steady — next time, try a bit more weight with the same sets and reps."
+        )
+        XCTAssertFalse(nudge.title.contains("Looks like you could progress"))
+        XCTAssertFalse(nudge.message.contains("extra reps"))
+        XCTAssertFalse(nudge.message.contains("longer hold"))
     }
 
     func testFifthCleanResolveNudgesProgress() {
