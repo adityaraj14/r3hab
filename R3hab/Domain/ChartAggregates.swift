@@ -82,7 +82,7 @@ enum ProgressChartStyle: String, CaseIterable, Identifiable, Hashable, Sendable 
     var intent: String {
         switch self {
         case .ribbon:
-            return "Pain as a soft band, load as bars, steps as a thin line."
+            return "Pain as a soft band, working load in lb, steps as points."
         case .orbit:
             return "Each day a small glyph with three arcs."
         case .heatlane:
@@ -167,12 +167,19 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var duringPain: Double? = nil
     var afterPain: Double? = nil
     /// Daily session volume (Σ work-set reps × lb). Nil days stay gaps.
+    /// Other prototype styles still read this. Ribbon plots `loadLbs` instead.
     var volume: Double?
+    /// Working (top) weight in lb for the primary lift. Nil on walk-only days and
+    /// before the first logged load. Rest days copy the previous load.
+    var loadLbs: Double? = nil
+    /// True when `loadLbs` is carried from the last logged load (a rest day).
+    var loadCarried: Bool = false
     /// Check-in step count. Nil when that day was not logged. Zero is a real HealthKit zero.
     var steps: Double? = nil
 
     var hasValues: Bool {
         pain != nil || duringPain != nil || afterPain != nil || volume != nil || steps != nil
+            || (loadLbs != nil && !loadCarried)
     }
 }
 
@@ -281,6 +288,51 @@ enum ExploreSignalScale {
     }
 }
 
+/// Ribbon scrub copy. A metric shows "—" only when that metric is missing.
+/// The day placeholder is used only when pain, load, and steps are all absent.
+enum RibbonDayReadout {
+    static let noData = "No pain, load, or steps"
+
+    static func pain(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        if value.rounded() == value {
+            return String(Int(value.rounded()))
+        }
+        return String(format: "%.1f", value)
+    }
+
+    static func load(_ value: Double?) -> String {
+        value.map(LoadCopy.labeled) ?? "—"
+    }
+
+    static func steps(_ value: Double?) -> String {
+        guard let value else { return "—" }
+        let formatter = NumberFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = true
+        formatter.groupingSeparator = ","
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: Int(value.rounded()))) ?? String(Int(value.rounded()))
+    }
+
+    static func hasData(_ point: DayExplorePoint) -> Bool {
+        point.pain != nil || point.loadLbs != nil || point.steps != nil
+    }
+
+    static func summary(point: DayExplorePoint, date: String) -> String {
+        guard hasData(point) else { return "\(date). \(noData)." }
+        return "\(date). Pain \(pain(point.pain)). Load \(load(point.loadLbs)). Steps \(steps(point.steps))."
+    }
+}
+
+/// Days that get a steps point. Missing days are left out so nothing is drawn across the gap.
+enum RibbonSeries {
+    static func stepDays(_ points: [DayExplorePoint]) -> [DayExplorePoint] {
+        points.filter { $0.steps != nil }
+    }
+}
+
 /// Splits a series so a missing day does not become an interpolated zero.
 enum ExploreSeries {
     static func contiguousSegments(
@@ -304,11 +356,16 @@ enum ExploreSeries {
     }
 }
 
-/// Session work-set volume for Progress charts.
+/// Session work for Progress charts.
 struct SessionLoadSnapshot: Equatable, Sendable {
     var date: Date
+    var createdAt: Date = .distantPast
     /// Σ reps × lb for work sets. Nil when volume cannot be derived.
     var volume: Double?
+    /// Working (top) weight in lb. Independent of volume, so a load-only row still plots.
+    var loadLbs: Double? = nil
+    /// Walk-only QL day: steps or time, no weight. Does not inherit a carried load.
+    var walkOnly: Bool = false
 }
 
 enum ChartMetricBuilder {
@@ -388,6 +445,12 @@ enum ChartMetricBuilder {
                 volumeByDay[point.dayKey] = value
             }
         }
+        let load = workingLoadByDay(
+            sessions: sessions,
+            dayCount: dayCount,
+            today: today,
+            calendar: calendar
+        )
         var duringByDay: [String: Int] = [:]
         var afterByDay: [String: Int] = [:]
         for session in sessionPains {
@@ -413,12 +476,77 @@ enum ChartMetricBuilder {
                     duringPain: duringByDay[key].map(Double.init),
                     afterPain: afterByDay[key].map(Double.init),
                     volume: volumeByDay[key],
+                    loadLbs: load.lbs[key],
+                    loadCarried: load.carried[key] ?? false,
                     // Same check-in row the evening editor fills from HealthKit. Nil = not logged.
                     steps: row?.steps.map(Double.init)
                 )
             )
         }
         return result
+    }
+
+    /// Latest session that day wins; a tie keeps the heavier top weight.
+    /// Rest days carry the last load. A walk-only day stays empty and does not crash.
+    static func workingLoadByDay(
+        sessions: [SessionLoadSnapshot],
+        dayCount: Int,
+        today: Date = Date(),
+        calendar: Calendar = .current
+    ) -> (lbs: [String: Double], carried: [String: Bool]) {
+        let startToday = calendar.startOfDay(for: today)
+        var windowKeys: [String] = []
+        for offset in stride(from: dayCount - 1, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
+            windowKeys.append(CalendarDay.dayKey(day, calendar: calendar))
+        }
+        let window = Set(windowKeys)
+
+        var logged: [String: (createdAt: Date, load: Double)] = [:]
+        var walkDays = Set<String>()
+        var seed: (createdAt: Date, load: Double)?
+        for session in sessions {
+            let key = CalendarDay.dayKey(session.date, calendar: calendar)
+            if session.walkOnly, session.loadLbs == nil {
+                if window.contains(key) { walkDays.insert(key) }
+                continue
+            }
+            guard let load = session.loadLbs else { continue }
+            if window.contains(key) {
+                logged[key] = preferred(logged[key], createdAt: session.createdAt, load: load)
+            } else if let windowStart = calendar.date(byAdding: .day, value: -(dayCount - 1), to: startToday),
+                      calendar.startOfDay(for: session.date) < windowStart {
+                seed = preferred(seed, createdAt: session.createdAt, load: load)
+            }
+        }
+
+        var lbs: [String: Double] = [:]
+        var carried: [String: Bool] = [:]
+        var last = seed?.load
+        for key in windowKeys {
+            if let row = logged[key] {
+                lbs[key] = row.load
+                carried[key] = false
+                last = row.load
+            } else if walkDays.contains(key) {
+                carried[key] = false
+            } else if let last {
+                lbs[key] = last
+                carried[key] = true
+            }
+        }
+        return (lbs, carried)
+    }
+
+    private static func preferred(
+        _ existing: (createdAt: Date, load: Double)?,
+        createdAt: Date,
+        load: Double
+    ) -> (createdAt: Date, load: Double) {
+        guard let existing else { return (createdAt, load) }
+        if createdAt > existing.createdAt { return (createdAt, load) }
+        if createdAt == existing.createdAt, load > existing.load { return (createdAt, load) }
+        return existing
     }
 
     /// Morning + evening mean when both exist; otherwise the logged side. Never invents 0.

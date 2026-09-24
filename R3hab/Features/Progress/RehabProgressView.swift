@@ -49,8 +49,14 @@ struct RehabProgressView: View {
     private var explorePoints: [DayExplorePoint] {
         ChartMetricBuilder.explorePoints(
             checkIns: metrics,
-            sessions: finalizedSessions.map {
-                SessionLoadSnapshot(date: $0.date, volume: $0.chartVolume)
+            sessions: finalizedSessions.map { session in
+                SessionLoadSnapshot(
+                    date: session.date,
+                    createdAt: session.createdAt,
+                    volume: session.chartVolume,
+                    loadLbs: workingLoad(session),
+                    walkOnly: walkOnly(session)
+                )
             },
             dayCount: windowDays,
             sessionPains: sessionPains
@@ -164,6 +170,41 @@ struct RehabProgressView: View {
             .appCanvas()
             .navigationTitle("Progress")
         }
+    }
+
+    /// Top work-set weight for the primary lift. Walk-only days and other exercises stay nil.
+    private func workingLoad(_ session: TrainingSession) -> Double? {
+        guard !primaryLoad.isWalk else { return nil }
+        guard ProgressionEngine.matchesPrimaryLoad(snapshot(session), title: primaryLoad.title) else { return nil }
+        return session.chartMaxLoad
+    }
+
+    /// A walk log has steps or time and no weight. The QL walk primary never carries a load.
+    private func walkOnly(_ session: TrainingSession) -> Bool {
+        if primaryLoad.isWalk { return true }
+        let sets = session.resistanceSets()
+        let hasWalk = sets.contains { ($0.steps ?? 0) > 0 || ($0.durationMinutes ?? 0) > 0 }
+        let hasLoad = sets.contains { !$0.isWarmup && $0.loadLbs != nil }
+        return hasWalk && !hasLoad
+    }
+
+    private func snapshot(_ session: TrainingSession) -> TrainingSessionSnapshot {
+        TrainingSessionSnapshot(
+            id: session.id,
+            date: session.date,
+            createdAt: session.createdAt,
+            sessionType: session.sessionType,
+            response24h: session.response24h,
+            decision: session.decision,
+            resolvedAt: session.resolvedAt,
+            snoozedUntil: session.snoozedUntil,
+            phase: session.phase,
+            painDuring: session.painDuring,
+            painAfter: session.painAfter,
+            isDraft: session.isDraft,
+            whatIDid: session.whatIDid,
+            resistanceSets: session.resistanceSets()
+        )
     }
 
     private var progressEmptyDescription: String {

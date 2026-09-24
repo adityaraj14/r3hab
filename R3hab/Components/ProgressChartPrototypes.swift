@@ -5,6 +5,8 @@ import Charts
 enum ExplorePalette {
     static let pain = AppTheme.gold
     static let volume = Color.white.opacity(0.72)
+    /// Ribbon working-load series. Other styles keep `volume`.
+    static let load = Color(red: 1.0, green: 0.55, blue: 0.25)
     static let steps = Color(red: 0.62, green: 0.86, blue: 1.0)
     static let track = Color.white.opacity(0.08)
 }
@@ -148,7 +150,10 @@ struct KneeExploreChart: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if hasData {
-                ExploreLegend(volumeTitle: volumeTitle)
+                ExploreLegend(
+                    volumeTitle: style == .ribbon ? "Load" : volumeTitle,
+                    volumeColor: style == .ribbon ? ExplorePalette.load : ExplorePalette.volume
+                )
                 plot
                     .frame(height: plotHeight)
                     .accessibilityLabel("\(style.pickerTitle). \(style.intent)")
@@ -161,13 +166,17 @@ struct KneeExploreChart: View {
                         selectedDate: $selectedDate,
                         leadingInset: scrubLeading,
                         trailingInset: 12,
-                        summary: ExploreDayFormat.summary(point: selected, volumeTitle: volumeTitle)
+                        summary: daySummary(selected)
                     )
                 }
                 if style == .glassDial, let selected {
                     ExploreDayDetails(point: selected)
                 } else if let selected {
-                    ExploreDayReadout(point: selected, volumeTitle: volumeTitle)
+                    ExploreDayReadout(
+                        point: selected,
+                        volumeTitle: style == .ribbon ? "Load" : volumeTitle,
+                        loadReadout: style == .ribbon
+                    )
                 }
                 Text("Drag the scrubber. Pain, \(volumeTitle.lowercased()), and steps for that day.")
                     .font(.caption)
@@ -193,6 +202,14 @@ struct KneeExploreChart: View {
                 self.selectedDate = defaultSelectedDate
             }
         }
+    }
+
+    private func daySummary(_ point: DayExplorePoint) -> String {
+        let date = point.date.formatted(date: .abbreviated, time: .omitted)
+        if style == .ribbon {
+            return RibbonDayReadout.summary(point: point, date: date)
+        }
+        return ExploreDayFormat.summary(point: point, volumeTitle: volumeTitle)
     }
 
     private var scrubLeading: CGFloat {
@@ -249,11 +266,12 @@ struct KneeExploreChart: View {
 
 private struct ExploreLegend: View {
     var volumeTitle: String
+    var volumeColor: Color = ExplorePalette.volume
 
     var body: some View {
         HStack(spacing: 14) {
             item(ExplorePalette.pain, "Pain", accessibility: "Pain")
-            item(ExplorePalette.volume, "Load", accessibility: volumeTitle)
+            item(volumeColor, "Load", accessibility: volumeTitle)
             item(ExplorePalette.steps, "Steps", accessibility: "Steps")
         }
         .font(.caption2.weight(.medium))
@@ -389,15 +407,30 @@ private struct ExploreScrubber: View {
 private struct ExploreDayReadout: View {
     let point: DayExplorePoint
     var volumeTitle: String
+    var loadReadout: Bool = false
+
+    private var loadText: String {
+        loadReadout ? RibbonDayReadout.load(point.loadLbs) : ExploreDayFormat.volume(point.volume)
+    }
+
+    private var loadColor: Color {
+        loadReadout ? ExplorePalette.load : ExplorePalette.volume
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text(point.date.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline.weight(.semibold))
-            HStack(alignment: .top, spacing: 12) {
-                metric("Pain", ExploreDayFormat.pain(point.pain), ExplorePalette.pain)
-                metric(volumeTitle, ExploreDayFormat.volume(point.volume), ExplorePalette.volume)
-                metric("Steps", ExploreDayFormat.steps(point.steps), ExplorePalette.steps)
+            if loadReadout, !RibbonDayReadout.hasData(point) {
+                Text(RibbonDayReadout.noData)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            } else {
+                HStack(alignment: .top, spacing: 12) {
+                    metric("Pain", loadReadout ? RibbonDayReadout.pain(point.pain) : ExploreDayFormat.pain(point.pain), ExplorePalette.pain)
+                    metric(volumeTitle, loadText, loadColor)
+                    metric("Steps", loadReadout ? RibbonDayReadout.steps(point.steps) : ExploreDayFormat.steps(point.steps), ExplorePalette.steps)
+                }
             }
             ExploreDayDetails(point: point)
         }
@@ -408,7 +441,14 @@ private struct ExploreDayReadout: View {
                 .fill(Color.white.opacity(0.06))
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel(ExploreDayFormat.summary(point: point, volumeTitle: volumeTitle))
+        .accessibilityLabel(
+            loadReadout
+                ? RibbonDayReadout.summary(
+                    point: point,
+                    date: point.date.formatted(date: .abbreviated, time: .omitted)
+                )
+                : ExploreDayFormat.summary(point: point, volumeTitle: volumeTitle)
+        )
     }
 
     private func metric(_ title: String, _ value: String, _ color: Color) -> some View {
@@ -585,8 +625,8 @@ private struct RibbonExplorePlot: View {
 
     private var calendar: Calendar { .current }
 
-    private var volumePeak: Double {
-        ExploreSignalScale.peak(points.map(\.volume))
+    private var loadPeak: Double {
+        ExploreSignalScale.peak(points.map(\.loadLbs))
     }
 
     private var stepsPeak: Double {
@@ -634,7 +674,7 @@ private struct RibbonExplorePlot: View {
     private var chart: some View {
         Chart {
             painMarks
-            volumeMarks
+            loadMarks
             stepMarks
             if let selected = selectedDate.flatMap({ ChartDaySelection.nearestPoint(to: $0, in: points) }) {
                 RuleMark(x: .value("Selected", selected.date))
@@ -691,43 +731,52 @@ private struct RibbonExplorePlot: View {
     }
 
     @ChartContentBuilder
-    private var volumeMarks: some ChartContent {
-        ForEach(points) { point in
-            if let volume = point.volume,
-               let unit = ExploreSignalScale.unit(volume, peak: volumePeak) {
-                BarMark(
-                    x: .value("Day", point.date),
-                    y: .value("Load", unit * 0.38),
-                    stacking: .unstacked
-                )
-                .foregroundStyle(Color.white.opacity(0.28))
-                .cornerRadius(2)
+    private var loadMarks: some ChartContent {
+        let segments = ExploreSeries.contiguousSegments(points, value: \.loadLbs)
+        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
+            ForEach(segment) { point in
+                if let load = point.loadLbs,
+                   let unit = ExploreSignalScale.unit(load, peak: loadPeak) {
+                    LineMark(
+                        x: .value("Day", point.date),
+                        y: .value("Load", unit),
+                        series: .value("Load", "load-\(index)")
+                    )
+                    .interpolationMethod(.linear)
+                    .foregroundStyle(ExplorePalette.load.opacity(0.85))
+                    .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 4]))
+                }
+            }
+            ForEach(segment) { point in
+                if let load = point.loadLbs, !point.loadCarried,
+                   let unit = ExploreSignalScale.unit(load, peak: loadPeak) {
+                    PointMark(
+                        x: .value("Day", point.date),
+                        y: .value("Load", unit)
+                    )
+                    .foregroundStyle(ExplorePalette.load)
+                    .symbolSize(36)
+                    .annotation(position: .top, spacing: 2) {
+                        Text(LoadCopy.formatted(load))
+                            .font(.caption2.weight(.bold))
+                            .foregroundStyle(ExplorePalette.load)
+                    }
+                }
             }
         }
     }
 
     @ChartContentBuilder
     private var stepMarks: some ChartContent {
-        let segments = ExploreSeries.contiguousSegments(points, value: \.steps)
-        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-            ForEach(segment) { point in
-                if let steps = point.steps,
-                   let unit = ExploreSignalScale.unit(steps, peak: stepsPeak) {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Steps", unit),
-                        series: .value("Steps", "steps-\(index)")
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(ExplorePalette.steps)
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-                    PointMark(
-                        x: .value("Day", point.date),
-                        y: .value("Steps", unit)
-                    )
-                    .foregroundStyle(ExplorePalette.steps)
-                    .symbolSize(22)
-                }
+        ForEach(RibbonSeries.stepDays(points)) { point in
+            if let steps = point.steps,
+               let unit = ExploreSignalScale.unit(steps, peak: stepsPeak) {
+                PointMark(
+                    x: .value("Day", point.date),
+                    y: .value("Steps", max(unit, 0.04))
+                )
+                .foregroundStyle(ExplorePalette.steps)
+                .symbolSize(28)
             }
         }
     }
