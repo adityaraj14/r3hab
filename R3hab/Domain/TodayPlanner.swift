@@ -14,6 +14,12 @@ enum TodayNextAction: Equatable, Sendable {
     case restDay
     /// Morning, session (or evening), and evening are in. Nothing to push.
     case allDone
+
+    /// Increase / Hold / Decrease, the reason, and the dose stay off the rest card.
+    var showsLoadProgression: Bool {
+        if case .restDay = self { return false }
+        return true
+    }
 }
 
 /// Pure inputs so the pick is unit-testable without SwiftData.

@@ -23,6 +23,7 @@ let package = Package(
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
                 "Domain/ProgressionEngine.swift",
+                "Domain/TodayPlanner.swift",
                 "Domain/TodaySessionEntry.swift"
             ]
         ),
