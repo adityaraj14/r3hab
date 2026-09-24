@@ -32,6 +32,7 @@ let package = Package(
             path: "Tests/R3habTests",
             sources: [
                 "ChartAggregatesTests.swift",
+                "DecisionSuggesterTests.swift",
                 "ProgressInterpretationTests.swift",
                 "ProgressionEngineTests.swift",
                 "SessionEditorChromeTests.swift",

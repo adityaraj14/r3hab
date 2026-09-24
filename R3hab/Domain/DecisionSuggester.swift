@@ -108,7 +108,7 @@ enum LoadNudge: Equatable, Identifiable {
         case .easeOffMorning, .easeOffWorse:
             return "Take the next session easier"
         case .progress:
-            return "Looks like you could progress"
+            return "Ready to add load"
         }
     }
 
@@ -118,8 +118,8 @@ enum LoadNudge: Equatable, Identifiable {
             return "This morning’s pain is \(current), up from \(previous) the morning of your last workout. Next time, try a bit less — lower the load, do fewer reps, or shorten the holds. One change is enough."
         case .easeOffWorse:
             return "Pain was worse after that session. Next time, try a bit less — about 20–30% less load, fewer sets, or shorter holds. One change is enough."
-        case .progress(let count):
-            return "You’ve had \(count) workouts in a row without pain going up. Next time you could try a little more — a bit more load, a couple extra reps, or a longer hold. Change only one of those."
+        case .progress:
+            return "Pain held steady — next time, try a bit more weight with the same sets and reps."
         }
     }
 }
