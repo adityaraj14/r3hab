@@ -75,6 +75,10 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
     var side: KneeSide?
     /// 0–10 when logged on this row. Nil on legacy JSON and warm-ups.
     var painDuring: Int?
+    /// Walk logs. Nil on every older JSON row.
+    var steps: Int?
+    /// Walk logs, in minutes. Nil on every older JSON row.
+    var durationMinutes: Int?
 
     init(
         id: UUID = UUID(),
@@ -83,7 +87,9 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         holdSeconds: Int? = nil,
         isWarmup: Bool = false,
         side: KneeSide? = nil,
-        painDuring: Int? = nil
+        painDuring: Int? = nil,
+        steps: Int? = nil,
+        durationMinutes: Int? = nil
     ) {
         self.id = id
         self.reps = reps
@@ -92,6 +98,8 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         self.isWarmup = isWarmup
         self.side = side
         self.painDuring = painDuring
+        self.steps = steps
+        self.durationMinutes = durationMinutes
     }
 
     /// Volume contribution: reps × load (hold sets still count via reps × load).
@@ -118,6 +126,12 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
         }
         if let loadLbs {
             parts.append("@ \(LoadCopy.labeled(loadLbs))")
+        }
+        if let steps, steps > 0 {
+            parts.append("\(steps) steps")
+        }
+        if let durationMinutes, durationMinutes > 0 {
+            parts.append("\(durationMinutes) min")
         }
         return parts.joined(separator: " ")
     }
@@ -493,6 +507,15 @@ enum SessionSummary {
 
     /// Short resistance line, e.g. `3×8 @ 15 lbs both · WU 2×30s @ 15 lbs`.
     static func compactResistance(_ sets: [ResistanceSet]) -> String? {
+        let walkBits = sets.compactMap { row -> String? in
+            var bits: [String] = []
+            if let steps = row.steps, steps > 0 { bits.append("\(steps) steps") }
+            if let minutes = row.durationMinutes, minutes > 0 { bits.append("\(minutes) min") }
+            return bits.isEmpty ? nil : bits.joined(separator: " · ")
+        }
+        if !walkBits.isEmpty, sets.allSatisfy({ $0.reps == nil && $0.loadLbs == nil && $0.holdSeconds == nil }) {
+            return walkBits.joined(separator: " · ")
+        }
         let warmup = sets.filter(\.isWarmup)
         let work = sets.filter { !$0.isWarmup }
         var parts: [String] = []

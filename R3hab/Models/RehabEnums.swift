@@ -131,6 +131,8 @@ enum SessionSaveIssue: Equatable, Sendable {
     case nonPositiveReps
     case nonPositiveHold
     case negativeLoad
+    case nonPositiveSteps
+    case nonPositiveDuration
 
     var message: String {
         switch self {
@@ -148,6 +150,10 @@ enum SessionSaveIssue: Equatable, Sendable {
             return "Hold time must be positive."
         case .negativeLoad:
             return "Load must be ≥ 0."
+        case .nonPositiveSteps:
+            return "Steps must be positive."
+        case .nonPositiveDuration:
+            return "Minutes must be positive."
         }
     }
 }
@@ -170,6 +176,8 @@ enum SessionSaveValidation {
             if let r = row.reps, r <= 0 { return .nonPositiveReps }
             if let h = row.holdSeconds, h <= 0 { return .nonPositiveHold }
             if let l = row.loadLbs, l < 0 { return .negativeLoad }
+            if let steps = row.steps, steps <= 0 { return .nonPositiveSteps }
+            if let minutes = row.durationMinutes, minutes <= 0 { return .nonPositiveDuration }
         }
         return nil
     }

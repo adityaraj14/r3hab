@@ -2,15 +2,16 @@ import XCTest
 @testable import R3hab
 
 final class InjuryCatalogTests: XCTestCase {
-    func testCatalogShipsOneKneeInjury() {
-        XCTAssertEqual(InjuryCatalog.all.map(\.id), ["patellar-tendinopathy"])
+    func testCatalogShipsKneeAndQL() {
+        XCTAssertEqual(InjuryCatalog.all.map(\.id), ["patellar-tendinopathy", "ql-strain"])
         XCTAssertEqual(
             InjuryCatalog.defaultSelectable.title,
             "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
         )
         XCTAssertTrue(InjuryCatalog.contains("patellar-tendinopathy"))
-        XCTAssertFalse(InjuryCatalog.contains("ql-strain"))
-        XCTAssertFalse(InjuryCatalog.all.contains { $0.title.contains("QL") })
+        XCTAssertTrue(InjuryCatalog.contains("ql-strain"))
+        XCTAssertEqual(InjuryCatalog.qlStrain.protocolName, "QL strain")
+        XCTAssertNotEqual(InjuryCatalog.qlStrain.protocolName, InjuryCatalog.patellarTendinopathy.protocolName)
     }
 
     func testKneeAliasesRemapToPatellarTendinopathy() {
@@ -22,13 +23,12 @@ final class InjuryCatalogTests: XCTestCase {
         XCTAssertFalse(InjuryCatalog.needsRemap("patellar-tendinopathy"))
     }
 
-    func testRetiredQLStrainRemapsToKneeOnLaunch() {
-        // Existing installs that picked QL strain must open on the knee diary, not crash.
-        XCTAssertTrue(InjuryCatalog.retiredIDs.contains("ql-strain"))
-        XCTAssertTrue(InjuryCatalog.needsRemap("ql-strain"))
-        XCTAssertEqual(InjuryCatalog.normalizedID("ql-strain"), "patellar-tendinopathy")
-        XCTAssertEqual(InjuryCatalog.definition(for: "ql-strain").id, InjuryCatalog.patellarTendinopathy.id)
-        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
+    func testQLStrainStaysSelectable() {
+        XCTAssertFalse(InjuryCatalog.retiredIDs.contains("ql-strain"))
+        XCTAssertFalse(InjuryCatalog.needsRemap("ql-strain"))
+        XCTAssertEqual(InjuryCatalog.normalizedID("ql-strain"), "ql-strain")
+        XCTAssertEqual(InjuryCatalog.definition(for: "ql-strain").id, InjuryCatalog.qlStrain.id)
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
     }
 
     func testUnknownIdFallsBackToPatellarTendinopathy() {
@@ -62,15 +62,39 @@ final class InjuryCatalogTests: XCTestCase {
         XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.seatedExtension.id)
     }
 
-    func testRetiredQLLiftsRemapToSeatedExtensionThroughOnboarding() {
+    func testPatellarOnboardingStillDropsQLModalities() {
         for retired in ["ql-hip-thrust", "ql-side-bend", "ql-walk", "hack-squat"] {
             let chosen = OnboardingCompletion.result(
                 skipped: false,
                 phase: .bIsometrics,
                 notificationsEnabled: false,
+                injuryID: InjuryCatalog.patellarTendinopathy.id,
                 primaryLoadID: retired
             )
             XCTAssertEqual(chosen.primaryLoadID, PrimaryLoadCatalog.defaultID, retired)
+            XCTAssertEqual(chosen.injuryID, InjuryCatalog.patellarTendinopathy.id)
         }
+    }
+
+    func testQLOnboardingKeepsWalkSideBendAndHipThrust() {
+        let chosen = OnboardingCompletion.result(
+            skipped: false,
+            phase: .bIsometrics,
+            notificationsEnabled: false,
+            injuryID: "ql-strain",
+            primaryLoadID: "ql-side-bend"
+        )
+        XCTAssertEqual(chosen.injuryID, "ql-strain")
+        XCTAssertEqual(chosen.primaryLoadID, "ql-side-bend")
+        let skipped = OnboardingCompletion.result(
+            skipped: true,
+            phase: .cHeavySlowResistance,
+            notificationsEnabled: true,
+            injuryID: InjuryCatalog.qlStrain.id,
+            primaryLoadID: PrimaryLoadCatalog.qlWalk.id
+        )
+        XCTAssertEqual(skipped.phase, .bIsometrics)
+        XCTAssertEqual(skipped.injuryID, InjuryCatalog.qlStrain.id)
+        XCTAssertEqual(skipped.primaryLoadID, PrimaryLoadCatalog.qlWalk.id)
     }
 }

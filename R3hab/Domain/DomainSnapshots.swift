@@ -76,7 +76,7 @@ enum SessionDraft {
     ) -> Bool {
         if let painDuring, PainScore.isLogged(painDuring) { return true }
         if !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return true }
-        return sets.contains { $0.loadLbs != nil }
+        return sets.contains { $0.loadLbs != nil || $0.steps != nil || $0.durationMinutes != nil }
     }
 
     static func openDraftID(

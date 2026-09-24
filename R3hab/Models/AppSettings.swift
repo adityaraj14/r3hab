@@ -21,9 +21,9 @@ final class AppSettings {
     var activeTracksCSV: String = "knee"
     /// Unused. Kept for SwiftData schema stability.
     var backTrackStageRaw: String = ""
-    /// Injury id from `InjuryCatalog`. Retired ids (incl. `ql-strain`) remap on launch.
+    /// Injury id from `InjuryCatalog`. Knee aliases remap on launch. `ql-strain` stays.
     var selectedInjuryID: String = "patellar-tendinopathy"
-    /// Primary movement from `PrimaryLoadCatalog`. Default is seated leg extension.
+    /// Primary movement from `PrimaryLoadCatalog`, scoped to the selected injury.
     var primaryLoadID: String = "seated-extension"
 
     var currentPhase: RehabPhase {
@@ -40,7 +40,7 @@ final class AppSettings {
     }
 
     var primaryLoad: PrimaryLoadOption {
-        get { PrimaryLoadCatalog.option(for: primaryLoadID) }
+        get { PrimaryLoadCatalog.option(for: primaryLoadID, injuryID: selectedInjuryID) }
         set { primaryLoadID = newValue.id }
     }
 

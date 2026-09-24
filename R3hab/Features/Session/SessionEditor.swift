@@ -52,10 +52,30 @@ struct SessionEditor: View {
         SessionEditorKind.classify(existingIsDraft: existing.map(\.isDraft))
     }
 
+    private var activeLoad: PrimaryLoadOption {
+        PrimaryLoadCatalog.option(
+            for: primaryLoadID,
+            injuryID: settings?.selectedInjuryID ?? InjuryCatalog.patellarTendinopathy.id
+        )
+    }
+
+    private var selectedPreset: SessionPreset? {
+        guard let id = selectedPresetId else { return nil }
+        return SessionPreset.all.first { $0.id == id }
+    }
+
+    private var showsWalk: Bool {
+        selectedPreset?.tracksWalk ?? activeLoad.isWalk
+    }
+
+    private var showsSideSplit: Bool {
+        activeLoad.usesPatellarLadder || activeLoad.allowsSideSplit
+    }
+
     private var showsResistance: Bool {
-        if let id = selectedPresetId,
-           let p = SessionPreset.all.first(where: { $0.id == id }) {
-            return p.tracksResistance
+        if showsWalk { return false }
+        if let selectedPreset {
+            return selectedPreset.tracksResistance
         }
         return focus != .general || !workSets.isEmpty || !warmupSets.isEmpty
             || sessionType == .isometrics || sessionType == .hsrStrength
@@ -113,8 +133,12 @@ struct SessionEditor: View {
                 }
             }
 
+            if showsWalk {
+                walkSection
+            }
+
             if showsResistance {
-                if let planAdvice, let planReason, !usesIsoHolds {
+                if activeLoad.usesPatellarLadder, let planAdvice, let planReason, !usesIsoHolds {
                     Section {
                         Text(planAdvice)
                             .font(.subheadline.weight(.semibold))
@@ -333,15 +357,70 @@ struct SessionEditor: View {
         SessionSummary.groupWorkSets(workSets)
     }
 
+    private var walkSection: some View {
+        Section {
+            labeledIntField(title: "Steps", value: walkStepsBinding)
+            labeledIntField(title: "Minutes", value: walkMinutesBinding)
+            Text(QLLoggingStub.stepTargetLine(stepNearNormalMin: settings?.stepNearNormalMin ?? 6000))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        } header: {
+            Text("Walk")
+        } footer: {
+            Text("\(QLLoggingStub.clinicalTargetNote) Log steps, minutes, or both.")
+        }
+    }
+
+    private var walkRowIndex: Int {
+        if let index = workSets.firstIndex(where: { !$0.isWarmup }) { return index }
+        return 0
+    }
+
+    private var walkStepsBinding: Binding<String> {
+        Binding(
+            get: {
+                guard workSets.indices.contains(walkRowIndex) else { return "" }
+                return workSets[walkRowIndex].steps.map(String.init) ?? ""
+            },
+            set: { new in
+                ensureWalkRow()
+                workSets[walkRowIndex].steps = Int(new)
+                syncWhatIDid()
+            }
+        )
+    }
+
+    private var walkMinutesBinding: Binding<String> {
+        Binding(
+            get: {
+                guard workSets.indices.contains(walkRowIndex) else { return "" }
+                return workSets[walkRowIndex].durationMinutes.map(String.init) ?? ""
+            },
+            set: { new in
+                ensureWalkRow()
+                workSets[walkRowIndex].durationMinutes = Int(new)
+                syncWhatIDid()
+            }
+        )
+    }
+
+    private func ensureWalkRow() {
+        if workSets.isEmpty {
+            workSets = [ResistanceSet()]
+        }
+    }
+
     private var workSetsSection: some View {
         Section {
-            Button {
-                lateralityBinding.wrappedValue = laterality == .bilateral ? .unilateral : .bilateral
-            } label: {
-                Text(laterality == .bilateral ? "Split L/R loads" : "Use one load")
+            if showsSideSplit {
+                Button {
+                    lateralityBinding.wrappedValue = laterality == .bilateral ? .unilateral : .bilateral
+                } label: {
+                    Text(laterality == .bilateral ? "Split L/R loads" : "Use one load")
+                }
+                .accessibilityLabel(laterality == .bilateral ? "Split left and right loads" : "Use one load for both legs")
+                .accessibilityValue(laterality.title)
             }
-            .accessibilityLabel(laterality == .bilateral ? "Split left and right loads" : "Use one load for both legs")
-            .accessibilityValue(laterality.title)
 
             ForEach(Array(workPairs.enumerated()), id: \.element.id) { index, pair in
                 VStack(alignment: .leading, spacing: 8) {
@@ -618,7 +697,7 @@ struct SessionEditor: View {
             workSets = []
             warmupSets = []
         }
-        if preset.tracksResistance {
+        if preset.tracksResistance || preset.tracksWalk {
             seedDefaultSets()
         }
         syncWhatIDid()
@@ -626,6 +705,41 @@ struct SessionEditor: View {
     }
 
     private func seedDefaultSets() {
+        if showsWalk {
+            planAdvice = nil
+            planReason = nil
+            warmupSets = []
+            laterality = .bilateral
+            if workSets.isEmpty {
+                workSets = [ResistanceSet()]
+            }
+            return
+        }
+        if !activeLoad.usesPatellarLadder {
+            // Last load only. Clinical targets for QL are TBD.
+            planAdvice = nil
+            planReason = nil
+            warmupSets = []
+            if !activeLoad.allowsSideSplit {
+                laterality = .bilateral
+            }
+            if workSets.isEmpty {
+                if let last = QLLoggingStub.lastWeighted(
+                    sessions: sessions.filter { $0.id != existingId }.map(\.snapshot),
+                    title: activeLoad.title
+                ) {
+                    workSets = SessionPrefill.workSets(from: last, laterality: laterality)
+                } else {
+                    workSets = SessionSummary.makePair(
+                        reps: 8,
+                        loadLbs: nil,
+                        holdSeconds: nil,
+                        isWarmup: false
+                    )
+                }
+            }
+            return
+        }
         if usesIsoHolds {
             warmupSets = []
             if workSets.isEmpty {
@@ -674,7 +788,10 @@ struct SessionEditor: View {
             name = PrimaryLoadCatalog.option(for: primaryLoadID).title
         }
         let wu = warmupSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
-        let work = workSets.filter { $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil }
+        let work = workSets.filter {
+            $0.reps != nil || $0.loadLbs != nil || $0.holdSeconds != nil
+                || $0.steps != nil || $0.durationMinutes != nil
+        }
         if work.isEmpty && wu.isEmpty { return }
         if whatIDidLocked { return }
         if isEditing, !whatIDid.isEmpty, !SessionSummary.looksStructuredWhatIDid(whatIDid) {

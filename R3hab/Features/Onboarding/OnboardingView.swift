@@ -11,6 +11,7 @@ struct OnboardingView: View {
 
     @State private var page = 0
     @State private var phase: RehabPhase = OnboardingCompletion.initialPhase
+    @State private var selectedInjuryID = InjuryCatalog.defaultSelectable.id
     @State private var selectedPrimaryLoadID = PrimaryLoadCatalog.defaultID
     @State private var wantNotifications = false
     @State private var isBusy = false
@@ -44,6 +45,7 @@ struct OnboardingView: View {
                             await finish(
                                 phase: phase,
                                 enableNotifications: wantNotifications,
+                                injuryID: selectedInjuryID,
                                 primaryLoadID: selectedPrimaryLoadID
                             )
                         }
@@ -60,11 +62,13 @@ struct OnboardingView: View {
                             skipped: true,
                             phase: phase,
                             notificationsEnabled: wantNotifications,
+                            injuryID: selectedInjuryID,
                             primaryLoadID: selectedPrimaryLoadID
                         )
                         await finish(
                             phase: skipped.phase,
                             enableNotifications: skipped.notificationsEnabled,
+                            injuryID: skipped.injuryID,
                             primaryLoadID: skipped.primaryLoadID
                         )
                     }
@@ -82,7 +86,11 @@ struct OnboardingView: View {
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
             if let settings {
-                selectedPrimaryLoadID = PrimaryLoadCatalog.normalizedID(settings.primaryLoadID)
+                selectedInjuryID = InjuryCatalog.normalizedID(settings.selectedInjuryID)
+                selectedPrimaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    settings.primaryLoadID,
+                    injuryID: selectedInjuryID
+                )
             }
         }
     }
@@ -91,7 +99,7 @@ struct OnboardingView: View {
         if isBusy { return "Saving…" }
         switch page {
         case 1: return "That’s my injury"
-        case 2: return "That’s my lift"
+        case 2: return InjuryCatalog.isQL(selectedInjuryID) ? "That’s what I’ll log" : "That’s my lift"
         case 4: return "Let’s load"
         default: return "Continue"
         }
@@ -151,7 +159,6 @@ struct OnboardingView: View {
         .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
-    /// One injury ships today: the knee card, always selected.
     private var injuryPage: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -160,7 +167,16 @@ struct OnboardingView: View {
                     title: BrandCopy.injuryTitle
                 )
 
-                injuryCard(InjuryCatalog.patellarTendinopathy)
+                VStack(spacing: 10) {
+                    ForEach(InjuryCatalog.all) { injury in
+                        choiceCard(
+                            title: injury.title,
+                            selected: selectedInjuryID == injury.id
+                        ) {
+                            selectInjury(injury.id)
+                        }
+                    }
+                }
 
                 Text(BrandCopy.injuryDiagnosisNote)
                     .font(.footnote)
@@ -180,15 +196,15 @@ struct OnboardingView: View {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
                     eyebrow: "Lift",
-                    title: BrandCopy.primaryLiftTitle
+                    title: modalityTitle
                 )
-                Text(BrandCopy.primaryLiftLead)
+                Text(modalityLead)
                     .font(.body)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(spacing: 10) {
-                    ForEach(PrimaryLoadCatalog.all) { option in
+                    ForEach(PrimaryLoadCatalog.options(for: selectedInjuryID)) { option in
                         choiceCard(
                             title: option.title,
                             selected: selectedPrimaryLoadID == option.id
@@ -310,36 +326,22 @@ struct OnboardingView: View {
         }
     }
 
-    /// The one selectable injury. Always selected, so it reads as the chosen
-    /// card rather than a picker with one option.
-    private func injuryCard(_ injury: InjuryDefinition) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-            Image(systemName: InjuryCatalog.systemImage)
-                .font(.title3)
-                .foregroundStyle(AppTheme.quiet)
-                .frame(width: 28)
-            Text(injury.title)
-                .font(.headline)
-                .foregroundStyle(.white)
-                .fixedSize(horizontal: false, vertical: true)
-            Spacer(minLength: 8)
-            Image(systemName: "checkmark.circle.fill")
-                .font(.title3)
-                .foregroundStyle(.white)
-                .accessibilityHidden(true)
+    private var modalityTitle: String {
+        InjuryCatalog.isQL(selectedInjuryID) ? "What will you log?" : BrandCopy.primaryLiftTitle
+    }
+
+    private var modalityLead: String {
+        if InjuryCatalog.isQL(selectedInjuryID) {
+            return "Walking, weighted side bends, or hip thrusts. Log what you did. Loads can be refined later."
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(Color.white.opacity(0.10))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.7), lineWidth: 1.5)
-        )
-        .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isSelected)
+        return BrandCopy.primaryLiftLead
+    }
+
+    private func selectInjury(_ id: String) {
+        selectedInjuryID = id
+        if !PrimaryLoadCatalog.options(for: id).contains(where: { $0.id == selectedPrimaryLoadID }) {
+            selectedPrimaryLoadID = PrimaryLoadCatalog.defaultID(for: id)
+        }
     }
 
     /// One-line privacy card.
@@ -417,6 +419,7 @@ struct OnboardingView: View {
     private func finish(
         phase chosenPhase: RehabPhase,
         enableNotifications: Bool,
+        injuryID: String,
         primaryLoadID: String
     ) async {
         isBusy = true
@@ -430,6 +433,7 @@ struct OnboardingView: View {
             to: settings,
             phase: chosenPhase,
             notificationsEnabled: enableNotifications,
+            injuryID: injuryID,
             primaryLoadID: primaryLoadID
         )
         try? modelContext.save()
@@ -481,9 +485,8 @@ struct BrandCardRow: View {
     }
 }
 
-/// Applies first-run choices. Knee-only: the injury is always patellar
-/// tendinopathy. Skip: Phase B, notifications off, keep the chosen lift
-/// (unknown / retired ids fall back to seated leg extension).
+/// Applies first-run choices. Skip: Phase B, notifications off, keep the
+/// chosen injury and modality (unknown ids fall back to that injury’s default).
 enum OnboardingCompletion {
     /// Pre-selected card on the Setup page.
     static let initialPhase: RehabPhase = .aFlareDeLoad
@@ -494,19 +497,23 @@ enum OnboardingCompletion {
         skipped: Bool,
         phase: RehabPhase,
         notificationsEnabled: Bool,
+        injuryID: String = InjuryCatalog.defaultSelectable.id,
         primaryLoadID: String
     ) -> OnboardingChoices {
-        let loadID = PrimaryLoadCatalog.normalizedID(primaryLoadID)
+        let resolvedInjury = InjuryCatalog.normalizedID(injuryID)
+        let loadID = PrimaryLoadCatalog.normalizedID(primaryLoadID, injuryID: resolvedInjury)
         if skipped {
             return OnboardingChoices(
                 phase: defaultPhase,
                 notificationsEnabled: false,
+                injuryID: resolvedInjury,
                 primaryLoadID: loadID
             )
         }
         return OnboardingChoices(
             phase: phase,
             notificationsEnabled: notificationsEnabled,
+            injuryID: resolvedInjury,
             primaryLoadID: loadID
         )
     }
@@ -515,18 +522,20 @@ enum OnboardingCompletion {
         to settings: AppSettings,
         phase: RehabPhase,
         notificationsEnabled: Bool,
+        injuryID: String,
         primaryLoadID: String
     ) {
         let choices = result(
             skipped: false,
             phase: phase,
             notificationsEnabled: notificationsEnabled,
+            injuryID: injuryID,
             primaryLoadID: primaryLoadID
         )
         settings.currentPhase = choices.phase
         settings.hasCompletedOnboarding = true
         settings.notificationsEnabled = choices.notificationsEnabled
-        settings.selectedInjuryID = InjuryCatalog.defaultSelectable.id
+        settings.selectedInjuryID = choices.injuryID
         settings.primaryLoadID = choices.primaryLoadID
     }
 }
@@ -541,6 +550,7 @@ enum OnboardingReset {
 struct OnboardingChoices: Equatable, Sendable {
     var phase: RehabPhase
     var notificationsEnabled: Bool
+    var injuryID: String
     var primaryLoadID: String
 }
 

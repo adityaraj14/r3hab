@@ -27,11 +27,17 @@ final class SettingsSeedPolicyTests: XCTestCase {
         XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad("leg-press"))
     }
 
-    func testRemovedQLLoadsRemapToSeatedExtension() {
-        for retired in ["ql-hip-thrust", "ql-side-bend", "ql-walk"] {
-            XCTAssertTrue(SettingsSeedPolicy.shouldRemapPrimaryLoad(retired), retired)
-            XCTAssertEqual(PrimaryLoadCatalog.normalizedID(retired), "seated-extension", retired)
+    func testQLLoadsStayWhenInjuryIsQLAndLeaveAKneeProfile() {
+        for live in ["ql-hip-thrust", "ql-side-bend", "ql-walk"] {
+            XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad(live), live)
+            XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad(live, injuryID: "ql-strain"), live)
+            XCTAssertTrue(
+                SettingsSeedPolicy.shouldRemapPrimaryLoad(live, injuryID: "patellar-tendinopathy"),
+                live
+            )
         }
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension", injuryID: "patellar-tendinopathy"))
+        XCTAssertTrue(SettingsSeedPolicy.shouldRemapPrimaryLoad("seated-extension", injuryID: "ql-strain"))
     }
 
     func testIdempotentOpenDoesNotNeedAWrite() {
@@ -69,7 +75,7 @@ final class SettingsSeedPolicyTests: XCTestCase {
     func testRetiredInjuryIDsNeedAWrite() {
         XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("jumpers-knee"))
         XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("patellar-tendonitis"))
-        XCTAssertTrue(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
+        XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("ql-strain"))
         XCTAssertFalse(SettingsSeedPolicy.shouldRemapInjury("patellar-tendinopathy"))
     }
 }
