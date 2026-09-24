@@ -8,6 +8,17 @@ import XCTest
 final class TodaySessionEntryTests: XCTestCase {
     private let threeByEight = LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35)
 
+    func testRestDayCardHidesLoadProgression() {
+        XCTAssertFalse(TodayNextAction.restDay.showsLoadProgression)
+        XCTAssertTrue(TodayNextAction.logSession.showsLoadProgression)
+        XCTAssertTrue(TodayNextAction.logMorning.showsLoadProgression)
+        XCTAssertTrue(TodayNextAction.logEvening.showsLoadProgression)
+        XCTAssertTrue(TodayNextAction.allDone.showsLoadProgression)
+        let id = UUID()
+        XCTAssertTrue(TodayNextAction.resolvePending(sessionID: id, remaining: 0).showsLoadProgression)
+        XCTAssertTrue(TodayNextAction.logAfterPain(sessionID: id).showsLoadProgression)
+    }
+
     func testRestDayOmitsProgressionTarget() {
         let entry = TodaySessionEntry.resolve(
             isRestDay: true,

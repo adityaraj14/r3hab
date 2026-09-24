@@ -236,6 +236,7 @@ struct HomeView: View {
 
     /// Eyebrow, the stance, then the one action. The dose button carries
     /// the stance with it. Other actions keep the same line on the card.
+    /// A rest day is rest-only: no stance, reason, or dose.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(nextUpEyebrow(for: action).uppercased())
@@ -243,7 +244,7 @@ struct HomeView: View {
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
 
-            if !actionShowsDose(action) {
+            if action.showsLoadProgression, !actionShowsDose(action) {
                 stanceLine(todayProgression, onGold: false)
             }
 
