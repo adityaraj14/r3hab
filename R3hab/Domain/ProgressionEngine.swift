@@ -14,6 +14,11 @@ struct LoadPrescription: Equatable, Sendable {
     var todayLine: String {
         "Today: \(displayLine)"
     }
+
+    /// Last logged dose. Not a computed next load.
+    var lastTimeLine: String {
+        "Last time: \(displayLine)"
+    }
 }
 
 enum ProgressionGate: String, Equatable, CaseIterable, Sendable {
@@ -28,11 +33,12 @@ enum ProgressionStance: String, Equatable, Sendable {
     case advance
     case drop
 
+    /// Advice only. The form still opens on last session’s weight.
     var label: String {
         switch self {
-        case .hold: return "Hold"
-        case .advance: return "Advance"
-        case .drop: return "Drop"
+        case .hold: return "Hold load"
+        case .advance: return "Increase load"
+        case .drop: return "Decrease load"
         }
     }
 }
@@ -69,24 +75,19 @@ enum SessionPrefill {
     }
 }
 
-/// Load-first HSR. +5 lb is the default step. 3×8 → 3×10 is only the landing
-/// pad after a load increase. Volume-ladder logs keep their load and snap to
-/// 3 sets in the 8–12 band. Pain during above 3 drops; a missing 24h holds.
+/// Option B gates. Stance is advice. Prefill weight is the last working load.
+/// Set and rep shape snaps into 3×8–12. The engine does not write +5 or −5.
 enum ProgressionEngine {
     static let painDuringLimit = 3
-    static let loadBumpLbs = 5.0
-    static let minLoadLbs = 5.0
     static let defaultSets = 3
     static let defaultReps = 8
     static let repFloor = 8
     static let repCeiling = 12
     static let repHardMax = 15
-    static let bufferReps = 10
 
     static let reasonWaitingOn24h = "Waiting on 24h check-in"
     static let reasonWorseHolding = "24h Worse — holding load"
-    static let reasonTwoCleanLoadStep = "Two clean hits — +5 lb"
-    static let reasonTwoCleanBuffer = "Two clean hits — 3×10 at this load"
+    static let reasonTwoCleanIncrease = "Two clean hits — increase load"
     static let reasonOneClean = "One clean hit — holding load"
     static let reasonShortReps = "Reps were short — holding load"
     static let reasonStart = "Start at 3×8"
@@ -146,7 +147,7 @@ enum ProgressionEngine {
 
         if let pain, pain > painDuringLimit {
             return make(
-                target: dropped(from: current),
+                target: current,
                 current: current,
                 stance: .drop,
                 reason: reasonPain(pain),
@@ -197,12 +198,11 @@ enum ProgressionEngine {
             isCleanHit($0, loadLbs: current.loadLbs)
         }
         if twoClean {
-            let landing = current.reps == repFloor && isLandingPad(history: history, loadLbs: current.loadLbs)
             return make(
-                target: advanced(from: current, landingPad: landing),
+                target: current,
                 current: current,
                 stance: .advance,
-                reason: landing ? reasonTwoCleanBuffer : reasonTwoCleanLoadStep,
+                reason: reasonTwoCleanIncrease,
                 blockedBy: [],
                 laterality: laterality,
                 pendingResolveID: nil
@@ -348,32 +348,6 @@ enum ProgressionEngine {
         return values.max()
     }
 
-    // MARK: Step
-
-    /// Default step is +5 lb, landing at 3×8. `landingPad` is the one same-load
-    /// buffer (3×8 → 3×10) after arriving at a new load.
-    static func advanced(from current: LoadPrescription, landingPad: Bool = false) -> LoadPrescription {
-        let base = snap(current)
-        if landingPad {
-            return LoadPrescription(
-                workingSets: defaultSets,
-                reps: bufferReps,
-                loadLbs: base.loadLbs
-            )
-        }
-        let bumped = (base.loadLbs ?? 0) + loadBumpLbs
-        return LoadPrescription(workingSets: defaultSets, reps: defaultReps, loadLbs: bumped)
-    }
-
-    static func dropped(from current: LoadPrescription) -> LoadPrescription {
-        let base = snap(current)
-        guard let load = base.loadLbs else {
-            return LoadPrescription(workingSets: defaultSets, reps: defaultReps, loadLbs: nil)
-        }
-        let reduced = max(minLoadLbs, load - loadBumpLbs)
-        return LoadPrescription(workingSets: defaultSets, reps: defaultReps, loadLbs: reduced)
-    }
-
     // MARK: Private
 
     private static func make(
@@ -433,25 +407,6 @@ enum ProgressionEngine {
         loadLbs: Double?
     ) -> [TrainingSessionSnapshot] {
         history.filter { sameLoad(inferredLoad($0), loadLbs) }
-    }
-
-    /// True when the current streak at this load came from a lighter load
-    /// and every set in the streak is still under the 3×10 buffer.
-    private static func isLandingPad(
-        history: [TrainingSessionSnapshot],
-        loadLbs: Double?
-    ) -> Bool {
-        guard let loadLbs else { return false }
-        var streak = 0
-        for session in history.reversed() {
-            guard sameLoad(inferredLoad(session), loadLbs) else { break }
-            guard (inferPrescription(session)?.reps ?? 0) < bufferReps else { return false }
-            streak += 1
-        }
-        guard streak > 0, history.count > streak else { return false }
-        let prior = history[history.count - streak - 1]
-        guard let priorLoad = inferredLoad(prior) else { return false }
-        return priorLoad + 0.001 < loadLbs
     }
 
     private static func inferredLoad(_ session: TrainingSessionSnapshot) -> Double? {

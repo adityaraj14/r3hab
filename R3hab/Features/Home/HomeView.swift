@@ -286,13 +286,13 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         stanceLine(todayProgression, onGold: true)
                         Label(activePrimaryLoad.logCTA, systemImage: InjuryCatalog.systemImage)
-                        Text(todayProgression.target.todayLine)
+                        Text(todayProgression.target.lastTimeLine)
                             .font(.subheadline.weight(.medium))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
-                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(activePrimaryLoad.logCTA). \(todayProgression.target.todayLine)")
+                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(activePrimaryLoad.logCTA). \(todayProgression.target.lastTimeLine)")
 
             case .logEvening:
                 Button { showPM = true } label: {

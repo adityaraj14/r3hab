@@ -1,6 +1,6 @@
 # Progression target
 
-Today asks the engine for the next seated-extension HSR dose. Two clean hits step the load. The user sees `Today: 3×8 @ 40 lbs` instead of a volume rung.
+Today asks the engine for stance advice. The form opens on the last working load. Two clean hits say Increase load. The user does not see a computed `3×8 @ 40`.
 
 ## Sub-features
 
@@ -19,9 +19,8 @@ Today asks the engine for the next seated-extension HSR dose. Two clean hits ste
 Preconditions: `./scripts/test-domain.sh` is executable and `swift` works.
 
 - Run `./scripts/test-domain.sh`. Expect exit 0.
-- Confirm `testTwoCleanHitsAddFivePounds` passed. Target is `3×8 @ 40 lbs`, reason `Two clean hits — +5 lb`.
-- Confirm `testLongVolumeLadderIsNotTheSuggestionPath` passed. No rung climbs toward 4×12.
-- Confirm `testUserHistoryStepsFivePoundsInsteadOfThreeByTen` passed. Today line is `Today: 3×8 @ 40 lbs`.
+- Confirm `testTwoCleanHitsAdviseIncreaseWithoutChangingPrefill` passed. Prefill stays `3×8 @ 35 lbs`. Advice is `Increase load`.
+- Confirm `testUserHistoryPrefillsLastLoadAndAdvisesIncrease` passed. Last-time line is `Last time: 3×8 @ 35 lbs`.
 
 ## Gotchas
 

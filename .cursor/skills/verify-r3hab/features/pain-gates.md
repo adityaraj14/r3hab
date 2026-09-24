@@ -19,7 +19,7 @@ Option B. Pain is the session peak during the set, inclusive of 3. The 24h respo
 Preconditions: domain tests pass.
 
 - Run `./scripts/test-domain.sh`.
-- Confirm `testPainDuringAboveThreeDropsLoad` passed. Pain 4 at 3×10 @ 35 becomes 3×8 @ 30, reason `Pain during was 4`.
+- Confirm `testPainDuringAboveThreeDropsLoad` passed. Pain 4 keeps the last load and says Decrease load. Reason `Pain during was 4`.
 - Confirm `testPainThreeInclusiveStillAdvances` passed.
 - Confirm `testWorseHoldsLoadAndSoftCutStaysAdvice` passed.
 - Confirm `testMissing24hHoldsAndAsks` passed. The reason is not empty.

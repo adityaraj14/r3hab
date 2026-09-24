@@ -38,6 +38,8 @@ struct SessionEditor: View {
     @State private var whatIDidLocked = false
     @State private var response24hEdit: Response24h?
     @State private var confirmDelete = false
+    @State private var planAdvice: String?
+    @State private var planReason: String?
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
@@ -112,6 +114,19 @@ struct SessionEditor: View {
             }
 
             if showsResistance {
+                if let planAdvice, let planReason, !usesIsoHolds {
+                    Section {
+                        Text(planAdvice)
+                            .font(.subheadline.weight(.semibold))
+                        Text(planReason)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    } header: {
+                        Text("Today’s plan")
+                    } footer: {
+                        Text("Weight starts at last time. Change it with the plates or stack you have.")
+                    }
+                }
                 if showsWarmup {
                     warmupSection
                 }
@@ -631,6 +646,8 @@ struct SessionEditor: View {
         )
         laterality = prescription.laterality
         storedLateralityRaw = prescription.laterality.rawValue
+        planAdvice = prescription.stance.label
+        planReason = prescription.reason
         if warmupSets.isEmpty {
             warmupSets = [SessionPrefill.warmupSet(loadLbs: prescription.target.loadLbs)]
         }

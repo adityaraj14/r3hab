@@ -24,23 +24,26 @@ final class ProgressionEngineTests: XCTestCase {
         )
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil))
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold")
+        XCTAssertEqual(result.stance.label, "Hold load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonStart)
         XCTAssertFalse(result.reason.isEmpty)
         XCTAssertEqual(result.blockedBy, [])
         XCTAssertNil(result.pendingResolveID)
     }
 
-    func testTwoCleanHitsAddFivePounds() {
+    func testTwoCleanHitsAdviseIncreaseWithoutChangingPrefill() {
         let first = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 2, response: .better)
         let second = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 3, response: .same)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Advance")
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanLoadStep)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
+        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
+        XCTAssertEqual(result.target.lastTimeLine, "Last time: 3×8 @ 35 lbs")
         XCTAssertEqual(result.blockedBy, [])
-        XCTAssertNotEqual(result.target.displayLine, "3×10 @ 35 lbs")
+        let prefill = SessionPrefill.workSets(from: result.target, laterality: .bilateral)
+        XCTAssertTrue(prefill.allSatisfy { $0.loadLbs == 35 })
     }
 
     func testPainThreeInclusiveStillAdvances() {
@@ -48,9 +51,10 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 3, response: .better)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
+        XCTAssertEqual(result.stance.label, "Increase load")
         XCTAssertFalse(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(result.reason, "Two clean hits — +5 lb")
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
+        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
     }
 
     func testSameResponseAdvancesLikeBetter() {
@@ -58,65 +62,27 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 3, reps: 12, load: 50, pain: 0, response: .same)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 55))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 50))
     }
 
-    func testLongVolumeLadderIsNotTheSuggestionPath() {
-        let rungs = [
-            LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35),
-            LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35),
-            LoadPrescription(workingSets: 3, reps: 12, loadLbs: 35),
-            LoadPrescription(workingSets: 4, reps: 8, loadLbs: 35),
-            LoadPrescription(workingSets: 4, reps: 10, loadLbs: 35),
-            LoadPrescription(workingSets: 4, reps: 12, loadLbs: 35)
-        ]
-        for rung in rungs {
-            let next = ProgressionEngine.advanced(from: rung, landingPad: false)
-            XCTAssertEqual(next, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40), "\(rung)")
-            XCTAssertLessThanOrEqual(next.reps, ProgressionEngine.repCeiling)
-            XCTAssertLessThanOrEqual(next.reps, ProgressionEngine.repHardMax)
-        }
-        let pad = ProgressionEngine.advanced(
-            from: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40),
-            landingPad: true
-        )
-        XCTAssertEqual(pad, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 40))
-    }
-
-    func testLandingPadBuffersToThreeByTenThenNextAdvanceAddsFive() {
-        let prior = hsr(dayOffset: -8, sets: 3, reps: 12, load: 35, pain: 2)
-        let land = hsr(dayOffset: -4, sets: 3, reps: 8, load: 40, pain: 2)
-        let confirm = hsr(dayOffset: -2, sets: 3, reps: 8, load: 40, pain: 1)
-        let buffered = today([prior, land, confirm])
-        XCTAssertEqual(buffered.stance, .advance)
-        XCTAssertEqual(buffered.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 40))
-        XCTAssertEqual(buffered.reason, ProgressionEngine.reasonTwoCleanBuffer)
-
-        let tenA = hsr(dayOffset: -4, sets: 3, reps: 10, load: 40, pain: 2)
-        let tenB = hsr(dayOffset: -2, sets: 3, reps: 10, load: 40, pain: 2)
-        let stepped = today([prior, land, tenA, tenB])
-        XCTAssertEqual(stepped.stance, .advance)
-        XCTAssertEqual(stepped.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45))
-        XCTAssertEqual(stepped.reason, ProgressionEngine.reasonTwoCleanLoadStep)
-    }
-
-    func testEstablishedThreeByEightDefaultsToLoadStep() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 1)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 1)
+    func testAdvanceDoesNotWriteAHeavierPrefill() {
+        let first = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 1)
+        let second = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1)
         let result = today([first, second])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanLoadStep)
+        XCTAssertEqual(result.stance, .advance)
+        XCTAssertEqual(result.target.loadLbs, 35)
+        XCTAssertNotEqual(result.target.loadLbs, 40)
+        let sets = SessionPrefill.workSets(from: result.target, laterality: .bilateral)
+        XCTAssertTrue(sets.allSatisfy { $0.loadLbs == 35 })
     }
 
-    func testDropLowersLoadByFiveAndLandsAtThreeByEight() {
-        XCTAssertEqual(
-            ProgressionEngine.dropped(from: LoadPrescription(workingSets: 4, reps: 12, loadLbs: 35)),
-            LoadPrescription(workingSets: 3, reps: 8, loadLbs: 30)
-        )
-        XCTAssertEqual(
-            ProgressionEngine.dropped(from: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 5)),
-            LoadPrescription(workingSets: 3, reps: 8, loadLbs: 5)
-        )
+    func testDropAdvisesDecreaseWithoutLoweringPrefill() {
+        let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
+        let result = today([hot])
+        XCTAssertEqual(result.stance, .drop)
+        XCTAssertEqual(result.stance.label, "Decrease load")
+        XCTAssertEqual(result.target.loadLbs, 35)
+        XCTAssertNotEqual(result.target.loadLbs, 30)
     }
 
     func testOneCleanHitHolds() {
@@ -124,7 +90,7 @@ final class ProgressionEngineTests: XCTestCase {
         let result = today([only])
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold")
+        XCTAssertEqual(result.stance.label, "Hold load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonOneClean)
         XCTAssertEqual(result.blockedBy, [.consecutiveCleanHits])
     }
@@ -143,19 +109,18 @@ final class ProgressionEngineTests: XCTestCase {
         let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.stance.label, "Drop")
+        XCTAssertEqual(result.stance.label, "Decrease load")
         XCTAssertEqual(result.reason, "Pain during was 4")
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 30))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
 
-    func testPainDuringSixDropsFivePoundsRatherThanAVolumeRung() {
+    func testPainDuringSixKeepsLastLoad() {
         let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 6, response: .same)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
         XCTAssertEqual(result.reason, "Pain during was 6")
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 30))
-        XCTAssertNotEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
 
     func testPerSetPainCanFailThePainGate() {
@@ -169,7 +134,7 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .drop)
         XCTAssertEqual(result.reason, "Pain during was 4")
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 30))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
     }
 
     func testWorseHoldsLoadAndSoftCutStaysAdvice() {
@@ -252,21 +217,22 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 4, reps: 10, load: 35, pain: 2)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertNotEqual(result.target, LoadPrescription(workingSets: 4, reps: 10, loadLbs: 35))
-        XCTAssertNotEqual(result.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 35))
+        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
+        XCTAssertNotEqual(result.target.loadLbs, 40)
     }
 
-    func testUserHistoryStepsFivePoundsInsteadOfThreeByTen() {
+    func testUserHistoryPrefillsLastLoadAndAdvisesIncrease() {
         let sessions = [
             hsr(dayOffset: -5, sets: 3, reps: 8, load: 35, pain: 2, response: .better),
             hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 1, response: .same)
         ]
         let result = today(sessions)
-        XCTAssertEqual(result.target.displayLine, "3×8 @ 40 lbs")
-        XCTAssertEqual(result.target.todayLine, "Today: 3×8 @ 40 lbs")
+        XCTAssertEqual(result.target.displayLine, "3×8 @ 35 lbs")
+        XCTAssertEqual(result.target.lastTimeLine, "Last time: 3×8 @ 35 lbs")
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanLoadStep)
+        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
         XCTAssertEqual(result.laterality, .bilateral)
     }
 
@@ -367,7 +333,7 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertFalse(ProgressionEngine.matchesPrimaryLoad(legacy, title: PrimaryLoadCatalog.legPress.title))
 
         let result = today([legacy, renamed])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.stance, .advance)
     }
 
@@ -380,14 +346,14 @@ final class ProgressionEngineTests: XCTestCase {
             calendar: calendar
         )
         XCTAssertEqual(after.stance, .advance)
-        XCTAssertEqual(after.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(after.reason, ProgressionEngine.reasonTwoCleanLoadStep)
+        XCTAssertEqual(after.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(after.reason, ProgressionEngine.reasonTwoCleanIncrease)
     }
 
     func testDropStanceLabel() {
-        XCTAssertEqual(ProgressionStance.drop.label, "Drop")
-        XCTAssertEqual(ProgressionStance.advance.label, "Advance")
-        XCTAssertEqual(ProgressionStance.hold.label, "Hold")
+        XCTAssertEqual(ProgressionStance.drop.label, "Decrease load")
+        XCTAssertEqual(ProgressionStance.advance.label, "Increase load")
+        XCTAssertEqual(ProgressionStance.hold.label, "Hold load")
     }
 
     func testPainAboveThreeWinsOverAMissingResolve() {
@@ -396,7 +362,7 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .drop)
         XCTAssertEqual(result.reason, "Pain during was 5")
         XCTAssertEqual(result.pendingResolveID, hot.id)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
     }
 
     private func today(_ sessions: [TrainingSessionSnapshot]) -> ProgressionResult {
