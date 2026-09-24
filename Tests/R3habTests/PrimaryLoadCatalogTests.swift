@@ -12,16 +12,13 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     }
 
     func testCatalogIsOnlySeatedExtensionAndLegPress() {
-        let options = PrimaryLoadCatalog.all
+        let options = PrimaryLoadCatalog.options(for: InjuryCatalog.patellarTendinopathy.id)
         XCTAssertEqual(options.map(\.id), ["seated-extension", "leg-press"])
         XCTAssertEqual(options.map(\.title), ["Seated leg extension", "Leg press"])
         XCTAssertEqual(options.map(\.logCTA), ["Log Workout", "Log leg press"])
         XCTAssertFalse(options.contains { $0.title.contains("HSR") })
         XCTAssertFalse(PrimaryLoadCatalog.contains("spanish-squat"))
         XCTAssertFalse(PrimaryLoadCatalog.contains("wall-sit"))
-        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-hip-thrust"))
-        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-side-bend"))
-        XCTAssertFalse(PrimaryLoadCatalog.contains("ql-walk"))
     }
 
     func testRetiredKneePrimariesRemapToSeatedExtension() {
@@ -35,13 +32,34 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         XCTAssertFalse(PrimaryLoadCatalog.needsRemap("leg-press"))
     }
 
-    func testRemovedQLLoadsRemapToSeatedExtension() {
-        for retired in ["ql-hip-thrust", "ql-side-bend", "ql-walk"] {
-            XCTAssertEqual(PrimaryLoadCatalog.normalizedID(retired), PrimaryLoadCatalog.seatedExtension.id, retired)
-            XCTAssertTrue(PrimaryLoadCatalog.needsRemap(retired), retired)
+    func testQLModalitiesStayLiveAndAreScoped() {
+        XCTAssertEqual(
+            PrimaryLoadCatalog.options(for: InjuryCatalog.qlStrain.id).map(\.id),
+            ["ql-walk", "ql-side-bend", "ql-hip-thrust"]
+        )
+        for live in ["ql-hip-thrust", "ql-side-bend", "ql-walk"] {
+            XCTAssertEqual(PrimaryLoadCatalog.normalizedID(live), live, live)
+            XCTAssertFalse(PrimaryLoadCatalog.needsRemap(live), live)
+            XCTAssertEqual(
+                PrimaryLoadCatalog.normalizedID(live, injuryID: InjuryCatalog.qlStrain.id),
+                live,
+                live
+            )
+            XCTAssertEqual(
+                PrimaryLoadCatalog.normalizedID(live, injuryID: InjuryCatalog.patellarTendinopathy.id),
+                PrimaryLoadCatalog.seatedExtension.id,
+                live
+            )
         }
-        XCTAssertFalse(SessionPreset.all.contains { $0.id.hasPrefix("ql-") })
-        XCTAssertFalse(SessionPreset.all.contains { $0.label.localizedCaseInsensitiveContains("walk") })
+        XCTAssertEqual(
+            PrimaryLoadCatalog.normalizedID("seated-extension", injuryID: InjuryCatalog.qlStrain.id),
+            PrimaryLoadCatalog.qlWalk.id
+        )
+        XCTAssertTrue(SessionPreset.all.contains { $0.id == "ql-walk" })
+        let qlChips = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.qlWalk.id)
+        XCTAssertEqual(qlChips.map(\.id), ["ql-walk", "ql-side-bend", "ql-hip-thrust"])
+        let kneeChips = SessionPreset.forPhase(.bIsometrics, primaryLoadID: PrimaryLoadCatalog.seatedExtension.id)
+        XCTAssertFalse(kneeChips.contains { $0.id.hasPrefix("ql-") })
     }
 
     func testUnknownIdFallsBackToSeatedExtension() {
@@ -120,7 +138,8 @@ final class PrimaryLoadCatalogTests: XCTestCase {
 
     func testPresetsAreTheFourKneeLoadersOnly() {
         // Phases D/E are gone, and with them the landings / tennis chips.
-        XCTAssertEqual(SessionPreset.all.map(\.id), ["ext", "ke", "lp-iso", "lp"])
+        let knee = SessionPreset.all.filter { $0.injuryID == InjuryCatalog.patellarTendinopathy.id }
+        XCTAssertEqual(knee.map(\.id), ["ext", "ke", "lp-iso", "lp"])
         XCTAssertFalse(SessionPreset.all.contains { $0.id == "land" || $0.id == "hit" || $0.id == "match" })
         for preset in SessionPreset.all {
             XCTAssertNotNil(preset.phases, preset.id)

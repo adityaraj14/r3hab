@@ -1,11 +1,15 @@
 import SwiftUI
 import SwiftData
 
-/// Phase guide for the knee protocol (jumper’s knee / patellar tendinopathy).
+/// Phase guide for the selected injury. QL copy is a logging stub.
 struct PhaseGuideView: View {
     @Query private var settingsList: [AppSettings]
 
     private var settings: AppSettings? { settingsList.first }
+
+    private var injury: InjuryDefinition {
+        settings?.selectedInjury ?? InjuryCatalog.defaultSelectable
+    }
 
     private var primaryLoad: PrimaryLoadOption {
         settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
@@ -15,9 +19,9 @@ struct PhaseGuideView: View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(InjuryCatalog.protocolName)
+                    Text(injury.protocolName)
                         .font(.headline)
-                    Text(InjuryCatalog.protocolDescription)
+                    Text(injury.protocolDescription)
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                     Text(primaryLoad.homeObjective)
@@ -30,14 +34,18 @@ struct PhaseGuideView: View {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(phase.title)
                             .font(.subheadline.weight(.semibold))
-                        Text(PhaseGuideCopy.summary(for: phase, primaryLift: primaryLoad.title))
+                        Text(PhaseGuideCopy.summary(
+                            for: phase,
+                            primaryLift: primaryLoad.title,
+                            injuryID: injury.id
+                        ))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 2)
                 }
             } header: {
-                Text(InjuryCatalog.protocolName)
+                Text(injury.protocolName)
             }
 
             Section("Red flags") {

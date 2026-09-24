@@ -70,6 +70,7 @@ struct HomeView: View {
 
     private var phaseAStatus: PhaseAExitStatus? {
         guard let settings, settings.currentPhase == .aFlareDeLoad else { return nil }
+        guard InjuryCatalog.isPatellar(settings.selectedInjuryID) else { return nil }
         return PhaseAExitEvaluator.evaluate(
             checkIns: checkIns.map(\.snapshot),
             settings: settings.phaseSnapshot,
@@ -85,8 +86,16 @@ struct HomeView: View {
     private var hasMorningPain: Bool { todayCheckIn?.restingPainAM != nil }
     private var hasEveningPain: Bool { todayCheckIn?.dailyPainPM != nil }
 
+    private var activeInjury: InjuryDefinition {
+        settings?.selectedInjury ?? InjuryCatalog.defaultSelectable
+    }
+
     private var activePrimaryLoad: PrimaryLoadOption {
         settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable
+    }
+
+    private var showsPatellarLadder: Bool {
+        activePrimaryLoad.usesPatellarLadder
     }
 
     private var todayProgression: ProgressionResult {
@@ -119,13 +128,51 @@ struct HomeView: View {
     }
 
     private var sessionEntry: TodaySessionEntry {
-        TodaySessionEntry.resolve(
-            isRestDay: streak.isRestDay,
-            hasDraft: todayDraftId != nil,
-            todaySessions: todaySessions.map(\.snapshot),
-            target: todayProgression.target,
-            laterality: todayProgression.laterality
-        )
+        if showsPatellarLadder {
+            return TodaySessionEntry.resolve(
+                isRestDay: streak.isRestDay,
+                hasDraft: todayDraftId != nil,
+                todaySessions: todaySessions.map(\.snapshot),
+                target: todayProgression.target,
+                laterality: todayProgression.laterality
+            )
+        }
+        return qlSessionEntry
+    }
+
+    /// No 3×8 ladder. Show a step reminder or the last logged load.
+    private var qlSessionEntry: TodaySessionEntry {
+        let snaps = todaySessions.map(\.snapshot)
+        if !snaps.isEmpty {
+            let sets = snaps.flatMap(\.resistanceSets)
+            return .logged(
+                TodaySessionLoad(
+                    warmupNote: nil,
+                    workLines: qlWorkLines(from: sets)
+                ),
+                status: TodaySessionEntry.status(for: snaps)
+            )
+        }
+        if todayDraftId != nil { return .resumeDraft }
+        if streak.isRestDay { return .rest }
+        return .target(TodaySessionLoad(warmupNote: nil, workLines: qlStubLines))
+    }
+
+    private var qlStubLines: [String] {
+        if activePrimaryLoad.isWalk {
+            return [QLLoggingStub.stepTargetLine(stepNearNormalMin: settings?.stepNearNormalMin ?? 6000)]
+        }
+        if let last = QLLoggingStub.lastWeighted(sessions: sessionSnaps, title: activePrimaryLoad.title) {
+            return [last.lastTimeLine, QLLoggingStub.clinicalTargetNote]
+        }
+        return [QLLoggingStub.clinicalTargetNote]
+    }
+
+    private func qlWorkLines(from sets: [ResistanceSet]) -> [String] {
+        if let compact = SessionSummary.compactResistance(sets) {
+            return [compact]
+        }
+        return []
     }
 
     var body: some View {
@@ -248,7 +295,7 @@ struct HomeView: View {
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
 
-            if action.showsLoadProgression, !actionShowsDose(action) {
+            if showsPatellarLadder, action.showsLoadProgression, !actionShowsDose(action) {
                 stanceLine(todayProgression, onGold: false)
             }
 
@@ -289,15 +336,17 @@ struct HomeView: View {
             case .logSession:
                 Button { showSession = true } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        stanceLine(todayProgression, onGold: true)
-                        Label(nextUpSessionTitle, systemImage: InjuryCatalog.systemImage)
-                        Text(todayProgression.target.lastTimeLine)
+                        if showsPatellarLadder {
+                            stanceLine(todayProgression, onGold: true)
+                        }
+                        Label(nextUpSessionTitle, systemImage: activeInjury.systemImage)
+                        Text(showsPatellarLadder ? todayProgression.target.lastTimeLine : qlStubLines.joined(separator: " "))
                             .font(.subheadline.weight(.medium))
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .buttonStyle(.primaryAction)
-                .accessibilityLabel("\(todayProgression.stance.label). \(todayProgression.reason). \(nextUpSessionTitle). \(todayProgression.target.lastTimeLine)")
+                .accessibilityLabel(logSessionAccessibility)
 
             case .logEvening:
                 Button { showPM = true } label: {
@@ -363,6 +412,13 @@ struct HomeView: View {
         .accessibilityLabel("\(result.stance.label). \(result.reason)")
     }
 
+    private var logSessionAccessibility: String {
+        if showsPatellarLadder {
+            return "\(todayProgression.stance.label). \(todayProgression.reason). \(nextUpSessionTitle). \(todayProgression.target.lastTimeLine)"
+        }
+        return "\(nextUpSessionTitle). \(qlStubLines.joined(separator: ". "))"
+    }
+
     private func actionShowsDose(_ action: TodayNextAction) -> Bool {
         if case .logSession = action { return true }
         return false
@@ -420,7 +476,7 @@ struct HomeView: View {
             showSession = true
         } label: {
             HStack(alignment: .top, spacing: 12) {
-                Image(systemName: logged ? "checkmark.circle.fill" : (isRest ? "leaf" : InjuryCatalog.systemImage))
+                Image(systemName: logged ? "checkmark.circle.fill" : (isRest ? "leaf" : activeInjury.systemImage))
                     .font(.body)
                     .foregroundStyle(logged ? Color.green : AppTheme.quiet)
                     .frame(width: 22)

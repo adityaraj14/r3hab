@@ -357,12 +357,11 @@ enum ExportImportService {
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
             settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }
-        // Retired ids in old backups (QL loads, old knee primaries) remap to seated leg extension.
-        if let loadID = dto.primaryLoadID, !loadID.isEmpty {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID)
-        } else {
-            settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(settings.primaryLoadID)
-        }
+        // Retired knee primaries remap to seated extension. A QL backup keeps
+        // ql-walk / ql-side-bend / ql-hip-thrust. A lift from the other injury
+        // falls back to this injury’s default.
+        let loadID = dto.primaryLoadID ?? settings.primaryLoadID
+        settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID, injuryID: settings.selectedInjuryID)
     }
 
     private static func replaceAll(backup: R3habBackupDTO, context: ModelContext) throws {

@@ -2,6 +2,7 @@ import Foundation
 
 struct SessionPreset: Identifiable, Hashable {
     let id: String
+    let injuryID: String
     let label: String
     let sessionType: SessionType
     let whatIDid: String
@@ -11,18 +12,23 @@ struct SessionPreset: Identifiable, Hashable {
     let usesPerSetLogging: Bool
     /// Prefer isometric hold fields (reps × time × load).
     let usesIsoHoldLogging: Bool
+    /// Walk log: steps and optional minutes. Not a resistance ladder.
+    let tracksWalk: Bool
 
     init(
         id: String,
+        injuryID: String = "patellar-tendinopathy",
         label: String,
         sessionType: SessionType,
         whatIDid: String,
         phases: Set<RehabPhase>? = nil,
         tracksResistance: Bool = false,
         usesPerSetLogging: Bool = false,
-        usesIsoHoldLogging: Bool = false
+        usesIsoHoldLogging: Bool = false,
+        tracksWalk: Bool = false
     ) {
         self.id = id
+        self.injuryID = injuryID
         self.label = label
         self.sessionType = sessionType
         self.whatIDid = whatIDid
@@ -30,6 +36,7 @@ struct SessionPreset: Identifiable, Hashable {
         self.tracksResistance = tracksResistance
         self.usesPerSetLogging = usesPerSetLogging
         self.usesIsoHoldLogging = usesIsoHoldLogging
+        self.tracksWalk = tracksWalk
     }
 
     /// Knee chips are the two loaders (Adi, PR #18): no "Easy bike", no
@@ -75,6 +82,35 @@ struct SessionPreset: Identifiable, Hashable {
             tracksResistance: true,
             usesPerSetLogging: true,
             usesIsoHoldLogging: false
+        ),
+        .init(
+            id: "ql-walk",
+            injuryID: "ql-strain",
+            label: "Walking",
+            sessionType: .other,
+            whatIDid: "Walking",
+            phases: Set(RehabPhase.allCases),
+            tracksWalk: true
+        ),
+        .init(
+            id: "ql-side-bend",
+            injuryID: "ql-strain",
+            label: "Side bend",
+            sessionType: .other,
+            whatIDid: "Side bend",
+            phases: Set(RehabPhase.allCases),
+            tracksResistance: true,
+            usesPerSetLogging: true
+        ),
+        .init(
+            id: "ql-hip-thrust",
+            injuryID: "ql-strain",
+            label: "Hip thrust",
+            sessionType: .other,
+            whatIDid: "Hip thrust",
+            phases: Set(RehabPhase.allCases),
+            tracksResistance: true,
+            usesPerSetLogging: true
         )
     ]
 
@@ -116,7 +152,9 @@ struct SessionPreset: Identifiable, Hashable {
         _ phase: RehabPhase,
         primaryLoadID: String = PrimaryLoadCatalog.defaultID
     ) -> [SessionPreset] {
+        let injuryID = PrimaryLoadCatalog.option(for: primaryLoadID).injuryID
         let filtered = all.enumerated().filter { _, preset in
+            guard preset.injuryID == injuryID else { return false }
             guard let phases = preset.phases else { return true }
             return phases.contains(phase)
         }

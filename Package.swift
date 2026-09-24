@@ -16,7 +16,9 @@ let package = Package(
             sources: [
                 "Models/RehabEnums.swift",
                 "Models/ResistanceSet.swift",
+                "Models/InjuryCatalog.swift",
                 "Models/PrimaryLoadCatalog.swift",
+                "Features/Session/SessionPresets.swift",
                 "Domain/DomainSnapshots.swift",
                 "Domain/ChartAggregates.swift",
                 "Domain/ProgressInterpretation.swift",
@@ -37,7 +39,8 @@ let package = Package(
                 "ProgressInterpretationTests.swift",
                 "ProgressionEngineTests.swift",
                 "SessionEditorChromeTests.swift",
-                "TodaySessionEntryTests.swift"
+                "TodaySessionEntryTests.swift",
+                "QLPathwayTests.swift"
             ]
         )
     ]

@@ -55,6 +55,36 @@ struct ProgressionResult: Equatable, Sendable {
     var pendingResolveID: UUID?
 }
 
+/// QL diary helpers. Clinical targets are TBD — these do not advise
+/// increase or drop, and they do not snap sets into the patellar 3×8–12 band.
+enum QLLoggingStub {
+    static let clinicalTargetNote = "Clinical targets are TBD."
+
+    /// Last logged load and reps for a weighted QL move. Blank when nothing is logged yet.
+    static func lastWeighted(
+        sessions: [TrainingSessionSnapshot],
+        title: String
+    ) -> LoadPrescription? {
+        let matches = SessionDraft.finalized(sessions)
+            .filter { ProgressionEngine.matchesPrimaryLoad($0, title: title) }
+            .sorted { $0.createdAt > $1.createdAt }
+        guard let latest = matches.first else { return nil }
+        let pairs = SessionSummary.groupWorkSets(latest.resistanceSets.filter { !$0.isWarmup })
+        guard let pair = pairs.last, pair.leftLoad != nil || pair.reps != nil else { return nil }
+        return LoadPrescription(
+            workingSets: max(pairs.count, 1),
+            reps: pair.reps ?? 0,
+            loadLbs: pair.leftLoad
+        )
+    }
+
+    /// Display-only step reminder. `stepNearNormalMin` is the existing settings
+    /// number, reused as a label — not a QL clinical prescription.
+    static func stepTargetLine(stepNearNormalMin: Int) -> String {
+        "Step target: \(stepNearNormalMin). \(clinicalTargetNote)"
+    }
+}
+
 enum SessionPrefill {
     static func workSets(
         from target: LoadPrescription,

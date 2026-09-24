@@ -14,14 +14,17 @@ enum SettingsSeedPolicy {
         hour == legacyPMReminderHour && minute == legacyPMReminderMinute
     }
 
-    /// Retired knee primaries and the removed QL loads (hip thrust / side bend /
-    /// walking) rewrite to seated leg extension.
+    /// Retired knee primaries rewrite to seated leg extension.
+    /// Live QL ids do not. A lift that belongs to the other injury does.
     static func shouldRemapPrimaryLoad(_ id: String) -> Bool {
         PrimaryLoadCatalog.needsRemap(id)
     }
 
-    /// Collapsed knee aliases and the removed `ql-strain` rewrite to
-    /// patellar tendinopathy.
+    static func shouldRemapPrimaryLoad(_ id: String, injuryID: String) -> Bool {
+        PrimaryLoadCatalog.needsRemap(id, injuryID: injuryID)
+    }
+
+    /// Knee aliases rewrite to patellar tendinopathy. `ql-strain` is live.
     static func shouldRemapInjury(_ id: String) -> Bool {
         InjuryCatalog.needsRemap(id)
     }
@@ -49,12 +52,15 @@ enum AppBootstrap {
                 existing.pmReminderMinute = SettingsSeedPolicy.currentPMReminderMinute
                 changed = true
             }
-            if SettingsSeedPolicy.shouldRemapPrimaryLoad(existing.primaryLoadID) {
-                existing.primaryLoadID = PrimaryLoadCatalog.normalizedID(existing.primaryLoadID)
-                changed = true
-            }
             if SettingsSeedPolicy.shouldRemapInjury(existing.selectedInjuryID) {
                 existing.selectedInjuryID = InjuryCatalog.normalizedID(existing.selectedInjuryID)
+                changed = true
+            }
+            if SettingsSeedPolicy.shouldRemapPrimaryLoad(existing.primaryLoadID, injuryID: existing.selectedInjuryID) {
+                existing.primaryLoadID = PrimaryLoadCatalog.normalizedID(
+                    existing.primaryLoadID,
+                    injuryID: existing.selectedInjuryID
+                )
                 changed = true
             }
             if SettingsSeedPolicy.shouldRemapPhase(existing.currentPhaseRaw) {
