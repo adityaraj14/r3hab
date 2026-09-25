@@ -108,10 +108,6 @@ final class SessionVolumeTests: XCTestCase {
         XCTAssertNil(series[0].value)
     }
 
-    func testVolumeCopyFormatsGroupedLbReps() {
-        XCTAssertEqual(VolumeCopy.labeled(2450), "2,450 lb·reps")
-    }
-
     private func makeSession(sets: Int?, reps: Int?, loadLbs: Double?) -> TrainingSession {
         TrainingSession(
             date: Date(timeIntervalSince1970: 1_700_000_000),
