@@ -464,26 +464,6 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertTrue(points[2].hasValues)
     }
 
-    func testProgressChartStyleIdsRoundTripAndFallBack() {
-        XCTAssertEqual(
-            ProgressChartStyle.allCases,
-            [.ribbon, .orbit, .heatlane, .glassDial, .emberTide]
-        )
-        XCTAssertGreaterThanOrEqual(ProgressChartStyle.allCases.count, 4)
-        XCTAssertEqual(ProgressChartStyle.storageKey, "r3hab.progressChartStyle")
-        for style in ProgressChartStyle.allCases {
-            XCTAssertEqual(ProgressChartStyle.resolved(style.rawValue), style)
-            XCTAssertFalse(style.pickerTitle.isEmpty)
-            XCTAssertFalse(style.intent.isEmpty)
-        }
-        XCTAssertEqual(ProgressChartStyle.resolved("not-a-style"), .ribbon)
-        XCTAssertEqual(ProgressChartStyle.ribbon.rawValue, "ribbon")
-        XCTAssertEqual(ProgressChartStyle.orbit.rawValue, "orbit")
-        XCTAssertEqual(ProgressChartStyle.heatlane.rawValue, "heatlane")
-        XCTAssertEqual(ProgressChartStyle.glassDial.rawValue, "glassDial")
-        XCTAssertEqual(ProgressChartStyle.emberTide.rawValue, "emberTide")
-    }
-
     func testSignalScaleKeepsGapsAndZeros() {
         XCTAssertNil(ExploreSignalScale.unit(nil, peak: 10))
         XCTAssertEqual(ExploreSignalScale.unit(0, peak: 10), 0)

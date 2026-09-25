@@ -8,7 +8,6 @@ struct RehabProgressView: View {
     @Query private var settingsList: [AppSettings]
 
     @State private var range: ProgressDayRange = .days7
-    @AppStorage(ProgressChartStyle.storageKey) private var chartStyleRaw = ProgressChartStyle.ribbon.rawValue
 
     private var settings: AppSettings? { settingsList.first }
 
@@ -129,15 +128,12 @@ struct RehabProgressView: View {
                             Text("Pain, load, and steps on one chart. Drag the scrubber to read a day.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
-                            ExploreStylePicker(raw: $chartStyleRaw)
                             KneeExploreChart(
                                 points: explorePoints,
                                 height: 140,
                                 // Viewport matches the picker through 90 days. Longer All windows scroll.
                                 visibleDays: range.chartVisibleDays(windowDays: windowDays),
-                                volumeTitle: primaryLoad.chartVolumeTitle,
-                                emptyDescription: progressEmptyDescription,
-                                style: ProgressChartStyle.resolved(chartStyleRaw)
+                                emptyDescription: progressEmptyDescription
                             )
                             .id(range.id + "-\(windowDays)")
                         }

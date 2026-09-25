@@ -54,51 +54,6 @@ enum ProgressDayRange: CaseIterable, Identifiable, Hashable, Sendable {
     }
 }
 
-/// Prototype visual languages for the combined Progress chart.
-/// Raw values are persisted, so they stay stable once shipped.
-enum ProgressChartStyle: String, CaseIterable, Identifiable, Hashable, Sendable {
-    case ribbon
-    case orbit
-    case heatlane
-    case glassDial
-    case emberTide
-
-    var id: String { rawValue }
-
-    /// UserDefaults key. A prototype picker, not a clinical setting, so it stays out of SwiftData.
-    static let storageKey = "r3hab.progressChartStyle"
-
-    var pickerTitle: String {
-        switch self {
-        case .ribbon: return "Ribbon"
-        case .orbit: return "Orbit"
-        case .heatlane: return "Heatlane"
-        case .glassDial: return "Glass dial"
-        case .emberTide: return "Ember tide"
-        }
-    }
-
-    /// One line a reviewer can read without opening the chart.
-    var intent: String {
-        switch self {
-        case .ribbon:
-            return "Pain as a soft band, working load in lb, steps as points."
-        case .orbit:
-            return "Each day a small glyph with three arcs."
-        case .heatlane:
-            return "Three heat lanes sharing one cursor."
-        case .glassDial:
-            return "Large day readout with a quiet spark behind it."
-        case .emberTide:
-            return "Ember columns: height is steps, heat is pain, a notch is load."
-        }
-    }
-
-    static func resolved(_ raw: String) -> ProgressChartStyle {
-        ProgressChartStyle(rawValue: raw) ?? .ribbon
-    }
-}
-
 struct DayValue: Identifiable, Equatable, Sendable {
     var id: String { dayKey }
     var dayKey: String
@@ -166,8 +121,8 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var eveningPain: Double? = nil
     var duringPain: Double? = nil
     var afterPain: Double? = nil
-    /// Daily session volume (Σ work-set reps × lb). Nil days stay gaps.
-    /// Other prototype styles still read this. Ribbon plots `loadLbs` instead.
+    /// Daily session volume (Σ work-set reps × lb). The Progress readout uses this.
+    /// The chart plots `loadLbs` instead.
     var volume: Double?
     /// Working (top) weight in lb for the primary lift. Nil on walk-only days and
     /// before the first logged load. Rest days copy the previous load.

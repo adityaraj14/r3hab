@@ -36,31 +36,6 @@ enum LoadCopy {
     }
 }
 
-enum VolumeCopy {
-    static let unit = "lb·reps"
-
-    static func labeled(_ value: Double) -> String {
-        "\(formatted(value)) \(unit)"
-    }
-
-    static func formatted(_ value: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.numberStyle = .decimal
-        formatter.usesGroupingSeparator = true
-        formatter.groupingSeparator = ","
-        formatter.decimalSeparator = "."
-        if value.rounded() == value {
-            formatter.maximumFractionDigits = 0
-            formatter.minimumFractionDigits = 0
-        } else {
-            formatter.maximumFractionDigits = 1
-            formatter.minimumFractionDigits = 0
-        }
-        return formatter.string(from: NSNumber(value: value)) ?? LoadCopy.formatted(value)
-    }
-}
-
 /// One working or warm-up set inside a training session.
 struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
     var id: UUID
