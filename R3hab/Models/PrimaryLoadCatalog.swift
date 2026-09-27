@@ -39,10 +39,6 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
         return false
     }
 
-    var chartVolumeTitle: String {
-        "\(title) volume"
-    }
-
     /// Phrases that identify this movement in free-text `whatIDid`.
     /// Seated leg extension also accepts the pre-rename short name.
     var historyMatchPhrases: [String] {
