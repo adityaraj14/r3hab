@@ -107,6 +107,7 @@ final class QLPathwayTests: XCTestCase {
         let prefill = QLLoggingStub.lastWeighted(sessions: [session], title: "Hip thrust")
         XCTAssertEqual(prefill?.loadLbs, 95)
         XCTAssertEqual(prefill?.reps, 10)
+        XCTAssertEqual(prefill?.lastTimeLine, "Last time: 1×10 @ 95 lbs")
         XCTAssertNil(QLLoggingStub.lastWeighted(sessions: [], title: "Side bend"))
         XCTAssertTrue(QLLoggingStub.stepTargetLine(stepNearNormalMin: 6000).contains("6000"))
         XCTAssertTrue(QLLoggingStub.stepTargetLine(stepNearNormalMin: 6000).contains("TBD"))
