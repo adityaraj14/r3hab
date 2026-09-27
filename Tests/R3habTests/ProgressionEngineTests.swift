@@ -40,7 +40,9 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
-        XCTAssertEqual(result.target.lastTimeLine, "Last time: 3×8 @ 35 lbs")
+        XCTAssertNil(result.suggestedChangeLoadLbs)
+        XCTAssertEqual(result.cardReason, ProgressionEngine.reasonTwoCleanIncrease)
+        XCTAssertFalse(result.cardReason.contains("Last time"))
         XCTAssertEqual(result.blockedBy, [])
         let prefill = SessionPrefill.workSets(from: result.target, laterality: .bilateral)
         XCTAssertTrue(prefill.allSatisfy { $0.loadLbs == 35 })
@@ -92,6 +94,9 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .hold)
         XCTAssertEqual(result.stance.label, "Hold load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonOneClean)
+        XCTAssertNil(result.suggestedChangeLoadLbs)
+        XCTAssertEqual(result.cardReason, ProgressionEngine.reasonOneClean)
+        XCTAssertFalse(result.cardReason.contains("lbs"))
         XCTAssertEqual(result.blockedBy, [.consecutiveCleanHits])
     }
 
@@ -111,6 +116,8 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .drop)
         XCTAssertEqual(result.stance.label, "Decrease load")
         XCTAssertEqual(result.reason, "Pain during was 4")
+        XCTAssertNil(result.suggestedChangeLoadLbs)
+        XCTAssertEqual(result.cardReason, "Pain during was 4")
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
@@ -229,10 +236,11 @@ final class ProgressionEngineTests: XCTestCase {
         ]
         let result = today(sessions)
         XCTAssertEqual(result.target.displayLine, "3×8 @ 35 lbs")
-        XCTAssertEqual(result.target.lastTimeLine, "Last time: 3×8 @ 35 lbs")
         XCTAssertEqual(result.stance, .advance)
         XCTAssertEqual(result.stance.label, "Increase load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
+        XCTAssertEqual(result.cardReason, ProgressionEngine.reasonTwoCleanIncrease)
+        XCTAssertFalse(result.cardReason.contains("Last time"))
         XCTAssertEqual(result.laterality, .bilateral)
     }
 
@@ -348,6 +356,56 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(after.stance, .advance)
         XCTAssertEqual(after.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(after.reason, ProgressionEngine.reasonTwoCleanIncrease)
+    }
+
+    func testCardReasonNamesOnlyADistinctSuggestedWeight() {
+        let increase = ProgressionResult(
+            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50),
+            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
+            stance: .advance,
+            reason: ProgressionEngine.reasonTwoCleanIncrease,
+            blockedBy: [],
+            laterality: .bilateral,
+            pendingResolveID: nil
+        )
+        XCTAssertEqual(increase.suggestedChangeLoadLbs, 50)
+        XCTAssertEqual(increase.cardReason, "Increase load: try 50 lbs")
+
+        let decrease = ProgressionResult(
+            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40),
+            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
+            stance: .drop,
+            reason: ProgressionEngine.reasonPain(4),
+            blockedBy: [.painDuring],
+            laterality: .bilateral,
+            pendingResolveID: nil
+        )
+        XCTAssertEqual(decrease.suggestedChangeLoadLbs, 40)
+        XCTAssertEqual(decrease.cardReason, "Decrease load: try 40 lbs")
+
+        let hold = ProgressionResult(
+            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50),
+            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
+            stance: .hold,
+            reason: ProgressionEngine.reasonOneClean,
+            blockedBy: [.consecutiveCleanHits],
+            laterality: .bilateral,
+            pendingResolveID: nil
+        )
+        XCTAssertNil(hold.suggestedChangeLoadLbs)
+        XCTAssertEqual(hold.cardReason, ProgressionEngine.reasonOneClean)
+
+        let noLoad = ProgressionResult(
+            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil),
+            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
+            stance: .advance,
+            reason: ProgressionEngine.reasonTwoCleanIncrease,
+            blockedBy: [],
+            laterality: .bilateral,
+            pendingResolveID: nil
+        )
+        XCTAssertNil(noLoad.suggestedChangeLoadLbs)
+        XCTAssertEqual(noLoad.cardReason, ProgressionEngine.reasonTwoCleanIncrease)
     }
 
     func testDropStanceLabel() {

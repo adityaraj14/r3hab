@@ -53,6 +53,26 @@ struct ProgressionResult: Equatable, Sendable {
     var laterality: SetLaterality
     /// Set when the latest primary-load session still needs a 24h resolve.
     var pendingResolveID: UUID?
+
+    /// Reason on the gold Next Up card.
+    /// Hold never adds a weight. A change-load stance names a suggested
+    /// weight only when the engine already produced one that is not the
+    /// last working load. Otherwise this is `reason`.
+    var cardReason: String {
+        guard let pounds = suggestedChangeLoadLbs else { return reason }
+        return "\(stance.label): try \(LoadCopy.labeled(pounds))"
+    }
+
+    /// Next weight, in pounds, when it differs from the last working load.
+    /// Hold does not suggest a number. A missing load is not a suggestion.
+    var suggestedChangeLoadLbs: Double? {
+        guard stance != .hold else { return nil }
+        guard let next = target.loadLbs else { return nil }
+        if let last = current.loadLbs, abs(next - last) < 0.001 {
+            return nil
+        }
+        return next
+    }
 }
 
 /// QL diary helpers. Clinical targets are TBD — these do not advise

@@ -285,9 +285,8 @@ struct HomeView: View {
 
     // MARK: Next up — the only gold on the screen
 
-    /// Eyebrow, the stance, then the one action. The dose button carries
-    /// the stance with it. Other actions keep the same line on the card.
-    /// A rest day is rest-only: no stance, reason, or dose.
+    /// Eyebrow, the stance, then the one action. Set-by-set detail stays on
+    /// the entry row. A rest day is rest-only: no stance, reason, or dose.
     private func nextUpCard(_ action: TodayNextAction) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(TodayPlanner.eyebrow(for: action, hasSessionDraft: todayDraftId != nil).uppercased())
@@ -340,8 +339,10 @@ struct HomeView: View {
                             stanceLine(todayProgression, onGold: true)
                         }
                         Label(nextUpSessionTitle, systemImage: activeInjury.systemImage)
-                        Text(showsPatellarLadder ? todayProgression.target.lastTimeLine : qlStubLines.joined(separator: " "))
-                            .font(.subheadline.weight(.medium))
+                        if !showsPatellarLadder {
+                            Text(qlStubLines.joined(separator: " "))
+                                .font(.subheadline.weight(.medium))
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -403,18 +404,18 @@ struct HomeView: View {
                         Capsule().strokeBorder(AppTheme.quietStroke, lineWidth: 1)
                     }
                 }
-            Text(result.reason)
+            Text(result.cardReason)
                 .font(.subheadline)
                 .foregroundStyle(reason)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(result.stance.label). \(result.reason)")
+        .accessibilityLabel("\(result.stance.label). \(result.cardReason)")
     }
 
     private var logSessionAccessibility: String {
         if showsPatellarLadder {
-            return "\(todayProgression.stance.label). \(todayProgression.reason). \(nextUpSessionTitle). \(todayProgression.target.lastTimeLine)"
+            return "\(todayProgression.stance.label). \(todayProgression.cardReason). \(nextUpSessionTitle)"
         }
         return "\(nextUpSessionTitle). \(qlStubLines.joined(separator: ". "))"
     }
