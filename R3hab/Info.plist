@@ -16,9 +16,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>R3hab reads your step count from Apple Health so you don’t have to type it each day. Pain scores and rehab notes stay only in the app.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>R3hab does not write data to Apple Health.</string>
+	<string>R3hab reads your step count from Apple Health to fill in your daily steps and chart them on Progress. It only reads steps, never writes, and the data stays on your iPhone.</string>
 </dict>
 </plist>
 

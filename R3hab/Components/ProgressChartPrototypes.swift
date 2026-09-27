@@ -437,6 +437,9 @@ private struct ProgressMetricChart: View {
                         .font(.caption2.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
+                if metric == .steps {
+                    AppleHealthLabel(prefix: "· from")
+                }
             }
             chart
                 .frame(height: metric.showsDateAxis ? 156 : 128)
