@@ -48,15 +48,7 @@ struct RehabProgressView: View {
     private var explorePoints: [DayExplorePoint] {
         ChartMetricBuilder.explorePoints(
             checkIns: metrics,
-            sessions: finalizedSessions.map { session in
-                SessionLoadSnapshot(
-                    date: session.date,
-                    createdAt: session.createdAt,
-                    volume: session.chartVolume,
-                    loadLbs: workingLoad(session),
-                    walkOnly: walkOnly(session)
-                )
-            },
+            sessions: finalizedSessions.map { loadSnapshot($0) },
             dayCount: windowDays,
             sessionPains: sessionPains
         )
@@ -125,12 +117,12 @@ struct RehabProgressView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Pain, load, and steps")
                                 .font(.headline)
-                            Text("Pain, load, and steps on one chart. Drag the scrubber to read a day.")
+                            Text("Three lanes share one date axis. Drag the scrubber to read a day.")
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                             KneeExploreChart(
                                 points: explorePoints,
-                                height: 140,
+                                height: 248,
                                 // Viewport matches the picker through 90 days. Longer All windows scroll.
                                 visibleDays: range.chartVisibleDays(windowDays: windowDays),
                                 emptyDescription: progressEmptyDescription
@@ -168,38 +160,18 @@ struct RehabProgressView: View {
         }
     }
 
-    /// Top work-set weight for the primary lift. Walk-only days and other exercises stay nil.
-    private func workingLoad(_ session: TrainingSession) -> Double? {
-        guard !primaryLoad.isWalk else { return nil }
-        guard ProgressionEngine.matchesPrimaryLoad(snapshot(session), title: primaryLoad.title) else { return nil }
-        return session.chartMaxLoad
-    }
-
-    /// A walk log has steps or time and no weight. The QL walk primary never carries a load.
-    private func walkOnly(_ session: TrainingSession) -> Bool {
-        if primaryLoad.isWalk { return true }
+    /// Volume always feeds the interpretation readout. The load lane takes any
+    /// session with a positive work-set weight. Walks have steps or time and no
+    /// weight, so they leave an empty slot. Side bends and hip thrusts use the
+    /// same bar and sets × reps label as a knee lift. Warm-ups are excluded.
+    private func loadSnapshot(_ session: TrainingSession) -> SessionLoadSnapshot {
         let sets = session.resistanceSets()
-        let hasWalk = sets.contains { ($0.steps ?? 0) > 0 || ($0.durationMinutes ?? 0) > 0 }
-        let hasLoad = sets.contains { !$0.isWarmup && $0.loadLbs != nil }
-        return hasWalk && !hasLoad
-    }
-
-    private func snapshot(_ session: TrainingSession) -> TrainingSessionSnapshot {
-        TrainingSessionSnapshot(
-            id: session.id,
+        return SessionLoadSnapshot(
             date: session.date,
             createdAt: session.createdAt,
-            sessionType: session.sessionType,
-            response24h: session.response24h,
-            decision: session.decision,
-            resolvedAt: session.resolvedAt,
-            snoozedUntil: session.snoozedUntil,
-            phase: session.phase,
-            painDuring: session.painDuring,
-            painAfter: session.painAfter,
-            isDraft: session.isDraft,
-            whatIDid: session.whatIDid,
-            resistanceSets: session.resistanceSets()
+            volume: session.chartVolume,
+            loadLbs: WorkingSetReps.topLoad(sets: sets),
+            repLabel: WorkingSetReps.label(sets: sets)
         )
     }
 
