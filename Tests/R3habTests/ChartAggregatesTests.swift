@@ -564,8 +564,8 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertNil(points[1].volume)
         XCTAssertEqual(points[1].steps, 3000)
         XCTAssertEqual(LaneScrubReadout.line(point: points[0]), "3×8 @ 40 lb")
-        XCTAssertEqual(LaneScrubReadout.line(point: points[1]), "Pain 2 · 3,000 steps")
-        XCTAssertNil(LaneScrubReadout.line(point: points[2]))
+        XCTAssertEqual(LaneScrubReadout.line(point: points[1]), "Pain 2 · no session · 3,000 steps")
+        XCTAssertEqual(LaneScrubReadout.line(point: points[2]), "no session")
     }
 
     func testLatestSessionWinsAndTieKeepsHeavierLoad() {
@@ -618,7 +618,7 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(segments[1].map(\.steps), [1200])
     }
 
-    func testReadoutPlaceholderOnlyWhenTheDayIsEmpty() {
+    func testEmptyDayReadoutSaysNoSession() {
         let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
         let points = ChartMetricBuilder.explorePoints(
             checkIns: [],
@@ -627,8 +627,7 @@ final class ChartAggregatesTests: XCTestCase {
             today: today,
             calendar: calendar
         )
-        XCTAssertNil(LaneScrubReadout.line(point: points[0]))
-        XCTAssertEqual(LaneScrubReadout.emptyDay, "No pain, load, or steps")
+        XCTAssertEqual(LaneScrubReadout.line(point: points[0]), LaneScrubReadout.noSession)
     }
 
     func testLoadBeforeTheWindowDoesNotFillRestDays() {
@@ -682,26 +681,26 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertEqual(WorkingSetReps.topLoad(sets: holds), 15)
     }
 
-    func testLaneReadoutOmitsMissingParts() {
+    func testLaneReadoutShowsSessionOrNoSession() {
         XCTAssertEqual(
             LaneScrubReadout.line(pain: 2, repLabel: "3×8", loadLbs: 45, steps: 6200),
             "Pain 2 · 3×8 @ 45 lb · 6,200 steps"
         )
         XCTAssertEqual(
-            LaneScrubReadout.line(pain: 2, repLabel: "8/8/6", loadLbs: 45, steps: 6200),
-            "Pain 2 · 8/8/6 @ 45 lb · 6,200 steps"
+            LaneScrubReadout.line(pain: 2, repLabel: "8/10/10", loadLbs: 45, steps: 6200),
+            "Pain 2 · 8/10/10 @ 45 lb · 6,200 steps"
         )
         XCTAssertEqual(
             LaneScrubReadout.line(pain: 2, repLabel: nil, loadLbs: nil, steps: nil),
-            "Pain 2"
+            "Pain 2 · no session"
         )
         XCTAssertEqual(
             LaneScrubReadout.line(pain: nil, repLabel: nil, loadLbs: nil, steps: 6200),
-            "6,200 steps"
+            "no session · 6,200 steps"
         )
         XCTAssertEqual(
             LaneScrubReadout.line(pain: 0, repLabel: nil, loadLbs: nil, steps: 0),
-            "Pain 0 · 0 steps"
+            "Pain 0 · no session · 0 steps"
         )
         XCTAssertEqual(
             LaneScrubReadout.line(pain: 3.5, repLabel: "3×8", loadLbs: 45.5, steps: nil),
@@ -711,7 +710,10 @@ final class ChartAggregatesTests: XCTestCase {
             LaneScrubReadout.line(pain: nil, repLabel: "3×8", loadLbs: nil, steps: nil),
             "3×8"
         )
-        XCTAssertNil(LaneScrubReadout.line(pain: nil, repLabel: nil, loadLbs: nil, steps: nil))
+        XCTAssertEqual(
+            LaneScrubReadout.line(pain: nil, repLabel: nil, loadLbs: nil, steps: nil),
+            "no session"
+        )
     }
 
     func testRepLabelsThinWhenTheWindowGetsCrowded() {
@@ -768,7 +770,142 @@ final class ChartAggregatesTests: XCTestCase {
         )
         XCTAssertEqual(
             LaneScrubReadout.line(point: points[4]),
-            "Pain 1 · 5,000 steps"
+            "Pain 1 · no session · 5,000 steps"
         )
+    }
+
+    func testTodayZeroStepsCountAsNoData() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [
+                DailyMetricSnapshot(date: day(-1, from: today), restingPainAM: nil, dailyPainPM: nil, steps: 0),
+                DailyMetricSnapshot(date: today, restingPainAM: 2, dailyPainPM: nil, steps: 0)
+            ],
+            sessions: [],
+            dayCount: 2,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points[0].steps, 0)
+        XCTAssertNil(points[1].steps)
+        XCTAssertEqual(LaneScrubReadout.line(point: points[0]), "no session · 0 steps")
+        XCTAssertEqual(LaneScrubReadout.line(point: points[1]), "Pain 2 · no session")
+        let samples = ExploreSeries.continuousSamples(points, value: \.steps)
+        XCTAssertEqual(samples.map(\.value), [0])
+    }
+
+    func testContinuousSamplesSpanGapsWithoutInventingValues() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let pains: [Double?] = [1, nil, 3]
+        let loads: [Double?] = [40, nil, nil, 50]
+        let points = (0..<4).map { index in
+            let date = day(index - 3, from: today)
+            return DayExplorePoint(
+                dayKey: CalendarDay.dayKey(date, calendar: calendar),
+                date: date,
+                pain: index < pains.count ? pains[index] : nil,
+                loadLbs: loads[index],
+                steps: index == 2 ? nil : Double(index * 1000)
+            )
+        }
+        let pain = ExploreSeries.continuousSamples(points, value: \.pain)
+        XCTAssertEqual(pain.map(\.value), [1, 3])
+        XCTAssertEqual(pain.map(\.date), [points[0].date, points[2].date])
+        let load = ExploreSeries.continuousSamples(points, value: \.loadLbs)
+        XCTAssertEqual(load.map(\.value), [40, 50])
+        XCTAssertEqual(load.map(\.date), [points[0].date, points[3].date])
+        XCTAssertFalse(load.contains { $0.value == 0 })
+    }
+
+    func testProgressChartIdentifiersStayDistinct() {
+        XCTAssertEqual(ProgressChartAccessibility.chart, "progress-explore-chart")
+        XCTAssertEqual(ProgressChartAccessibility.scrubber, "progress-day-scrubber")
+        XCTAssertEqual(ProgressChartAccessibility.readout, "progress-lane-readout")
+        XCTAssertEqual(
+            ProgressChartAccessibility.containedIdentifiers,
+            [ProgressChartAccessibility.scrubber, ProgressChartAccessibility.readout]
+        )
+        XCTAssertFalse(
+            ProgressChartAccessibility.containedIdentifiers.contains(ProgressChartAccessibility.chart)
+        )
+    }
+
+    func testAxisLabelsFitOnProMaxAndMatchPlottedDays() {
+        let plotWidth = ExploreAxisLayout.proMaxPlotWidth
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let cases = [(7, 7), (28, 28), (90, 90), (400, 90)]
+        for (count, visible) in cases {
+            let points = (0..<count).map { index in
+                let date = calendar.date(byAdding: .day, value: index - (count - 1), to: today)!
+                return DayExplorePoint(
+                    dayKey: CalendarDay.dayKey(date, calendar: calendar),
+                    date: date,
+                    pain: 2
+                )
+            }
+            let domain = ExploreAxisLayout.xDomain(
+                points: points,
+                plotWidth: plotWidth,
+                visibleDayCount: visible
+            )
+            let dates = ExploreAxisLayout.axisDates(
+                points: points,
+                plotWidth: plotWidth,
+                visibleDayCount: visible
+            )
+            XCTAssertFalse(dates.isEmpty, "expected labels for \(count) days")
+            let plotted = Set(points.map { $0.date.timeIntervalSinceReferenceDate })
+            var previousX: Double?
+            for date in dates {
+                XCTAssertTrue(
+                    plotted.contains(date.timeIntervalSinceReferenceDate),
+                    "axis date is not a plotted day"
+                )
+                if count <= visible {
+                    XCTAssertTrue(
+                        ExploreAxisLayout.labelFits(date: date, domain: domain, plotWidth: plotWidth),
+                        "label clips on a \(count)-day Pro Max plot"
+                    )
+                    let x = ExploreAxisLayout.labelCenterX(for: date, domain: domain, plotWidth: plotWidth)
+                    if let previousX {
+                        XCTAssertGreaterThanOrEqual(
+                            x - previousX,
+                            ExploreAxisLayout.dateLabelWidth - 0.5
+                        )
+                    }
+                    previousX = x
+                }
+            }
+            if count > visible {
+                let visibleStart = points[200].date
+                let visibleEnd = points[289].date
+                let shown = ExploreAxisLayout.visibleAxisDates(
+                    candidates: dates,
+                    visibleStart: visibleStart,
+                    visibleEnd: visibleEnd,
+                    plotWidth: plotWidth
+                )
+                XCTAssertFalse(shown.isEmpty)
+                XCTAssertFalse(
+                    shown.contains { $0.timeIntervalSinceReferenceDate == visibleStart.timeIntervalSinceReferenceDate }
+                )
+                var previous: Double?
+                let viewport = visibleStart...visibleEnd
+                for date in shown {
+                    XCTAssertTrue(
+                        ExploreAxisLayout.labelFits(
+                            date: date,
+                            domain: viewport,
+                            plotWidth: plotWidth
+                        )
+                    )
+                    let x = ExploreAxisLayout.labelCenterX(for: date, domain: viewport, plotWidth: plotWidth)
+                    if let previous {
+                        XCTAssertGreaterThanOrEqual(x - previous, ExploreAxisLayout.dateLabelWidth - 0.5)
+                    }
+                    previous = x
+                }
+            }
+        }
     }
 }

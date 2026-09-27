@@ -1,7 +1,10 @@
 import SwiftUI
 import Charts
+#if canImport(UIKit)
+import UIKit
+#endif
 
-/// Colors for the Progress chart. Dark canvas, one gold accent.
+/// Colors for the Progress charts. Dark canvas, one gold accent.
 enum ExplorePalette {
     static let pain = AppTheme.gold
     static let load = Color(red: 1.0, green: 0.55, blue: 0.25)
@@ -41,15 +44,18 @@ enum ExplorePlotMetrics {
     }
 }
 
-/// Pain, load, and steps as three lanes on one date axis.
+/// Pain, load, and steps as three charts on one date timeline.
 struct KneeExploreChart: View {
     let points: [DayExplorePoint]
-    var height: CGFloat = 248
     var visibleDays: Int = 7
     var emptyDescription: String = "Log morning or evening pain, steps, or a session. The chart reads the days you actually logged."
 
     @State private var selectedDate: Date?
-    @State private var plotInsets = PlotInsets(leading: ProgressLanesPlot.labelGutter, trailing: 8)
+    @State private var scrollDate = Date()
+    @State private var plotInsets = PlotInsets(
+        leading: CGFloat(ExploreAxisLayout.yAxisWidth),
+        trailing: CGFloat(ExploreAxisLayout.plotTrailingPadding)
+    )
 
     private var selected: DayExplorePoint? {
         let target = selectedDate ?? defaultSelectedDate
@@ -65,17 +71,59 @@ struct KneeExploreChart: View {
         points.contains(where: \.hasValues)
     }
 
+    private var allowsScroll: Bool {
+        points.count > visibleDays
+    }
+
+    private var domain: ClosedRange<Date> {
+        ExploreAxisLayout.xDomain(
+            points: points,
+            plotWidth: ExploreAxisLayout.proMaxPlotWidth,
+            visibleDayCount: visibleDays
+        )
+    }
+
+    private var axisDates: [Date] {
+        ExploreAxisLayout.axisDates(
+            points: points,
+            plotWidth: ExploreAxisLayout.proMaxPlotWidth,
+            visibleDayCount: visibleDays
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if hasData {
-                ExploreLegend()
-                ProgressLanesPlot(
+                ProgressMetricChart(
+                    metric: .pain,
                     points: points,
                     visibleDays: visibleDays,
-                    selectedDate: $selectedDate
+                    allowsScroll: allowsScroll,
+                    domain: domain,
+                    axisDates: axisDates,
+                    selectedDate: $selectedDate,
+                    scrollDate: $scrollDate
                 )
-                .frame(height: max(height, 220))
-                .accessibilityLabel("Pain, load, and steps. Pain is a solid 0 to 10 line. Load is a bar per session. Steps are a dotted line.")
+                ProgressMetricChart(
+                    metric: .load,
+                    points: points,
+                    visibleDays: visibleDays,
+                    allowsScroll: allowsScroll,
+                    domain: domain,
+                    axisDates: axisDates,
+                    selectedDate: $selectedDate,
+                    scrollDate: $scrollDate
+                )
+                ProgressMetricChart(
+                    metric: .steps,
+                    points: points,
+                    visibleDays: visibleDays,
+                    allowsScroll: allowsScroll,
+                    domain: domain,
+                    axisDates: axisDates,
+                    selectedDate: $selectedDate,
+                    scrollDate: $scrollDate
+                )
                 .onPreferenceChange(PlotInsetsKey.self) { plotInsets = $0 }
                 if let selected {
                     ExploreScrubber(
@@ -87,9 +135,6 @@ struct KneeExploreChart: View {
                     )
                     ExploreDayReadout(point: selected)
                 }
-                Text("Drag the scrubber. One line reads that day on every lane.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             } else {
                 ContentUnavailableView(
                     "The trend starts with one honest number",
@@ -99,11 +144,14 @@ struct KneeExploreChart: View {
                 .frame(height: 140)
             }
         }
-        .accessibilityIdentifier("progress-explore-chart")
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(ProgressChartAccessibility.chart)
         .onAppear {
             if selectedDate == nil {
                 selectedDate = defaultSelectedDate
             }
+            guard allowsScroll else { return }
+            scrollDate = scrollAnchor(for: selectedDate ?? points.last?.date ?? Date())
         }
         .onChange(of: points.map(\.dayKey)) { _, _ in
             guard let selectedDate else { return }
@@ -111,35 +159,19 @@ struct KneeExploreChart: View {
                 self.selectedDate = defaultSelectedDate
             }
         }
+        .onChange(of: selectedDate) { _, newValue in
+            guard allowsScroll, let newValue else { return }
+            scrollDate = scrollAnchor(for: newValue)
+        }
+    }
+
+    private func scrollAnchor(for date: Date) -> Date {
+        Calendar.current.date(byAdding: .day, value: -(max(visibleDays, 1) / 2), to: date) ?? date
     }
 
     private func daySummary(_ point: DayExplorePoint) -> String {
         let date = point.date.formatted(date: .abbreviated, time: .omitted)
-        if let line = LaneScrubReadout.line(point: point) {
-            return "\(date). \(line)."
-        }
-        return "\(date). \(LaneScrubReadout.emptyDay)."
-    }
-}
-
-private struct ExploreLegend: View {
-    var body: some View {
-        HStack(spacing: 14) {
-            item(ExplorePalette.pain, "Pain", accessibility: "Pain")
-            item(ExplorePalette.load, "Load", accessibility: "Load in pounds")
-            item(ExplorePalette.steps, "Steps", accessibility: "Steps")
-        }
-        .font(.caption2.weight(.medium))
-        .foregroundStyle(.secondary)
-    }
-
-    private func item(_ color: Color, _ title: String, accessibility: String) -> some View {
-        HStack(spacing: 5) {
-            Circle().fill(color).frame(width: 7, height: 7)
-            Text(title)
-        }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibility)
+        return "\(date). \(LaneScrubReadout.line(point: point))."
     }
 }
 
@@ -166,17 +198,18 @@ private struct ExploreScrubber: View {
                     .overlay(Circle().strokeBorder(Color.black.opacity(0.35), lineWidth: 1))
                     .position(x: thumbX(width: width), y: geo.size.height / 2)
             }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        select(at: value.location.x, width: width)
-                    }
-            )
+            .allowsHitTesting(false)
+            .overlay {
+                #if canImport(UIKit)
+                HorizontalDayScrub { location in
+                    select(at: location.x, width: width)
+                }
+                #endif
+            }
         }
         .frame(height: 28)
         .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("progress-day-scrubber")
+        .accessibilityIdentifier(ProgressChartAccessibility.scrubber)
         .accessibilityLabel("Day scrubber")
         .accessibilityValue(summary)
         .accessibilityHint("Swipe up or down to move one day.")
@@ -244,7 +277,7 @@ private struct ExploreDayReadout: View {
         VStack(alignment: .leading, spacing: 8) {
             Text(point.date.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline.weight(.semibold))
-            Text(LaneScrubReadout.line(point: point) ?? LaneScrubReadout.emptyDay)
+            Text(LaneScrubReadout.line(point: point))
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.primary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -257,16 +290,13 @@ private struct ExploreDayReadout: View {
                 .fill(Color.white.opacity(0.06))
         )
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("progress-lane-readout")
+        .accessibilityIdentifier(ProgressChartAccessibility.readout)
         .accessibilityLabel(scrubLabel)
     }
 
     private var scrubLabel: String {
         let date = point.date.formatted(date: .abbreviated, time: .omitted)
-        if let line = LaneScrubReadout.line(point: point) {
-            return "\(date). \(line)."
-        }
-        return "\(date). \(LaneScrubReadout.emptyDay)."
+        return "\(date). \(LaneScrubReadout.line(point: point))."
     }
 }
 
@@ -291,216 +321,102 @@ private struct ExploreDayDetails: View {
     }
 }
 
-// MARK: - Lanes
+// MARK: - Three charts
 
-private struct ProgressLanesPlot: View {
-    static let labelGutter: CGFloat = 44
+private enum ProgressChartMetric: Equatable {
+    case pain
+    case load
+    case steps
 
-    let points: [DayExplorePoint]
-    var visibleDays: Int
-    @Binding var selectedDate: Date?
-
-    private var calendar: Calendar { .current }
-
-    private var loadPeak: Double {
-        ExploreSignalScale.peak(points.map(\.loadLbs))
+    var title: String {
+        switch self {
+        case .pain: return "Pain"
+        case .load: return "Load"
+        case .steps: return "Steps"
+        }
     }
 
-    private var stepsPeak: Double {
-        ExploreSignalScale.peak(points.map(\.steps))
+    var unit: String? {
+        switch self {
+        case .pain: return "0–10"
+        case .load: return "lb"
+        case .steps: return nil
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .pain: return ExplorePalette.pain
+        case .load: return ExplorePalette.load
+        case .steps: return ExplorePalette.steps
+        }
+    }
+
+    var showsDateAxis: Bool { self == .steps }
+
+    var stroke: StrokeStyle {
+        switch self {
+        case .pain, .load:
+            return StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round)
+        case .steps:
+            return StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round, dash: [0.8, 3.2])
+        }
+    }
+
+    func samples(_ points: [DayExplorePoint]) -> [ExploreSample] {
+        switch self {
+        case .pain:
+            return ExploreSeries.continuousSamples(points, value: \.pain)
+        case .load:
+            return ExploreSeries.continuousSamples(points, value: \.loadLbs)
+        case .steps:
+            return ExploreSeries.continuousSamples(points, value: \.steps)
+        }
+    }
+}
+
+private struct ProgressMetricChart: View {
+    var metric: ProgressChartMetric
+    let points: [DayExplorePoint]
+    var visibleDays: Int
+    var allowsScroll: Bool
+    var domain: ClosedRange<Date>
+    var axisDates: [Date]
+    @Binding var selectedDate: Date?
+    @Binding var scrollDate: Date
+
+    private var samples: [ExploreSample] {
+        metric.samples(points)
+    }
+
+    private var yDomain: ClosedRange<Double> {
+        switch metric {
+        case .pain:
+            return 0...10
+        case .load, .steps:
+            let peak = samples.map(\.value).max() ?? 0
+            return 0...axisTop(for: peak)
+        }
+    }
+
+    private var yTicks: [Double] {
+        switch metric {
+        case .pain:
+            return [0, 5, 10]
+        case .load, .steps:
+            let top = yDomain.upperBound
+            return [0, top / 2, top]
+        }
     }
 
     private var labeledDayKeys: Set<String> {
+        guard metric == .load else { return [] }
         let indexes = points.enumerated().compactMap { index, point -> Int? in
             guard point.loadLbs != nil, let label = point.repLabel, !label.isEmpty else { return nil }
             return index
         }
         let shown = RepLabelVisibility.shown(sessionDayIndexes: indexes, dayCount: points.count)
         return Set(shown.map { points[$0].dayKey })
-    }
-
-    private var barWidth: CGFloat {
-        let days = CGFloat(max(min(points.count, max(visibleDays, 1)), 1))
-        return min(16, max(2.5, 180 / days))
-    }
-
-    private var xDomain: ClosedRange<Date> {
-        guard let first = points.first?.date, let last = points.last?.date else {
-            let now = Date()
-            return now...now
-        }
-        let start = calendar.date(byAdding: .hour, value: -10, to: first) ?? first
-        let end = calendar.date(byAdding: .hour, value: 14, to: last) ?? last
-        return start...end
-    }
-
-    private var xStride: Int {
-        max(1, min(points.count, visibleDays) / 3)
-    }
-
-    private var allowsScroll: Bool {
-        points.count > visibleDays
-    }
-
-    var body: some View {
-        chart
-            .modifier(ExploreScrollModifier(visibleDays: visibleDays, enabled: allowsScroll, scrollDate: $scrollDate))
-            .modifier(ChartDayPickerModifier(points: points, selectedDate: $selectedDate, enableScrub: !allowsScroll))
-            .onAppear {
-                guard allowsScroll else { return }
-                scrollDate = scrollAnchor(for: selectedDate ?? points.last?.date ?? Date())
-            }
-            .onChange(of: selectedDate) { _, newValue in
-                guard allowsScroll, let newValue else { return }
-                scrollDate = scrollAnchor(for: newValue)
-            }
-    }
-
-    @State private var scrollDate = Date()
-
-    private func scrollAnchor(for date: Date) -> Date {
-        calendar.date(byAdding: .day, value: -(max(visibleDays, 1) / 2), to: date) ?? date
-    }
-
-    private var chart: some View {
-        Chart {
-            laneGuides
-            painMarks
-            loadMarks
-            stepMarks
-            if let selected = selectedDate.flatMap({ ChartDaySelection.nearestPoint(to: $0, in: points) }) {
-                RuleMark(x: .value("Selected", selected.date))
-                    .foregroundStyle(AppTheme.gold.opacity(0.95))
-                    .lineStyle(StrokeStyle(lineWidth: 1.5))
-            }
-        }
-        .chartYScale(domain: LaneScale.domain)
-        .chartYAxis(.hidden)
-        .chartXScale(domain: xDomain)
-        .chartLegend(.hidden)
-        .chartPlotStyle { plot in
-            plot.padding(.leading, Self.labelGutter).padding(.trailing, 8)
-        }
-        .chartXAxis {
-            AxisMarks(values: .stride(by: .day, count: xStride)) { _ in
-                AxisGridLine().foregroundStyle(Color.white.opacity(0.08))
-                AxisValueLabel(format: .dateTime.month(.abbreviated).day())
-            }
-        }
-        .chartOverlay { proxy in
-            GeometryReader { geo in
-                if let plotFrame = proxy.plotFrame {
-                    let plot = geo[plotFrame]
-                    ZStack {
-                        Color.clear.preference(
-                            key: PlotInsetsKey.self,
-                            value: PlotInsets(
-                                leading: plot.minX,
-                                trailing: max(0, geo.size.width - plot.maxX)
-                            )
-                        )
-                        laneTitle("Pain", detail: "0–10", color: ExplorePalette.pain, at: 2.50, plot: plot)
-                        laneTitle("Load", detail: "lb", color: ExplorePalette.load, at: 1.40, plot: plot)
-                        laneTitle("Steps", detail: nil, color: ExplorePalette.steps, at: 0.43, plot: plot)
-                    }
-                }
-            }
-            .allowsHitTesting(false)
-        }
-    }
-
-    @ChartContentBuilder
-    private var laneGuides: some ChartContent {
-        RuleMark(y: .value("Pain floor", LaneScale.pain.floor))
-            .foregroundStyle(Color.white.opacity(0.10))
-        RuleMark(y: .value("Load floor", LaneScale.load.floor))
-            .foregroundStyle(Color.white.opacity(0.10))
-        RuleMark(y: .value("Steps floor", LaneScale.steps.floor))
-            .foregroundStyle(Color.white.opacity(0.10))
-        RuleMark(y: .value("Upper split", 1.96))
-            .foregroundStyle(Color.white.opacity(0.14))
-        RuleMark(y: .value("Lower split", 0.96))
-            .foregroundStyle(Color.white.opacity(0.14))
-    }
-
-    @ChartContentBuilder
-    private var painMarks: some ChartContent {
-        let segments = ExploreSeries.contiguousSegments(points, value: \.pain)
-        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-            ForEach(segment) { point in
-                if let pain = point.pain {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Pain", LaneScale.pain.y(pain / 10)),
-                        series: .value("Pain", "pain-\(index)")
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(ExplorePalette.pain)
-                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, lineJoin: .round))
-                }
-            }
-            if segment.count == 1, let only = segment.first, let pain = only.pain {
-                PointMark(
-                    x: .value("Day", only.date),
-                    y: .value("Pain", LaneScale.pain.y(pain / 10))
-                )
-                .foregroundStyle(ExplorePalette.pain)
-                .symbolSize(28)
-            }
-        }
-    }
-
-    @ChartContentBuilder
-    private var loadMarks: some ChartContent {
-        ForEach(points) { point in
-            if let load = point.loadLbs {
-                BarMark(
-                    x: .value("Day", point.date),
-                    yStart: .value("Load base", LaneScale.load.floor),
-                    yEnd: .value("Load", loadTop(load)),
-                    width: .fixed(barWidth)
-                )
-                .foregroundStyle(ExplorePalette.load.opacity(0.92))
-                .cornerRadius(2)
-                .annotation(position: .top, spacing: 1) {
-                    if let label = point.repLabel, labeledDayKeys.contains(point.dayKey) {
-                        Text(label)
-                            .font(repLabelFont)
-                            .foregroundStyle(ExplorePalette.load)
-                            .lineLimit(1)
-                    }
-                }
-            }
-        }
-    }
-
-    @ChartContentBuilder
-    private var stepMarks: some ChartContent {
-        let segments = ExploreSeries.contiguousSegments(points, value: \.steps)
-        ForEach(Array(segments.enumerated()), id: \.offset) { index, segment in
-            ForEach(segment) { point in
-                if let steps = point.steps,
-                   let unit = ExploreSignalScale.unit(steps, peak: stepsPeak) {
-                    LineMark(
-                        x: .value("Day", point.date),
-                        y: .value("Steps", LaneScale.steps.y(unit)),
-                        series: .value("Steps", "steps-\(index)")
-                    )
-                    .interpolationMethod(.linear)
-                    .foregroundStyle(ExplorePalette.steps)
-                    .lineStyle(StrokeStyle(lineWidth: 2, lineCap: .round, dash: [0.5, 3.5]))
-                }
-            }
-            if segment.count == 1, let only = segment.first, let steps = only.steps,
-               let unit = ExploreSignalScale.unit(steps, peak: stepsPeak) {
-                PointMark(
-                    x: .value("Day", only.date),
-                    y: .value("Steps", LaneScale.steps.y(unit))
-                )
-                .foregroundStyle(ExplorePalette.steps)
-                .symbolSize(24)
-            }
-        }
     }
 
     private var repLabelFont: Font {
@@ -510,111 +426,157 @@ private struct ProgressLanesPlot: View {
         return .caption2.weight(.bold)
     }
 
-    private func loadTop(_ load: Double) -> Double {
-        let unit = ExploreSignalScale.unit(load, peak: loadPeak) ?? 0
-        return max(LaneScale.load.y(unit), LaneScale.load.floor + 0.035)
-    }
-
-    private func laneTitle(
-        _ title: String,
-        detail: String?,
-        color: Color,
-        at value: Double,
-        plot: CGRect
-    ) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-            if let detail {
-                Text(detail)
-                    .font(.system(size: 8, weight: .medium))
-            }
-        }
-        .foregroundStyle(color)
-        .position(x: plot.minX - Self.labelGutter / 2, y: plotY(value, plot: plot))
-        .accessibilityHidden(true)
-    }
-
-    private func plotY(_ value: Double, plot: CGRect) -> CGFloat {
-        let span = LaneScale.domain.upperBound - LaneScale.domain.lowerBound
-        let t = (LaneScale.domain.upperBound - value) / span
-        return plot.minY + CGFloat(t) * plot.height
-    }
-}
-
-private struct PlotInsets: Equatable {
-    var leading: CGFloat
-    var trailing: CGFloat
-}
-
-private struct PlotInsetsKey: PreferenceKey {
-    static var defaultValue = PlotInsets(leading: ProgressLanesPlot.labelGutter, trailing: 8)
-
-    static func reduce(value: inout PlotInsets, nextValue: () -> PlotInsets) {
-        value = nextValue()
-    }
-}
-
-private struct LaneScale {
-    var floor: Double
-    var ceiling: Double
-
-    func y(_ unit: Double) -> Double {
-        let t = min(1, max(0, unit))
-        return floor + t * (ceiling - floor)
-    }
-
-    static let steps = LaneScale(floor: 0.08, ceiling: 0.78)
-    static let load = LaneScale(floor: 1.10, ceiling: 1.68)
-    static let pain = LaneScale(floor: 2.12, ceiling: 2.90)
-    static let domain = 0.0...3.0
-}
-
-
-private struct ExploreScrollModifier: ViewModifier {
-    var visibleDays: Int
-    var enabled: Bool
-    @Binding var scrollDate: Date
-
-    func body(content: Content) -> some View {
-        if enabled {
-            content
-                .chartScrollableAxes(.horizontal)
-                .chartXVisibleDomain(length: TimeInterval(visibleDays) * 24 * 60 * 60 + 12 * 60 * 60)
-                .chartScrollPosition(x: $scrollDate)
-        } else {
-            content
-        }
-    }
-}
-
-/// Tap, and drag when the chart itself is not scrolling, so one day is chosen across every lane.
-private struct ChartDayPickerModifier: ViewModifier {
-    let points: [DayExplorePoint]
-    @Binding var selectedDate: Date?
-    var enableScrub: Bool
-
-    func body(content: Content) -> some View {
-        content
-            .chartOverlay { proxy in
-                GeometryReader { geo in
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .simultaneousGesture(
-                            SpatialTapGesture()
-                                .onEnded { event in
-                                    select(at: event.location, proxy: proxy, geo: geo)
-                                }
-                        )
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: enableScrub ? 8 : 10_000)
-                                .onChanged { value in
-                                    guard enableScrub else { return }
-                                    select(at: value.location, proxy: proxy, geo: geo)
-                                }
-                        )
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(metric.title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(metric.color)
+                if let unit = metric.unit {
+                    Text(unit)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
             }
+            chart
+                .frame(height: metric.showsDateAxis ? 156 : 128)
+                .accessibilityHidden(true)
+        }
+        .padding(CGFloat(ExploreAxisLayout.chartCardPadding / 2))
+        .background(
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(Color.white.opacity(0.04))
+        )
+    }
+
+    private var chart: some View {
+        Chart {
+            ForEach(axisDates, id: \.timeIntervalSinceReferenceDate) { date in
+                RuleMark(x: .value("Day", date))
+                    .foregroundStyle(Color.white.opacity(0.10))
+            }
+            ForEach(samples) { sample in
+                LineMark(
+                    x: .value("Day", sample.date),
+                    y: .value(metric.title, sample.value)
+                )
+                .interpolationMethod(.linear)
+                .foregroundStyle(metric.color)
+                .lineStyle(metric.stroke)
+            }
+            seriesPoints
+            if let selected = selectedDate.flatMap({ ChartDaySelection.nearestPoint(to: $0, in: points) }) {
+                RuleMark(x: .value("Selected", selected.date))
+                    .foregroundStyle(AppTheme.gold.opacity(0.95))
+                    .lineStyle(StrokeStyle(lineWidth: 1.5))
+            }
+        }
+        .chartYScale(domain: yDomain)
+        .chartXScale(domain: domain)
+        .chartXAxis(.hidden)
+        .chartYAxis {
+            AxisMarks(position: .leading, values: yTicks) { value in
+                AxisGridLine().foregroundStyle(Color.white.opacity(0.08))
+                AxisValueLabel {
+                    if let number = value.as(Double.self) {
+                        Text(yLabel(number))
+                            .font(.caption2)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                            .frame(width: CGFloat(ExploreAxisLayout.yAxisWidth) - 8, alignment: .trailing)
+                    }
+                }
+            }
+        }
+        .chartLegend(.hidden)
+        .chartPlotStyle { plot in
+            plot.padding(.bottom, metric.showsDateAxis ? 22 : 0)
+        }
+        .modifier(ExploreScrollModifier(visibleDays: visibleDays, enabled: allowsScroll, scrollDate: $scrollDate))
+        .chartOverlay { proxy in
+            GeometryReader { geo in
+                ZStack {
+                    if metric.showsDateAxis {
+                        dateLabels(proxy: proxy, geo: geo)
+                    }
+                    if !allowsScroll {
+                        #if canImport(UIKit)
+                        HorizontalDayScrub { location in
+                            select(at: location, proxy: proxy, geo: geo)
+                        }
+                        #endif
+                    }
+                }
+                .allowsHitTesting(!allowsScroll)
+                .preference(key: PlotInsetsKey.self, value: insets(proxy: proxy, geo: geo))
+            }
+        }
+    }
+
+    @ChartContentBuilder
+    private var seriesPoints: some ChartContent {
+        if metric == .load {
+            ForEach(points) { point in
+                if let load = point.loadLbs {
+                    PointMark(
+                        x: .value("Day", point.date),
+                        y: .value("Load", load)
+                    )
+                    .foregroundStyle(ExplorePalette.load)
+                    .symbolSize(36)
+                    .annotation(position: .top, spacing: 2) {
+                        if let label = point.repLabel, labeledDayKeys.contains(point.dayKey) {
+                            Text(label)
+                                .font(repLabelFont)
+                                .foregroundStyle(ExplorePalette.load)
+                                .lineLimit(1)
+                                .fixedSize()
+                        }
+                    }
+                }
+            }
+        } else if samples.count == 1, let only = samples.first {
+            PointMark(
+                x: .value("Day", only.date),
+                y: .value(metric.title, only.value)
+            )
+            .foregroundStyle(metric.color)
+            .symbolSize(28)
+        }
+    }
+
+    private func dateLabels(proxy: ChartProxy, geo: GeometryProxy) -> some View {
+        let half = CGFloat(ExploreAxisLayout.dateLabelWidth) / 2
+        return ZStack {
+            if let plotFrame = proxy.plotFrame {
+                let plot = geo[plotFrame]
+                ForEach(axisDates, id: \.timeIntervalSinceReferenceDate) { date in
+                    if let x = proxy.position(forX: date), x - half >= 0, x + half <= plot.width {
+                        Text(date, format: .dateTime.month(.abbreviated).day())
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .fixedSize()
+                            .position(x: plot.minX + x, y: plot.maxY + 12)
+                    }
+                }
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func insets(proxy: ChartProxy, geo: GeometryProxy) -> PlotInsets {
+        guard metric.showsDateAxis, let plotFrame = proxy.plotFrame else {
+            return PlotInsets(
+                leading: CGFloat(ExploreAxisLayout.yAxisWidth),
+                trailing: CGFloat(ExploreAxisLayout.plotTrailingPadding)
+            )
+        }
+        let plot = geo[plotFrame]
+        return PlotInsets(
+            leading: plot.minX,
+            trailing: max(0, geo.size.width - plot.maxX)
+        )
     }
 
     private func select(at location: CGPoint, proxy: ChartProxy, geo: GeometryProxy) {
@@ -634,7 +596,141 @@ private struct ChartDayPickerModifier: ViewModifier {
         Haptics.light()
         selectedDate = day.date
     }
+
+    private func yLabel(_ value: Double) -> String {
+        switch metric {
+        case .pain:
+            return String(Int(value.rounded()))
+        case .load:
+            return LaneScrubReadout.formatLoad(value)
+        case .steps:
+            return compactCount(value)
+        }
+    }
+
+    private func compactCount(_ value: Double) -> String {
+        let rounded = value.rounded()
+        if abs(rounded) < 1000 {
+            return String(Int(rounded))
+        }
+        let thousands = rounded / 1000
+        if abs(thousands.rounded() - thousands) < 0.05 {
+            return "\(Int(thousands.rounded()))k"
+        }
+        return String(format: "%.1fk", thousands)
+    }
+
+    private func axisTop(for peak: Double) -> Double {
+        let raw = max(peak * 1.35, 1)
+        let step: Double
+        switch raw {
+        case ..<10: step = 2
+        case ..<40: step = 5
+        case ..<100: step = 10
+        case ..<400: step = 50
+        case ..<2000: step = 100
+        case ..<20000: step = 1000
+        default: step = 5000
+        }
+        return ceil(raw / step) * step
+    }
 }
+
+private struct PlotInsets: Equatable {
+    var leading: CGFloat
+    var trailing: CGFloat
+}
+
+private struct PlotInsetsKey: PreferenceKey {
+    static var defaultValue = PlotInsets(
+        leading: CGFloat(ExploreAxisLayout.yAxisWidth),
+        trailing: CGFloat(ExploreAxisLayout.plotTrailingPadding)
+    )
+
+    static func reduce(value: inout PlotInsets, nextValue: () -> PlotInsets) {
+        let next = nextValue()
+        // Only the steps chart publishes the real plot frame. The other two
+        // repeat the placeholder, which would otherwise wipe the measurement.
+        if next.leading != defaultValue.leading || next.trailing != defaultValue.trailing {
+            value = next
+        }
+    }
+}
+
+private struct ExploreScrollModifier: ViewModifier {
+    var visibleDays: Int
+    var enabled: Bool
+    @Binding var scrollDate: Date
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .chartScrollableAxes(.horizontal)
+                .chartXVisibleDomain(length: TimeInterval(visibleDays) * 24 * 60 * 60)
+                .chartScrollPosition(x: $scrollDate)
+        } else {
+            content
+        }
+    }
+}
+
+#if canImport(UIKit)
+/// Horizontal pans scrub the shared day. A vertical pan fails immediately so the
+/// page scroll view can take it.
+private struct HorizontalDayScrub: UIViewRepresentable {
+    var onSelect: (CGPoint) -> Void
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onSelect: onSelect)
+    }
+
+    func makeUIView(context: Context) -> UIView {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isAccessibilityElement = false
+        let pan = UIPanGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handlePan(_:)))
+        pan.delegate = context.coordinator
+        pan.maximumNumberOfTouches = 1
+        view.addGestureRecognizer(pan)
+        let tap = UITapGestureRecognizer(target: context.coordinator, action: #selector(Coordinator.handleTap(_:)))
+        view.addGestureRecognizer(tap)
+        return view
+    }
+
+    func updateUIView(_ uiView: UIView, context: Context) {
+        context.coordinator.onSelect = onSelect
+    }
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var onSelect: (CGPoint) -> Void
+
+        init(onSelect: @escaping (CGPoint) -> Void) {
+            self.onSelect = onSelect
+        }
+
+        @objc func handlePan(_ gesture: UIPanGestureRecognizer) {
+            guard let view = gesture.view else { return }
+            switch gesture.state {
+            case .began, .changed:
+                onSelect(gesture.location(in: view))
+            default:
+                break
+            }
+        }
+
+        @objc func handleTap(_ gesture: UITapGestureRecognizer) {
+            guard gesture.state == .ended, let view = gesture.view else { return }
+            onSelect(gesture.location(in: view))
+        }
+
+        func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+            guard let pan = gestureRecognizer as? UIPanGestureRecognizer else { return true }
+            let velocity = pan.velocity(in: pan.view)
+            return abs(velocity.x) > abs(velocity.y)
+        }
+    }
+}
+#endif
 
 #Preview("7 days") {
     LanePreview(days: ExplorePreviewData.week(ending: Date()), visibleDays: 7)

@@ -117,12 +117,8 @@ struct RehabProgressView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Text("Pain, load, and steps")
                                 .font(.headline)
-                            Text("Three lanes share one date axis. Drag the scrubber to read a day.")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
                             KneeExploreChart(
                                 points: explorePoints,
-                                height: 248,
                                 // Viewport matches the picker through 90 days. Longer All windows scroll.
                                 visibleDays: range.chartVisibleDays(windowDays: windowDays),
                                 emptyDescription: progressEmptyDescription
@@ -160,10 +156,10 @@ struct RehabProgressView: View {
         }
     }
 
-    /// Volume always feeds the interpretation readout. The load lane takes any
+    /// Volume always feeds the interpretation readout. The load chart takes any
     /// session with a positive work-set weight. Walks have steps or time and no
     /// weight, so they leave an empty slot. Side bends and hip thrusts use the
-    /// same bar and sets × reps label as a knee lift. Warm-ups are excluded.
+    /// same line and sets × reps label as a knee lift. Warm-ups are excluded.
     private func loadSnapshot(_ session: TrainingSession) -> SessionLoadSnapshot {
         let sets = session.resistanceSets()
         return SessionLoadSnapshot(
