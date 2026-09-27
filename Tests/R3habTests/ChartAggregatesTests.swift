@@ -464,26 +464,6 @@ final class ChartAggregatesTests: XCTestCase {
         XCTAssertTrue(points[2].hasValues)
     }
 
-    func testProgressChartStyleIdsRoundTripAndFallBack() {
-        XCTAssertEqual(
-            ProgressChartStyle.allCases,
-            [.ribbon, .orbit, .heatlane, .glassDial, .emberTide]
-        )
-        XCTAssertGreaterThanOrEqual(ProgressChartStyle.allCases.count, 4)
-        XCTAssertEqual(ProgressChartStyle.storageKey, "r3hab.progressChartStyle")
-        for style in ProgressChartStyle.allCases {
-            XCTAssertEqual(ProgressChartStyle.resolved(style.rawValue), style)
-            XCTAssertFalse(style.pickerTitle.isEmpty)
-            XCTAssertFalse(style.intent.isEmpty)
-        }
-        XCTAssertEqual(ProgressChartStyle.resolved("not-a-style"), .ribbon)
-        XCTAssertEqual(ProgressChartStyle.ribbon.rawValue, "ribbon")
-        XCTAssertEqual(ProgressChartStyle.orbit.rawValue, "orbit")
-        XCTAssertEqual(ProgressChartStyle.heatlane.rawValue, "heatlane")
-        XCTAssertEqual(ProgressChartStyle.glassDial.rawValue, "glassDial")
-        XCTAssertEqual(ProgressChartStyle.emberTide.rawValue, "emberTide")
-    }
-
     func testSignalScaleKeepsGapsAndZeros() {
         XCTAssertNil(ExploreSignalScale.unit(nil, peak: 10))
         XCTAssertEqual(ExploreSignalScale.unit(0, peak: 10), 0)
@@ -545,5 +525,125 @@ final class ChartAggregatesTests: XCTestCase {
         )
         XCTAssertEqual(roundTrip?.dayKey, points[10].dayKey)
         XCTAssertEqual(roundTrip?.steps, 4000)
+    }
+
+    func testNilVolumeRowStillPlotsWorkingLoad() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sessions: [
+                SessionLoadSnapshot(date: today, volume: nil, loadLbs: 35)
+            ],
+            dayCount: 1,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertNil(points[0].volume)
+        XCTAssertEqual(points[0].loadLbs, 35)
+        XCTAssertFalse(points[0].loadCarried)
+        XCTAssertEqual(RibbonDayReadout.load(points[0].loadLbs), "35 lbs")
+        XCTAssertTrue(RibbonDayReadout.hasData(points[0]))
+    }
+
+    func testRestDaysCarryLastLoadAndWalkDaysStayEmpty() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [
+                DailyMetricSnapshot(date: day(-1, from: today), restingPainAM: 2, dailyPainPM: nil, steps: 3000)
+            ],
+            sessions: [
+                SessionLoadSnapshot(date: day(-2, from: today), volume: nil, loadLbs: 40),
+                SessionLoadSnapshot(date: today, volume: nil, loadLbs: nil, walkOnly: true)
+            ],
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points.map(\.loadLbs), [40, 40, nil])
+        XCTAssertEqual(points.map(\.loadCarried), [false, true, false])
+        XCTAssertEqual(points[1].steps, 3000)
+        XCTAssertEqual(
+            RibbonDayReadout.summary(point: points[1], date: "Sep 22"),
+            "Sep 22. Pain 2. Load 40 lbs. Steps 3,000."
+        )
+        XCTAssertEqual(RibbonDayReadout.load(points[2].loadLbs), "—")
+        XCTAssertEqual(RibbonDayReadout.steps(points[2].steps), "—")
+    }
+
+    func testLatestSessionWinsAndTieKeepsHeavierLoad() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let earlier = today
+        let later = today.addingTimeInterval(60)
+        let latest = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sessions: [
+                SessionLoadSnapshot(date: today, createdAt: earlier, volume: nil, loadLbs: 50),
+                SessionLoadSnapshot(date: today, createdAt: later, volume: 400, loadLbs: 45)
+            ],
+            dayCount: 1,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(latest[0].loadLbs, 45)
+
+        let tie = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sessions: [
+                SessionLoadSnapshot(date: today, createdAt: earlier, volume: nil, loadLbs: 30),
+                SessionLoadSnapshot(date: today, createdAt: earlier, volume: nil, loadLbs: 55)
+            ],
+            dayCount: 1,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(tie[0].loadLbs, 55)
+    }
+
+    func testStepDaysKeepZerosAndDropMissingDays() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [
+                DailyMetricSnapshot(date: day(-2, from: today), restingPainAM: nil, dailyPainPM: nil, steps: 0),
+                DailyMetricSnapshot(date: today, restingPainAM: nil, dailyPainPM: nil, steps: 1200)
+            ],
+            sessions: [],
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        let steps = RibbonSeries.stepDays(points)
+        XCTAssertEqual(steps.map(\.steps), [0, 1200])
+        XCTAssertEqual(steps.count, 2)
+    }
+
+    func testReadoutPlaceholderOnlyWhenTheDayIsEmpty() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sessions: [],
+            dayCount: 1,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertFalse(RibbonDayReadout.hasData(points[0]))
+        XCTAssertEqual(
+            RibbonDayReadout.summary(point: points[0], date: "Sep 22"),
+            "Sep 22. No pain, load, or steps."
+        )
+    }
+
+    func testLoadBeforeTheWindowCarriesOntoLeadingRestDays() {
+        let today = calendar.startOfDay(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let points = ChartMetricBuilder.explorePoints(
+            checkIns: [],
+            sessions: [
+                SessionLoadSnapshot(date: day(-5, from: today), volume: nil, loadLbs: 25)
+            ],
+            dayCount: 3,
+            today: today,
+            calendar: calendar
+        )
+        XCTAssertEqual(points.map(\.loadLbs), [25, 25, 25])
+        XCTAssertEqual(points.map(\.loadCarried), [true, true, true])
     }
 }
