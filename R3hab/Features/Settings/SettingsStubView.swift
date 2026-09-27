@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import UniformTypeIdentifiers
 
 /// Settings: phase, thresholds, reminders, export/import, clear-all (PR-12/13/14).
