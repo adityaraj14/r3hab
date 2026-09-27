@@ -122,19 +122,21 @@ struct DayExplorePoint: Identifiable, Equatable, Sendable {
     var duringPain: Double? = nil
     var afterPain: Double? = nil
     /// Daily session volume (Σ work-set reps × lb). The Progress readout uses this.
-    /// The chart plots `loadLbs` instead.
+    /// The load lane plots `loadLbs` and `repLabel` instead.
     var volume: Double?
-    /// Working (top) weight in lb for the primary lift. Nil on walk-only days and
-    /// before the first logged load. Rest days copy the previous load.
+    /// Top work-set weight in lb for the session logged that day. Nil on rest days,
+    /// walk-only days, and any day with no weighted session. Not carried forward.
     var loadLbs: Double? = nil
-    /// True when `loadLbs` is carried from the last logged load (a rest day).
-    var loadCarried: Bool = false
-    /// Check-in step count. Nil when that day was not logged. Zero is a real HealthKit zero.
+    /// Working sets × reps for that same session, e.g. "3×8" or "8/8/6".
+    /// Warm-ups are already excluded. Nil when no work set recorded reps.
+    var repLabel: String? = nil
+    /// Check-in step count. Nil when that day was not logged.
+    /// A logged zero on a past day stays zero. Zero on the current day is not logged yet.
     var steps: Double? = nil
 
     var hasValues: Bool {
         pain != nil || duringPain != nil || afterPain != nil || volume != nil || steps != nil
-            || (loadLbs != nil && !loadCarried)
+            || loadLbs != nil || repLabel != nil
     }
 }
 
@@ -243,25 +245,52 @@ enum ExploreSignalScale {
     }
 }
 
-/// Ribbon scrub copy. A metric shows "—" only when that metric is missing.
-/// The day placeholder is used only when pain, load, and steps are all absent.
-enum RibbonDayReadout {
-    static let noData = "No pain, load, or steps"
+/// Scrub line for the three Progress charts.
+/// "Pain 2 · 3×8 @ 45 lb · 6,200 steps". A day with no weighted session says "no session".
+enum LaneScrubReadout {
+    static let noSession = "no session"
 
-    static func pain(_ value: Double?) -> String {
-        guard let value else { return "—" }
-        if value.rounded() == value {
+    static func line(point: DayExplorePoint) -> String {
+        line(pain: point.pain, repLabel: point.repLabel, loadLbs: point.loadLbs, steps: point.steps)
+    }
+
+    static func line(pain: Double?, repLabel: String?, loadLbs: Double?, steps: Double?) -> String {
+        var parts: [String] = []
+        if let pain {
+            parts.append("Pain \(formatPain(pain))")
+        }
+        parts.append(loadPhrase(repLabel: repLabel, loadLbs: loadLbs) ?? noSession)
+        if let steps {
+            parts.append("\(formatSteps(steps)) steps")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    static func loadPhrase(repLabel: String?, loadLbs: Double?) -> String? {
+        switch (repLabel, loadLbs) {
+        case let (label?, load?):
+            return "\(label) @ \(formatLoad(load)) lb"
+        case let (nil, load?):
+            return "\(formatLoad(load)) lb"
+        case let (label?, nil):
+            return label
+        case (nil, nil):
+            return nil
+        }
+    }
+
+    static func formatPain(_ value: Double) -> String {
+        if abs(value.rounded() - value) < 0.001 {
             return String(Int(value.rounded()))
         }
         return String(format: "%.1f", value)
     }
 
-    static func load(_ value: Double?) -> String {
-        value.map(LoadCopy.labeled) ?? "—"
+    static func formatLoad(_ lbs: Double) -> String {
+        LoadCopy.formatted(lbs)
     }
 
-    static func steps(_ value: Double?) -> String {
-        guard let value else { return "—" }
+    static func formatSteps(_ value: Double) -> String {
         let formatter = NumberFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.numberStyle = .decimal
@@ -270,26 +299,235 @@ enum RibbonDayReadout {
         formatter.maximumFractionDigits = 0
         return formatter.string(from: NSNumber(value: Int(value.rounded()))) ?? String(Int(value.rounded()))
     }
+}
 
-    static func hasData(_ point: DayExplorePoint) -> Bool {
-        point.pain != nil || point.loadLbs != nil || point.steps != nil
+/// Working-set dose for the load lane. Warm-ups are ignored.
+/// An left/right pair is one set, matching the prescription model.
+enum WorkingSetReps {
+    /// "3×8" when every work set has the same reps. "8/8/6" when they differ.
+    /// Nil when no work set recorded a rep count (walks, hold-only rows).
+    static func label(sets: [ResistanceSet]) -> String? {
+        let pairs = SessionSummary.groupWorkSets(sets.filter { !$0.isWarmup })
+        let reps = pairs.compactMap { pair -> Int? in
+            if let reps = pair.reps { return reps }
+            return pair.right?.reps
+        }
+        return label(reps: reps)
     }
 
-    static func summary(point: DayExplorePoint, date: String) -> String {
-        guard hasData(point) else { return "\(date). \(noData)." }
-        return "\(date). Pain \(pain(point.pain)). Load \(load(point.loadLbs)). Steps \(steps(point.steps))."
+    static func label(reps: [Int]) -> String? {
+        guard let first = reps.first else { return nil }
+        if reps.allSatisfy({ $0 == first }) {
+            return "\(reps.count)×\(first)"
+        }
+        return reps.map(String.init).joined(separator: "/")
+    }
+
+    /// Top work-set weight. Warm-ups and non-positive loads are ignored.
+    static func topLoad(sets: [ResistanceSet]) -> Double? {
+        let loads = sets.filter { !$0.isWarmup }.compactMap(\.loadLbs).filter { $0 > 0 }
+        return loads.max()
     }
 }
 
-/// Days that get a steps point. Missing days are left out so nothing is drawn across the gap.
-enum RibbonSeries {
-    static func stepDays(_ points: [DayExplorePoint]) -> [DayExplorePoint] {
-        points.filter { $0.steps != nil }
+/// Point captions collide once a day is only a few points wide.
+/// The scrub line still reads every session's reps.
+enum RepLabelVisibility {
+    /// Day indexes whose session point should show a sets × reps caption.
+    static func shown(sessionDayIndexes: [Int], dayCount: Int) -> Set<Int> {
+        guard let gap = minimumIndexGap(dayCount: dayCount) else { return [] }
+        var shown: [Int] = []
+        var last: Int?
+        for index in sessionDayIndexes.sorted() {
+            if let last, index - last < gap { continue }
+            shown.append(index)
+            last = index
+        }
+        return Set(shown)
+    }
+
+    /// Nil hides every caption. 7-day windows show each session.
+    /// 28-day windows keep about one caption every four days.
+    static func minimumIndexGap(dayCount: Int) -> Int? {
+        if dayCount <= 10 { return 1 }
+        if dayCount <= 45 { return 4 }
+        return nil
+    }
+}
+
+/// One logged sample on a continuous chart line.
+struct ExploreSample: Equatable, Sendable, Identifiable {
+    var date: Date
+    var value: Double
+    var id: Date { date }
+}
+
+/// Accessibility ids for the Progress charts. The container uses
+/// `.accessibilityElement(children: .contain)` so the scrubber and readout
+/// stay reachable under `chart`.
+enum ProgressChartAccessibility {
+    static let chart = "progress-explore-chart"
+    static let scrubber = "progress-day-scrubber"
+    static let readout = "progress-lane-readout"
+    static let containedIdentifiers = [scrubber, readout]
+}
+
+/// Date axis for the three Progress charts. Labels are the same instants as the
+/// plotted days, and only dates whose full "Sep 17" fits in the plot are used.
+/// Swift Charts replaces a clipped axis label with "…", so the chart draws these
+/// itself instead of asking for an automatic stride.
+enum ExploreAxisLayout {
+    static let proMaxLogicalWidth: Double = 440
+    static let screenHorizontalPadding: Double = 32
+    static let sectionCardPadding: Double = 32
+    static let chartCardPadding: Double = 20
+    static let yAxisWidth: Double = 44
+    static let plotTrailingPadding: Double = 4
+    /// "Sep 17" in the axis font, with air so two labels never touch.
+    static let dateLabelWidth: Double = 56
+
+    static var proMaxPlotWidth: Double {
+        plotWidth(screenWidth: proMaxLogicalWidth)
+    }
+
+    static func plotWidth(screenWidth: Double) -> Double {
+        max(
+            1,
+            screenWidth
+                - screenHorizontalPadding
+                - sectionCardPadding
+                - chartCardPadding
+                - yAxisWidth
+                - plotTrailingPadding
+        )
+    }
+
+    static func xDomain(
+        points: [DayExplorePoint],
+        plotWidth: Double,
+        visibleDayCount: Int,
+        labelWidth: Double = dateLabelWidth
+    ) -> ClosedRange<Date> {
+        guard let first = points.first?.date, let last = points.last?.date else {
+            let epoch = Date(timeIntervalSinceReferenceDate: 0)
+            return epoch...epoch
+        }
+        let span = last.timeIntervalSince(first)
+        let scrolls = points.count > max(visibleDayCount, 1)
+        if scrolls || span <= 0 {
+            let pad: TimeInterval = 12 * 60 * 60
+            return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+        }
+        let pad = edgePadding(span: span, plotWidth: plotWidth, labelWidth: labelWidth)
+        return first.addingTimeInterval(-pad)...last.addingTimeInterval(pad)
+    }
+
+    /// Plotted days to mark. On a fully visible range every returned date fits.
+    /// On a scrolling range the dates are spaced for the viewport; the chart
+    /// hides any label that would clip the current window.
+    static func axisDates(
+        points: [DayExplorePoint],
+        plotWidth: Double,
+        visibleDayCount: Int,
+        labelWidth: Double = dateLabelWidth
+    ) -> [Date] {
+        guard plotWidth > 0, labelWidth > 0 else { return [] }
+        let domain = xDomain(
+            points: points,
+            plotWidth: plotWidth,
+            visibleDayCount: visibleDayCount,
+            labelWidth: labelWidth
+        )
+        let scrolls = points.count > max(visibleDayCount, 1)
+        let visibleSpan = Double(max(visibleDayCount, 1)) * 24 * 60 * 60
+        let minTimeGap = (labelWidth / plotWidth) * visibleSpan
+        var chosen: [Date] = []
+        for point in points {
+            let date = point.date
+            if scrolls {
+                if let last = chosen.last, date.timeIntervalSince(last) < minTimeGap {
+                    continue
+                }
+                chosen.append(date)
+            } else {
+                guard labelFits(
+                    date: date,
+                    domain: domain,
+                    plotWidth: plotWidth,
+                    labelWidth: labelWidth
+                ) else { continue }
+                if let last = chosen.last {
+                    let dx = labelCenterX(for: date, domain: domain, plotWidth: plotWidth)
+                        - labelCenterX(for: last, domain: domain, plotWidth: plotWidth)
+                    if dx < labelWidth { continue }
+                }
+                chosen.append(date)
+            }
+        }
+        return chosen
+    }
+
+    static func labelCenterX(
+        for date: Date,
+        domain: ClosedRange<Date>,
+        plotWidth: Double
+    ) -> Double {
+        let span = domain.upperBound.timeIntervalSince(domain.lowerBound)
+        guard span > 0, plotWidth > 0 else { return plotWidth / 2 }
+        let t = date.timeIntervalSince(domain.lowerBound) / span
+        return t * plotWidth
+    }
+
+    static func labelFits(
+        date: Date,
+        domain: ClosedRange<Date>,
+        plotWidth: Double,
+        labelWidth: Double = dateLabelWidth
+    ) -> Bool {
+        let x = labelCenterX(for: date, domain: domain, plotWidth: plotWidth)
+        let half = labelWidth / 2
+        return x - half >= -0.5 && x + half <= plotWidth + 0.5
+    }
+
+    /// Candidates whose labels sit fully inside a viewport. A date on the edge
+    /// is dropped so the axis never shows a clipped label.
+    static func visibleAxisDates(
+        candidates: [Date],
+        visibleStart: Date,
+        visibleEnd: Date,
+        plotWidth: Double,
+        labelWidth: Double = dateLabelWidth
+    ) -> [Date] {
+        let span = visibleEnd.timeIntervalSince(visibleStart)
+        guard span > 0, plotWidth > 0 else { return [] }
+        let domain = visibleStart...visibleEnd
+        return candidates.filter { date in
+            labelFits(date: date, domain: domain, plotWidth: plotWidth, labelWidth: labelWidth)
+        }
+    }
+
+    private static func edgePadding(span: TimeInterval, plotWidth: Double, labelWidth: Double) -> TimeInterval {
+        let half = labelWidth / 2 + 1
+        let usable = plotWidth - 2 * half
+        guard usable > 1, span > 0 else { return 12 * 60 * 60 }
+        return span * half / usable
     }
 }
 
 /// Splits a series so a missing day does not become an interpolated zero.
 enum ExploreSeries {
+    /// Logged samples in calendar order. A chart draws one line through these,
+    /// so a missing day is a straight span and not a filled-in value.
+    static func continuousSamples(
+        _ points: [DayExplorePoint],
+        value: (DayExplorePoint) -> Double?
+    ) -> [ExploreSample] {
+        points.compactMap { point in
+            guard let sample = value(point) else { return nil }
+            return ExploreSample(date: point.date, value: sample)
+        }
+    }
+
     static func contiguousSegments(
         _ points: [DayExplorePoint],
         value: (DayExplorePoint) -> Double?
@@ -317,10 +555,11 @@ struct SessionLoadSnapshot: Equatable, Sendable {
     var createdAt: Date = .distantPast
     /// Σ reps × lb for work sets. Nil when volume cannot be derived.
     var volume: Double?
-    /// Working (top) weight in lb. Independent of volume, so a load-only row still plots.
+    /// Top work-set weight in lb. Independent of volume, so a load-only row still plots.
+    /// Nil for walks and any session with no positive work-set weight.
     var loadLbs: Double? = nil
-    /// Walk-only QL day: steps or time, no weight. Does not inherit a carried load.
-    var walkOnly: Bool = false
+    /// Sets × reps caption for this session. Nil when reps were not logged.
+    var repLabel: String? = nil
 }
 
 enum ChartMetricBuilder {
@@ -376,6 +615,21 @@ enum ChartMetricBuilder {
         return result
     }
 
+    /// Steps drawn on the chart and read in the scrub line.
+    /// A logged zero on a past day stays zero. Zero today is still empty (Health has not filled in).
+    static func chartSteps(
+        _ steps: Int?,
+        on date: Date,
+        today: Date,
+        calendar: Calendar
+    ) -> Double? {
+        guard let steps else { return nil }
+        if steps == 0, calendar.isDate(date, inSameDayAs: today) {
+            return nil
+        }
+        return Double(steps)
+    }
+
     static func explorePoints(
         checkIns: [DailyMetricSnapshot],
         sessions: [SessionLoadSnapshot],
@@ -400,7 +654,7 @@ enum ChartMetricBuilder {
                 volumeByDay[point.dayKey] = value
             }
         }
-        let load = workingLoadByDay(
+        let load = sessionLoadByDay(
             sessions: sessions,
             dayCount: dayCount,
             today: today,
@@ -432,75 +686,65 @@ enum ChartMetricBuilder {
                     afterPain: afterByDay[key].map(Double.init),
                     volume: volumeByDay[key],
                     loadLbs: load.lbs[key],
-                    loadCarried: load.carried[key] ?? false,
-                    // Same check-in row the evening editor fills from HealthKit. Nil = not logged.
-                    steps: row?.steps.map(Double.init)
+                    repLabel: load.labels[key],
+                    // Same check-in row the evening editor fills from HealthKit.
+                    // Nil = not logged. Today's 0 is treated as not logged yet.
+                    steps: chartSteps(row?.steps, on: day, today: startToday, calendar: calendar)
                 )
             )
         }
         return result
     }
 
-    /// Latest session that day wins; a tie keeps the heavier top weight.
-    /// Rest days carry the last load. A walk-only day stays empty and does not crash.
-    static func workingLoadByDay(
+    /// One load per day that logged a weight. Latest session that day wins;
+    /// a tie keeps the heavier top weight and that session's rep label.
+    /// Rest days, walks, and days outside the window stay empty — nothing is carried forward.
+    static func sessionLoadByDay(
         sessions: [SessionLoadSnapshot],
         dayCount: Int,
         today: Date = Date(),
         calendar: Calendar = .current
-    ) -> (lbs: [String: Double], carried: [String: Bool]) {
+    ) -> (lbs: [String: Double], labels: [String: String]) {
         let startToday = calendar.startOfDay(for: today)
-        var windowKeys: [String] = []
+        var window = Set<String>()
         for offset in stride(from: dayCount - 1, through: 0, by: -1) {
             guard let day = calendar.date(byAdding: .day, value: -offset, to: startToday) else { continue }
-            windowKeys.append(CalendarDay.dayKey(day, calendar: calendar))
+            window.insert(CalendarDay.dayKey(day, calendar: calendar))
         }
-        let window = Set(windowKeys)
 
-        var logged: [String: (createdAt: Date, load: Double)] = [:]
-        var walkDays = Set<String>()
-        var seed: (createdAt: Date, load: Double)?
+        var logged: [String: LoggedLoad] = [:]
         for session in sessions {
             let key = CalendarDay.dayKey(session.date, calendar: calendar)
-            if session.walkOnly, session.loadLbs == nil {
-                if window.contains(key) { walkDays.insert(key) }
-                continue
-            }
-            guard let load = session.loadLbs else { continue }
-            if window.contains(key) {
-                logged[key] = preferred(logged[key], createdAt: session.createdAt, load: load)
-            } else if let windowStart = calendar.date(byAdding: .day, value: -(dayCount - 1), to: startToday),
-                      calendar.startOfDay(for: session.date) < windowStart {
-                seed = preferred(seed, createdAt: session.createdAt, load: load)
-            }
+            guard window.contains(key), let load = session.loadLbs else { continue }
+            let candidate = LoggedLoad(
+                createdAt: session.createdAt,
+                load: load,
+                repLabel: session.repLabel
+            )
+            logged[key] = preferred(logged[key], candidate)
         }
 
         var lbs: [String: Double] = [:]
-        var carried: [String: Bool] = [:]
-        var last = seed?.load
-        for key in windowKeys {
-            if let row = logged[key] {
-                lbs[key] = row.load
-                carried[key] = false
-                last = row.load
-            } else if walkDays.contains(key) {
-                carried[key] = false
-            } else if let last {
-                lbs[key] = last
-                carried[key] = true
+        var labels: [String: String] = [:]
+        for (key, row) in logged {
+            lbs[key] = row.load
+            if let label = row.repLabel {
+                labels[key] = label
             }
         }
-        return (lbs, carried)
+        return (lbs, labels)
     }
 
-    private static func preferred(
-        _ existing: (createdAt: Date, load: Double)?,
-        createdAt: Date,
-        load: Double
-    ) -> (createdAt: Date, load: Double) {
-        guard let existing else { return (createdAt, load) }
-        if createdAt > existing.createdAt { return (createdAt, load) }
-        if createdAt == existing.createdAt, load > existing.load { return (createdAt, load) }
+    private struct LoggedLoad {
+        var createdAt: Date
+        var load: Double
+        var repLabel: String?
+    }
+
+    private static func preferred(_ existing: LoggedLoad?, _ candidate: LoggedLoad) -> LoggedLoad {
+        guard let existing else { return candidate }
+        if candidate.createdAt > existing.createdAt { return candidate }
+        if candidate.createdAt == existing.createdAt, candidate.load > existing.load { return candidate }
         return existing
     }
 
