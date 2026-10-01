@@ -32,6 +32,9 @@ struct DailyCheckInEditor: View {
     @State private var isLoadingSteps = false
     @State private var stepsSourceNote: String?
     @State private var loadNudge: LoadNudge?
+    @State private var showHealthExplainer = false
+    /// User tapped "Not now" on the Apple Health explainer; stop auto-showing it.
+    @AppStorage("appleHealthExplainerDeferred") private var healthExplainerDeferred = false
 
     private var calendar: Calendar { .current }
     private var showsMorning: Bool { focus != .evening }
@@ -74,8 +77,10 @@ struct DailyCheckInEditor: View {
                         if isLoadingSteps {
                             ProgressView()
                         } else if HealthKitSteps.isAvailable {
-                            Button("Health") {
-                                Task { await importStepsFromHealth() }
+                            Button {
+                                Task { await startHealthImport() }
+                            } label: {
+                                Label("Apple Health", systemImage: "heart.fill")
                             }
                             .buttonStyle(.bordered)
                             .controlSize(.small)
@@ -138,7 +143,23 @@ struct DailyCheckInEditor: View {
             // Auto-fill steps from Health when empty (today or backdated day).
             guard stepsText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
             guard HealthKitSteps.isAvailable else { return }
+            if await HealthKitSteps.needsAuthorizationPrompt() {
+                // Explain Apple Health before the system prompt, once.
+                if !healthExplainerDeferred { showHealthExplainer = true }
+                return
+            }
             await importStepsFromHealth(silentIfNoData: true)
+        }
+        .sheet(isPresented: $showHealthExplainer, onDismiss: {
+            Task {
+                if await HealthKitSteps.needsAuthorizationPrompt() {
+                    healthExplainerDeferred = true
+                }
+            }
+        }) {
+            AppleHealthPermissionView {
+                Task { await importStepsFromHealth(silentIfNoData: true) }
+            }
         }
     }
 
@@ -187,7 +208,17 @@ struct DailyCheckInEditor: View {
         declineL = values.declineSquatL
         declineR = values.declineSquatR
         if values.steps != nil {
-            stepsSourceNote = "Saved value — tap Health to refresh from Apple Watch."
+            stepsSourceNote = "Saved value — tap Apple Health to refresh."
+        }
+    }
+
+    /// Health button: explain first if the system prompt has not been shown yet.
+    @MainActor
+    private func startHealthImport() async {
+        if await HealthKitSteps.needsAuthorizationPrompt() {
+            showHealthExplainer = true
+        } else {
+            await importStepsFromHealth()
         }
     }
 

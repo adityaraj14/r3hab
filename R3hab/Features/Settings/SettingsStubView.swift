@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import UniformTypeIdentifiers
 
 /// Settings: phase, thresholds, reminders, export/import, clear-all (PR-12/13/14).
@@ -21,6 +22,8 @@ struct SettingsStubView: View {
     @State private var isBusy = false
     @State private var showClearConfirm = false
     @State private var showClearSecondConfirm = false
+    @State private var healthStatus: AppleHealthStatus = .checking
+    @State private var showHealthExplainer = false
 
     private var settings: AppSettings? { settingsList.first }
     private var totalLogs: Int { checkIns.count + sessions.count }
@@ -89,6 +92,37 @@ struct SettingsStubView: View {
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+            }
+
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "heart.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppleHealthStyle.heart)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Apple Health")
+                        Text(healthStatus.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    switch healthStatus {
+                    case .notConnected:
+                        Button("Connect") { showHealthExplainer = true }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    case .connected:
+                        Button("Manage") { openAppSettings() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    case .checking, .unavailable:
+                        EmptyView()
+                    }
+                }
+                .accessibilityIdentifier("settingsAppleHealthRow")
+            } footer: {
+                Text("R3hab only reads steps from Apple Health, never writes. Change access in the Health app → Sharing → Apps → R3hab.")
             }
 
             Section("Backup") {
@@ -183,6 +217,12 @@ struct SettingsStubView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
+            await refreshHealthStatus()
+        }
+        .sheet(isPresented: $showHealthExplainer, onDismiss: {
+            Task { await refreshHealthStatus() }
+        }) {
+            AppleHealthPermissionView()
         }
         .confirmationDialog("Import mode", isPresented: $showImportMode, titleVisibility: .visible) {
             Button("Replace all data", role: .destructive) {
@@ -415,6 +455,20 @@ struct SettingsStubView: View {
         }
     }
 
+    @MainActor
+    private func refreshHealthStatus() async {
+        guard HealthKitSteps.isAvailable else {
+            healthStatus = .unavailable
+            return
+        }
+        healthStatus = await HealthKitSteps.needsAuthorizationPrompt() ? .notConnected : .connected
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
+    }
+
     private func presentAlert(_ title: String, _ message: String) {
         alertTitle = title
         alertMessage = message
@@ -467,6 +521,24 @@ struct SettingsStubView: View {
         router.requestNotificationSync()
     }
     #endif
+}
+
+/// Apple Health row state. HealthKit never reveals whether read access was
+/// granted, so "connected" means the user has answered the Health prompt.
+enum AppleHealthStatus {
+    case checking
+    case connected
+    case notConnected
+    case unavailable
+
+    var subtitle: String {
+        switch self {
+        case .checking: return "Checking…"
+        case .connected: return "Connected: reads steps"
+        case .notConnected: return "Not connected"
+        case .unavailable: return "Not available on this device"
+        }
+    }
 }
 
 /// UIKit share sheet wrapper for exporting the JSON file.
