@@ -13,6 +13,9 @@ struct HomeView: View {
     @State private var showAM = false
     @State private var showPM = false
     @State private var showSession = false
+    #if DEBUG
+    @State private var logPrototype: SessionLogPrototypeKind?
+    #endif
     @State private var resolveTargetId: UUID?
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
@@ -224,6 +227,12 @@ struct HomeView: View {
                 }
                 .preferredColorScheme(.dark)
             }
+            #if DEBUG
+            // Prototypes menu. Log Workout still opens the standard form.
+            .sessionPrototypeEntry(selection: $logPrototype, date: today) {
+                showSession = true
+            }
+            #endif
             .sheet(isPresented: Binding(
                 get: { resolveTargetId != nil },
                 set: { if !$0 { resolveTargetId = nil } }

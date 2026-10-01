@@ -21,9 +21,19 @@ struct SettingsStubView: View {
     @State private var isBusy = false
     @State private var showClearConfirm = false
     @State private var showClearSecondConfirm = false
+    #if DEBUG
+    @State private var logPrototype: SessionLogPrototypeKind?
+    #endif
 
     private var settings: AppSettings? { settingsList.first }
     private var totalLogs: Int { checkIns.count + sessions.count }
+    private var debugFooter: String {
+        #if DEBUG
+        return "Simulate onboarding re-opens first launch without wiping logs. Prototypes open guided, live, and quick logging. The standard form stays the default. Temporary — removed before App Store."
+        #else
+        return "Simulate onboarding re-opens first launch without wiping logs. Temporary — removed before App Store."
+        #endif
+    }
 
     var body: some View {
         List {
@@ -171,16 +181,23 @@ struct SettingsStubView: View {
                 Button("Seed sample week") {
                     seedSampleWeek()
                 }
+                ForEach(SessionLogPrototypeKind.allCases) { kind in
+                    Button(kind.settingsTitle) { logPrototype = kind }
+                        .accessibilityIdentifier(SessionPrototypeAccessibility.open(kind))
+                }
                 #endif
             } header: {
                 Text("Debug")
             } footer: {
-                Text("Simulate onboarding re-opens first launch without wiping logs. Temporary — removed before App Store.")
+                Text(debugFooter)
             }
         }
         .appListCanvas()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        #if DEBUG
+        .sessionPrototypeSheet(selection: $logPrototype, date: Date())
+        #endif
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
         }
