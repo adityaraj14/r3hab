@@ -215,7 +215,7 @@ final class SessionEditorChromeTests: XCTestCase {
         XCTAssertFalse(
             SessionDraftFields.showsSaveDraft(
                 kind: .historical,
-                current: draftFields(painDuring: 6, notes: "edited"),
+                current: draftFields(notes: "edited", painDuring: 6),
                 baseline: baseline
             )
         )
