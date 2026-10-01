@@ -21,9 +21,50 @@ enum SessionEditorKind: Equatable, Sendable {
     /// After left the session form. Capture stays on Today / AfterPainSheet.
     var showsAfterPain: Bool { false }
 
+    /// New logs and open drafts may save a draft. Historical edits may not.
+    /// The button stays hidden until the form differs from its loaded baseline.
     var showsDraftSave: Bool { self != .historical }
 
     var usesNewSessionChrome: Bool { self != .historical }
+}
+
+/// Fields the log form can save as a draft. Set ids are dropped so a rebuilt
+/// pair with the same reps, load, and side is still the saved state.
+struct SessionDraftFields: Equatable, Sendable {
+    struct SetContent: Equatable, Sendable {
+        var reps: Int?
+        var loadLbs: Double?
+        var holdSeconds: Int?
+        var isWarmup: Bool
+        var side: KneeSide?
+        var painDuring: Int?
+        var steps: Int?
+        var durationMinutes: Int?
+
+        init(_ set: ResistanceSet) {
+            reps = set.reps
+            loadLbs = set.loadLbs
+            holdSeconds = set.holdSeconds
+            isWarmup = set.isWarmup
+            side = set.side
+            painDuring = set.painDuring
+            steps = set.steps
+            durationMinutes = set.durationMinutes
+        }
+    }
+
+    var phase: RehabPhase
+    var sessionType: SessionType
+    var whatIDid: String
+    var notes: String
+    var painDuring: Int?
+    var sets: [SetContent]
+
+    /// Visible only while this editor can save a draft and the form is not
+    /// the pristine seed or the last saved draft.
+    static func showsSaveDraft(kind: SessionEditorKind, current: Self, baseline: Self) -> Bool {
+        kind.showsDraftSave && current != baseline
+    }
 }
 
 enum Session24hResolution: Equatable, Sendable {

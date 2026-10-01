@@ -45,11 +45,14 @@ struct PrimaryActionButtonStyle: ButtonStyle {
 struct QuietActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     var compact = false
+    /// Match `PrimaryActionButtonStyle` when the secondary sits in a full-width bar.
+    var expands = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(compact ? .subheadline.weight(.semibold) : .headline.weight(.semibold))
             .foregroundStyle(isEnabled ? Color.white : Color.white.opacity(0.3))
+            .frame(maxWidth: expands ? .infinity : nil)
             .padding(.vertical, compact ? 8 : 14)
             .padding(.horizontal, compact ? 12 : 16)
             .background(
