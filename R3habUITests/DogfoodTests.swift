@@ -47,7 +47,7 @@ final class DogfoodTests: XCTestCase {
             }
             XCTAssertTrue(during.waitForExistence(timeout: 4), app.debugDescription)
             during.tap()
-            app.navigationBars.buttons["Save"].tap()
+            app.buttons["Save"].tap()
         }
 
         XCTAssertTrue(poster.waitForExistence(timeout: 8))
@@ -64,7 +64,7 @@ final class DogfoodTests: XCTestCase {
         let pastPain = app.buttons["During (required) 2"]
         XCTAssertTrue(pastPain.waitForExistence(timeout: 6), app.debugDescription)
         pastPain.tap()
-        app.navigationBars.buttons["Save"].tap()
+        app.buttons["Save"].tap()
 
         app.tabBars.buttons["Today"].tap()
         let resolve = app.buttons["Resolve 24h response"]
