@@ -121,3 +121,40 @@ enum TodayPlanner {
         SessionDraft.finalized(sessions).contains { calendar.isDate($0.date, inSameDayAs: now) }
     }
 }
+
+/// Today’s pending-24h set after a save.
+///
+/// The session query Today already holds does not change membership when
+/// `response24h` is written, so a snapshot taken from it can still say
+/// pending. A save records the answer here and it wins until that query
+/// catches up.
+enum TodayPendingGate {
+    static func applying(
+        resolved: [UUID: Response24h],
+        to sessions: [TrainingSessionSnapshot]
+    ) -> [TrainingSessionSnapshot] {
+        guard !resolved.isEmpty else { return sessions }
+        return sessions.map { session in
+            guard let saved = resolved[session.id], saved != .pending else { return session }
+            guard session.response24h == .pending else { return session }
+            var copy = session
+            copy.response24h = saved
+            copy.snoozedUntil = nil
+            return copy
+        }
+    }
+
+    /// Drop an override once the stored row itself is no longer pending.
+    /// Membership of the pending query is not enough: that list can move
+    /// before the unfiltered session row Today still reads.
+    static func remainingOverrides(
+        _ resolved: [UUID: Response24h],
+        liveResponses: [UUID: Response24h]
+    ) -> [UUID: Response24h] {
+        resolved.filter { id, _ in
+            // A missing row is the empty first query frame, not a resolve.
+            guard let live = liveResponses[id] else { return true }
+            return live == .pending
+        }
+    }
+}

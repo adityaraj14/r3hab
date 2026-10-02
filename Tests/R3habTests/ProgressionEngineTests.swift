@@ -166,6 +166,65 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
     }
 
+    func testSaving24hClearsTheTodayResolvePrompt() {
+        let waiting = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1, response: .pending)
+        let before = today([waiting])
+        XCTAssertEqual(before.pendingResolveID, waiting.id)
+
+        let asking = TodayPlanner.nextAction(
+            TodayPlannerInput(
+                hasMorningPain: true,
+                hasEveningPain: true,
+                overduePending: [waiting.id],
+                trainedToday: true,
+                isEvening: true
+            )
+        )
+        XCTAssertEqual(asking, .resolvePending(sessionID: waiting.id, remaining: 0))
+
+        // The session query can still say pending for a turn after Save.
+        // The answer recorded by the sheet has to win immediately.
+        let saved = TodayPendingGate.applying(resolved: [waiting.id: .better], to: [waiting])
+        XCTAssertEqual(saved.first?.response24h, .better)
+        let after = today(saved)
+        XCTAssertNil(after.pendingResolveID)
+        let cleared = TodayPlanner.nextAction(
+            TodayPlannerInput(
+                hasMorningPain: true,
+                hasEveningPain: true,
+                overduePending: saved.filter { $0.response24h == .pending }.map(\.id),
+                trainedToday: true,
+                isEvening: true
+            )
+        )
+        if case .resolvePending = cleared {
+            XCTFail("Resolve prompt stayed up after the 24h save")
+        }
+
+        var alreadyWorse = waiting
+        alreadyWorse.response24h = .worse
+        let caughtUp = TodayPendingGate.applying(resolved: [waiting.id: .better], to: [alreadyWorse])
+        XCTAssertEqual(caughtUp.first?.response24h, .worse)
+
+        XCTAssertEqual(
+            TodayPendingGate.remainingOverrides(
+                [waiting.id: .better],
+                liveResponses: [waiting.id: .pending]
+            )[waiting.id],
+            .better
+        )
+        XCTAssertTrue(
+            TodayPendingGate.remainingOverrides(
+                [waiting.id: .better],
+                liveResponses: [waiting.id: .better]
+            ).isEmpty
+        )
+        XCTAssertEqual(
+            TodayPendingGate.remainingOverrides([waiting.id: .better], liveResponses: [:])[waiting.id],
+            .better
+        )
+    }
+
     func testMissing24hHoldsAndAsks() {
         let ready = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 1, response: .better)
         let waiting = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1, response: .pending)
