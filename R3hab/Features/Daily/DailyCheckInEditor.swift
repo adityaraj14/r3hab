@@ -61,13 +61,13 @@ struct DailyCheckInEditor: View {
                 } header: {
                     Text("Morning")
                 } footer: {
-                    Text("Resting knee pain before you start the day, 0–10. Evening pain and steps are logged separately.")
+                    Text("Record the resting knee pain before the day starts. Use 0 to 10. Record the evening pain and the steps separately.")
                 }
             }
 
             if showsEvening {
                 Section {
-                    PainScoreControl(title: "Knee daily activities pain", value: $dailyPainPM)
+                    PainScoreControl(title: "Pain during daily activities", value: $dailyPainPM)
 
                     HStack {
                         TextField("Steps", text: $stepsText)
@@ -96,14 +96,14 @@ struct DailyCheckInEditor: View {
                 } header: {
                     Text("Evening")
                 } footer: {
-                    Text("Pain during the day’s activities, 0–10. Steps power Phase A “near-normal walking” progress. Prefer Import from Health — you can still edit the number.")
+                    Text("Record the pain during the day's activities. Use 0 to 10. The steps show Phase A progress. You can import the steps from Apple Health. You can also edit the number.")
                 }
 
                 Section {
                     PainScoreControl(title: "Left", value: $declineL)
                     PainScoreControl(title: "Right", value: $declineR)
                 } header: {
-                    Text("Optional · single-leg decline squat")
+                    Text("Decline squat")
                 } footer: {
                     Text(declineSquatFooter)
                 }
@@ -166,9 +166,9 @@ struct DailyCheckInEditor: View {
     private var navigationTitleText: String {
         switch focus {
         case .morning:
-            return morningPainOnLoad != nil ? "Edit morning" : "Log morning"
+            return morningPainOnLoad != nil ? "Edit morning" : "Record morning"
         case .evening:
-            return eveningPainOnLoad != nil ? "Edit evening" : "Log evening"
+            return eveningPainOnLoad != nil ? "Edit evening" : "Record evening"
         case .full:
             return hadRowOnLoad ? "Edit check-in" : "New check-in"
         }
@@ -181,7 +181,7 @@ struct DailyCheckInEditor: View {
 
     private var declineSquatFooter: String {
         """
-        Not required every day. This is a standard tendon monitoring test (single-leg squat on a decline board or similar): rate knee/tendon pain 0–10 after a few controlled reps each side. Useful 1–3×/week or when deciding load — skip on flare days if it feels unwise. Resting AM and evening pain matter more for daily tracking.
+        This test is optional. Do a single-leg squat on a decline board. Record the knee pain from 0 to 10 for each side. Do this one to three times each week. Skip this test on a flare day. The morning pain and the evening pain are more important.
         """
     }
 

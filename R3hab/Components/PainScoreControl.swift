@@ -17,7 +17,7 @@ struct PainScoreControl: View {
                 Text(value.map(String.init) ?? "—")
                     .font(.title2.monospacedDigit().weight(.semibold))
                     .foregroundStyle(color(for: value))
-                    .accessibilityLabel("\(title) \(value.map(String.init) ?? "not set")")
+                    .accessibilityLabel("\(title) \(value.map(String.init) ?? "not recorded")")
             }
 
             HStack(spacing: 6) {

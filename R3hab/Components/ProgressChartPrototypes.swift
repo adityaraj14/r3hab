@@ -48,7 +48,7 @@ enum ExplorePlotMetrics {
 struct KneeExploreChart: View {
     let points: [DayExplorePoint]
     var visibleDays: Int = 7
-    var emptyDescription: String = "Log morning or evening pain, steps, or a session. The chart reads the days you actually logged."
+    var emptyDescription: String = "Record the morning pain, the evening pain, the steps, or a session. The chart shows the days that you record."
 
     @State private var selectedDate: Date?
     @State private var scrollDate = Date()
@@ -137,7 +137,7 @@ struct KneeExploreChart: View {
                 }
             } else {
                 ContentUnavailableView(
-                    "The trend starts with one honest number",
+                    "The chart starts with one record",
                     systemImage: "chart.xyaxis.line",
                     description: Text(emptyDescription)
                 )
@@ -210,9 +210,9 @@ private struct ExploreScrubber: View {
         .frame(height: 28)
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(ProgressChartAccessibility.scrubber)
-        .accessibilityLabel("Day scrubber")
+        .accessibilityLabel("Day selector")
         .accessibilityValue(summary)
-        .accessibilityHint("Swipe up or down to move one day.")
+        .accessibilityHint("Swipe up for the next day. Swipe down for the previous day.")
         .accessibilityAdjustableAction { direction in
             let step = direction == .increment ? 1 : -1
             guard let current = selectedDate ?? points.last?.date,

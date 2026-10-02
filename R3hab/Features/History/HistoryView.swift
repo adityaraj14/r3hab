@@ -26,7 +26,7 @@ struct HistoryView: View {
         var title: String {
             switch self {
             case .all: return "All"
-            case .sessions: return "Workouts"
+            case .sessions: return "Sessions"
             }
         }
     }
@@ -37,7 +37,7 @@ struct HistoryView: View {
         var title: String {
             switch self {
             case .daily: return "Check-in"
-            case .session: return "Workout"
+            case .session: return "Session"
             }
         }
     }
@@ -73,7 +73,7 @@ struct HistoryView: View {
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
-                        Button("Add a past workout") {
+                        Button("Add a past session") {
                             backdateKind = .session
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
@@ -217,7 +217,7 @@ struct HistoryView: View {
         .scrollContentBackground(.hidden)
         .overlay {
             if dayEntries.isEmpty {
-                emptyState(title: "No days yet", description: "Each day will show morning pain, evening pain, steps, and whether you trained. Use + to backdate.")
+                emptyState(title: "No days yet", description: "Each day shows the morning pain, the evening pain, the steps, and the session. Select + to add a past day.")
             }
         }
     }
@@ -236,7 +236,7 @@ struct HistoryView: View {
         .scrollContentBackground(.hidden)
         .overlay {
             if sessions.isEmpty {
-                emptyState(title: "No workouts yet", description: "Logged workouts will show here. Use + to backdate.")
+                emptyState(title: "No sessions yet", description: "Recorded sessions show here. Select + to add a past session.")
             }
         }
     }
@@ -296,7 +296,7 @@ struct HistoryView: View {
                     .font(.headline)
                 Spacer()
                 if day.hasPendingWorkout {
-                    Text("24h pending")
+                    Text("Response pending")
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(.orange)
                 }
@@ -315,7 +315,7 @@ struct HistoryView: View {
         let setList = SessionSummary.historyResistanceList(s.resistanceSets())
         return VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
-                Text("Workout")
+                Text("Session")
                     .font(.caption2.weight(.semibold))
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
@@ -355,7 +355,7 @@ struct HistoryView: View {
 
     private func sessionAccessibility(_ s: TrainingSession, setList: HistoryResistanceList?) -> String {
         var parts = [
-            "Workout, \(s.displayTitle)",
+            "Session, \(s.displayTitle)",
             s.date.formatted(date: .abbreviated, time: .omitted),
             "Pain during \(PainScore.display(s.painDuring)), after \(s.displayPainAfter)"
         ]
@@ -375,7 +375,7 @@ struct HistoryView: View {
         let drafts = daySessions.filter(\.isDraft)
         return VStack(alignment: .leading, spacing: 2) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Workout")
+                Text("Session")
                     .foregroundStyle(.secondary)
                 Spacer()
                 Text(workoutMetricValue(finalized: finalized, drafts: drafts))
@@ -398,9 +398,9 @@ struct HistoryView: View {
             return drafts.isEmpty ? "None" : "Draft"
         }
         if finalized.count == 1 {
-            return drafts.isEmpty ? "Yes" : "Yes · draft"
+            return drafts.isEmpty ? "1 session" : "1 session, draft"
         }
-        return drafts.isEmpty ? "Yes · \(finalized.count)" : "Yes · \(finalized.count) · draft"
+        return drafts.isEmpty ? "\(finalized.count) sessions" : "\(finalized.count) sessions, draft"
     }
 
     private func metricRow(_ title: String, _ value: String) -> some View {
@@ -445,14 +445,14 @@ struct HistoryView: View {
     }
 
     private func dayAccessibility(_ day: DayLogEntry) -> String {
-        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "not logged"
-        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "not logged"
-        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "not logged"
+        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "not recorded"
+        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "not recorded"
+        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "not recorded"
         let workout: String
         if day.sessions.isEmpty {
-            workout = "no workout"
+            workout = "no session"
         } else {
-            workout = "workout \(day.sessions.map(\.displayTitle).joined(separator: ", "))"
+            workout = "session \(day.sessions.map(\.displayTitle).joined(separator: ", "))"
         }
         return "\(day.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(morning). Evening pain \(evening). Steps \(steps). \(workout)."
     }
@@ -481,7 +481,7 @@ struct HistoryResistanceListView: View {
                         Text(row.kind.label)
                             .font(.caption.monospacedDigit().weight(.semibold))
                             .foregroundStyle(row.isWarmup ? Color.secondary : Color.primary)
-                            .frame(width: 28, alignment: .leading)
+                            .frame(width: 72, alignment: .leading)
                         Text(row.dose)
                             .font(.caption.monospacedDigit())
                             .frame(minWidth: 44, alignment: .leading)

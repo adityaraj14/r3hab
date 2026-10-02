@@ -148,7 +148,7 @@ enum NotificationScheduler {
             hour: amHour,
             minute: amMinute,
             title: "Morning check-in",
-            body: "Log resting knee pain when you’re ready.",
+            body: "Record the resting knee pain.",
             calendar: calendar
         )
         await scheduleDailyReminder(
@@ -156,7 +156,7 @@ enum NotificationScheduler {
             hour: pmHour,
             minute: pmMinute,
             title: "Evening check-in",
-            body: "Log daily pain and steps for today.",
+            body: "Record the daily pain and the steps for today.",
             calendar: calendar
         )
 
@@ -271,8 +271,8 @@ enum NotificationScheduler {
         guard PendingQueue.shouldScheduleNotification(fireAt: fire, now: now) else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "24h response due"
-        content.body = "How did yesterday’s session feel? Tap to resolve."
+        content.title = "24-hour response due"
+        content.body = "Record the 24-hour response for yesterday's session."
         content.sound = .default
         content.userInfo = ["sessionId": sessionId.uuidString, "kind": "pending"]
         content.categoryIdentifier = "PENDING_24H"
@@ -313,8 +313,8 @@ enum NotificationScheduler {
         guard PendingQueue.shouldScheduleNotification(fireAt: fire, now: now) else { return }
 
         let content = UNMutableNotificationContent()
-        content.title = "Log post-session pain"
-        content.body = "How did the tendon feel after today’s session? Tap to log pain after."
+        content.title = "Record pain after the session"
+        content.body = "Record the pain after today's session."
         content.sound = .default
         content.userInfo = ["sessionId": sessionId.uuidString, "kind": "painAfter"]
         content.categoryIdentifier = "PAIN_AFTER"

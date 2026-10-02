@@ -17,7 +17,7 @@ struct LoadPrescription: Equatable, Sendable {
 
     /// Last logged dose. Not a computed next load.
     var lastTimeLine: String {
-        "Last time: \(displayLine)"
+        "Last session: \(displayLine)"
     }
 }
 
@@ -36,9 +36,9 @@ enum ProgressionStance: String, Equatable, Sendable {
     /// Advice only. The form still opens on last session’s weight.
     var label: String {
         switch self {
-        case .hold: return "Hold load"
-        case .advance: return "Increase load"
-        case .drop: return "Decrease load"
+        case .hold: return "Hold the load"
+        case .advance: return "Increase the load"
+        case .drop: return "Decrease the load"
         }
     }
 }
@@ -60,7 +60,7 @@ struct ProgressionResult: Equatable, Sendable {
     /// last working load. Otherwise this is `reason`.
     var cardReason: String {
         guard let pounds = suggestedChangeLoadLbs else { return reason }
-        return "\(stance.label): try \(LoadCopy.labeled(pounds))"
+        return "\(stance.label). Try \(LoadCopy.labeled(pounds))."
     }
 
     /// Next weight, in pounds, when it differs from the last working load.
@@ -78,7 +78,7 @@ struct ProgressionResult: Equatable, Sendable {
 /// QL diary helpers. Clinical targets are TBD — these do not advise
 /// increase or drop, and they do not snap sets into the patellar 3×8–12 band.
 enum QLLoggingStub {
-    static let clinicalTargetNote = "Clinical targets are TBD."
+    static let clinicalTargetNote = "Clinical targets are not set."
 
     /// Last logged load and reps for a weighted QL move. Blank when nothing is logged yet.
     static func lastWeighted(
@@ -101,7 +101,7 @@ enum QLLoggingStub {
     /// Display-only step reminder. `stepNearNormalMin` is the existing settings
     /// number, reused as a label — not a QL clinical prescription.
     static func stepTargetLine(stepNearNormalMin: Int) -> String {
-        "Step target: \(stepNearNormalMin). \(clinicalTargetNote)"
+        "The step target is \(stepNearNormalMin). \(clinicalTargetNote)"
     }
 }
 
@@ -135,18 +135,18 @@ enum ProgressionEngine {
     static let repCeiling = 12
     static let repHardMax = 15
 
-    static let reasonWaitingOn24h = "Waiting on 24h check-in"
-    static let reasonWorseHolding = "24h Worse — holding load"
-    static let reasonTwoCleanIncrease = "Two clean hits — increase load"
-    static let reasonOneClean = "One clean hit — holding load"
-    static let reasonShortReps = "Reps were short — holding load"
-    static let reasonStart = "Start at 3×8"
-    static let reasonNotApplicable = "24h not applicable — holding load"
-    static let reasonPainUnlogged = "Pain during was not logged"
-    static let reasonHolding = "Holding load"
+    static let reasonWaitingOn24h = "The 24-hour response is not recorded."
+    static let reasonWorseHolding = "The 24-hour response is Worse. Hold the load."
+    static let reasonTwoCleanIncrease = "Two clean sessions. Increase the load."
+    static let reasonOneClean = "One clean session. Hold the load."
+    static let reasonShortReps = "The reps were low. Hold the load."
+    static let reasonStart = "Start with 3 sets of 8 reps."
+    static let reasonNotApplicable = "The 24-hour response does not apply. Hold the load."
+    static let reasonPainUnlogged = "You did not record the pain during the session."
+    static let reasonHolding = "Hold the load."
 
     static func reasonPain(_ pain: Int) -> String {
-        "Pain during was \(pain)"
+        "The pain during the session was \(pain)."
     }
 
     static func today(

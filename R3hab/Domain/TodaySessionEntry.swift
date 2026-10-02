@@ -55,9 +55,9 @@ enum TodaySessionEntry: Equatable, Sendable {
 
     static func status(for sessions: [TrainingSessionSnapshot]) -> String {
         if let pending = sessions.first(where: { !$0.hasLoggedPainAfter }) {
-            return "During \(pending.painDuring) · after not logged"
+            return "Pain during \(pending.painDuring). Pain after is not recorded."
         }
-        return sessions.count == 1 ? "Logged" : "\(sessions.count) logged"
+        return sessions.count == 1 ? "Recorded" : "\(sessions.count) recorded"
     }
 
     private static func load(from target: LoadPrescription, laterality: SetLaterality) -> TodaySessionLoad {
@@ -82,6 +82,6 @@ enum TodaySessionEntry: Equatable, Sendable {
         }
         let left = pair.leftLoad.map(LoadCopy.labeled) ?? "—"
         let right = pair.rightLoad.map(LoadCopy.labeled) ?? "—"
-        return [dose, "L @ \(left) / R @ \(right)"].filter { !$0.isEmpty }.joined(separator: " ")
+        return [dose, "Left @ \(left) / Right @ \(right)"].filter { !$0.isEmpty }.joined(separator: " ")
     }
 }

@@ -55,8 +55,8 @@ final class TodaySessionEntryTests: XCTestCase {
             entry,
             .target(
                 TodaySessionLoad(
-                    warmupNote: "WU 2×30s @ 35 lbs",
-                    workLines: ["8 @ 35 lbs", "8 @ 35 lbs", "8 @ 35 lbs"]
+                    warmupNote: "Warm-up 2×30s @ 35 lb",
+                    workLines: ["8 @ 35 lb", "8 @ 35 lb", "8 @ 35 lb"]
                 )
             )
         )
@@ -88,10 +88,10 @@ final class TodaySessionEntryTests: XCTestCase {
             entry,
             .logged(
                 TodaySessionLoad(
-                    warmupNote: "WU 2×30s @ 35 lbs",
-                    workLines: ["8 @ 35 lbs", "8 @ 35 lbs", "8 @ 35 lbs"]
+                    warmupNote: "Warm-up 2×30s @ 35 lb",
+                    workLines: ["8 @ 35 lb", "8 @ 35 lb", "8 @ 35 lb"]
                 ),
-                status: "During 2 · after not logged"
+                status: "Pain during 2. Pain after is not recorded."
             )
         )
     }
@@ -123,9 +123,9 @@ final class TodaySessionEntryTests: XCTestCase {
             .logged(
                 TodaySessionLoad(
                     warmupNote: nil,
-                    workLines: ["8 @ 35 lbs", "8 @ 35 lbs", "8 @ 35 lbs"]
+                    workLines: ["8 @ 35 lb", "8 @ 35 lb", "8 @ 35 lb"]
                 ),
-                status: "Logged"
+                status: "Recorded"
             )
         )
     }

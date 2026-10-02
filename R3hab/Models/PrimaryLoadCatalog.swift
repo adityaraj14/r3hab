@@ -49,7 +49,7 @@ struct PrimaryLoadOption: Identifiable, Hashable, Sendable {
     }
 
     func nextUpCTA(hasDraft: Bool) -> String {
-        hasDraft ? "Resume \(title.lowercased())" : logCTA
+        hasDraft ? "Continue \(title.lowercased())" : logCTA
     }
 }
 
@@ -69,11 +69,11 @@ enum PrimaryLoadCatalog {
         id: "seated-extension",
         injuryID: "patellar-tendinopathy",
         title: "Seated leg extension",
-        subtitle: "Default · iso holds, then heavy slow on the machine",
+        subtitle: "Default exercise. Use holds, then heavy slow resistance on the machine.",
         isometricPresetID: "ext",
         hsrPresetID: "ke",
-        logCTA: "Log Workout",
-        homeObjective: "Primary load is seated leg extension. Build tendon capacity without next-morning flares.",
+        logCTA: "Record session",
+        homeObjective: "The primary exercise is seated leg extension. Increase tendon capacity. Do not cause a flare the next morning.",
         logging: .kneeLadder
     )
 
@@ -81,11 +81,11 @@ enum PrimaryLoadCatalog {
         id: "leg-press",
         injuryID: "patellar-tendinopathy",
         title: "Leg press",
-        subtitle: "Same load logger as seated leg extension · holds, then heavy slow",
+        subtitle: "Use the same session record as seated leg extension. Use holds, then heavy slow resistance.",
         isometricPresetID: "lp-iso",
         hsrPresetID: "lp",
-        logCTA: "Log leg press",
-        homeObjective: "Primary load is leg press. Build tendon capacity without next-morning flares.",
+        logCTA: "Record leg press",
+        homeObjective: "The primary exercise is leg press. Increase tendon capacity. Do not cause a flare the next morning.",
         logging: .kneeLadder
     )
 
@@ -93,11 +93,11 @@ enum PrimaryLoadCatalog {
         id: "ql-walk",
         injuryID: "ql-strain",
         title: "Walking",
-        subtitle: "Steps, or time. The step number is a reminder, not a protocol.",
+        subtitle: "Record steps or time. The step number is a reminder. It is not a clinical target.",
         isometricPresetID: "ql-walk",
         hsrPresetID: "ql-walk",
-        logCTA: "Log walk",
-        homeObjective: "Primary is walking. Log steps or time. Clinical step targets are TBD.",
+        logCTA: "Record walking",
+        homeObjective: "The primary exercise is walking. Record steps or time. Clinical step targets are not set.",
         logging: .walk
     )
 
@@ -105,11 +105,11 @@ enum PrimaryLoadCatalog {
         id: "ql-side-bend",
         injuryID: "ql-strain",
         title: "Side bend",
-        subtitle: "Some weight · reps, optional left and right",
+        subtitle: "Record the load and the reps. You can record the left side and the right side.",
         isometricPresetID: "ql-side-bend",
         hsrPresetID: "ql-side-bend",
-        logCTA: "Log side bend",
-        homeObjective: "Primary is weighted side bends. Log the load you used. Clinical targets are TBD.",
+        logCTA: "Record side bend",
+        homeObjective: "The primary exercise is a side bend with load. Record the load. Clinical targets are not set.",
         logging: .weightedReps(allowsSides: true)
     )
 
@@ -117,11 +117,11 @@ enum PrimaryLoadCatalog {
         id: "ql-hip-thrust",
         injuryID: "ql-strain",
         title: "Hip thrust",
-        subtitle: "Load and reps. Last weight prefills the next log.",
+        subtitle: "Record the load and the reps. The last load is the start value for the next session.",
         isometricPresetID: "ql-hip-thrust",
         hsrPresetID: "ql-hip-thrust",
-        logCTA: "Log hip thrust",
-        homeObjective: "Primary is hip thrusts. Log load and reps. Clinical targets are TBD.",
+        logCTA: "Record hip thrust",
+        homeObjective: "The primary exercise is the hip thrust. Record the load and the reps. Clinical targets are not set.",
         logging: .weightedReps(allowsSides: false)
     )
 

@@ -115,9 +115,9 @@ enum WorkoutStreak {
     }
 
     /// Missed-session notification copy. The Today card only borrows the title.
-    static let missTwiceTitle = "Don’t miss twice"
+    static let missTwiceTitle = "Do not miss two"
     static let missTwiceBody =
-        "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
+        "One missed session is acceptable. Do not miss a second session. Continue the sessions."
 
     /// One short status line for the streak card. No explanation, no slogan.
     static func statusLabel(for miss: MissState) -> String? {
@@ -129,7 +129,7 @@ enum WorkoutStreak {
         case .oneMiss:
             return missTwiceTitle
         case .twoMiss:
-            return "Missed twice"
+            return "Missed two sessions"
         }
     }
 

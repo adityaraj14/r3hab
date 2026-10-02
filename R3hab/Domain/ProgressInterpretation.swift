@@ -40,68 +40,68 @@ enum ProgressInterpretation {
         case (nil, nil):
             return ProgressWindowReadout(
                 tone: .insufficient,
-                headline: "Not enough days yet to read this window.",
+                headline: "This window does not have enough days.",
                 detail: nil
             )
         case (.up?, .flat?), (.up?, .down?):
             let detail = pain == .down
-                ? "You're loading more and pain is easing."
-                : "Volume is up and pain is holding steady."
+                ? "The load is higher and the pain decreases."
+                : "The load is higher and the pain stays the same."
             return ProgressWindowReadout(
                 tone: .positive,
-                headline: "You're doing well.",
+                headline: "This result is good.",
                 detail: detail
             )
         case (.up?, .up?):
             return ProgressWindowReadout(
                 tone: .caution,
-                headline: "Worth a closer look.",
-                detail: "Volume is up, and pain is climbing with it."
+                headline: "Examine this result.",
+                detail: "The load is higher and the pain increases with it."
             )
         case (.flat?, .up?), (.down?, .up?):
             return ProgressWindowReadout(
                 tone: .caution,
-                headline: "Worth a closer look.",
-                detail: "Pain is rising while training is quieter."
+                headline: "Examine this result.",
+                detail: "The pain increases and the sessions are fewer."
             )
         case (.flat?, .flat?), (.flat?, .down?), (.down?, .flat?), (.down?, .down?):
             let quieter = volume == .down
             return ProgressWindowReadout(
                 tone: .steady,
-                headline: quieter ? "A quieter stretch." : "A steady window.",
+                headline: quieter ? "The load is lower." : "This window is stable.",
                 detail: quieter
-                    ? "Volume eased off and pain is staying calm."
-                    : "Pain and volume are both holding."
+                    ? "The load decreases and the pain stays low."
+                    : "The pain and the load stay the same."
             )
         case (nil, .down?):
             return ProgressWindowReadout(
                 tone: .partial,
-                headline: "Pain is easing.",
-                detail: "Log a few sessions and the load story will show up too."
+                headline: "The pain decreases.",
+                detail: "Record more sessions to see the load."
             )
         case (nil, .flat?):
             return ProgressWindowReadout(
                 tone: .partial,
-                headline: "Pain is holding steady.",
-                detail: "Session volume will tell the rest of the story."
+                headline: "The pain stays the same.",
+                detail: "The session volume shows the rest of the result."
             )
         case (nil, .up?):
             return ProgressWindowReadout(
                 tone: .partial,
-                headline: "Pain is creeping up.",
-                detail: "That's worth watching. Volume logs will fill this in."
+                headline: "The pain increases.",
+                detail: "Examine this pain. Record the session volume."
             )
         case (.up?, nil):
             return ProgressWindowReadout(
                 tone: .partial,
-                headline: "You're loading more.",
-                detail: "Morning scores will tell you if it's sitting well."
+                headline: "The load is higher.",
+                detail: "The morning pain shows if the load is acceptable."
             )
         case (.flat?, nil), (.down?, nil):
             return ProgressWindowReadout(
                 tone: .partial,
-                headline: "Volume is quiet this window.",
-                detail: "Pain logs will fill in the picture."
+                headline: "The session volume is low in this window.",
+                detail: "Record the pain to complete this window."
             )
         }
     }

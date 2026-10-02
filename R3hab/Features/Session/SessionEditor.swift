@@ -90,7 +90,7 @@ struct SessionEditor: View {
 
     private var navigationTitleText: String {
         if isEditing { return "Edit session" }
-        return "Log session"
+        return "Record session"
     }
 
     /// New logs and drafts stay quiet. A completed edit opens More options.
@@ -137,23 +137,23 @@ struct SessionEditor: View {
             // screen before the sets push it below the fold. Save still blocks
             // with the banner if it is empty.
             Section {
-                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
+                PainScoreControl(title: "Pain during the session", value: $painDuring, allowsClear: false)
                 if kind.shows24hResolution {
-                    Picker("24h", selection: $response24hEdit) {
+                    Picker("Response", selection: $response24hEdit) {
                         Text("Better").tag(Optional.some(Response24h.better))
                         Text("Same").tag(Optional.some(Response24h.same))
                         Text("Worse").tag(Optional.some(Response24h.worse))
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityLabel("24h resolution")
+                    .accessibilityLabel("24-hour response")
                 }
             } header: {
                 Text("Pain")
             } footer: {
                 if kind.shows24hResolution {
-                    Text("Next-morning tendon response. Changing Better, Same, or Worse overwrites the saved 24h.")
+                    Text("This is the 24-hour response. If you select Better, Same, or Worse, R3hab replaces the saved response.")
                 } else {
-                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
+                    Text("Record the pain during the session. Use 0 to 10. R3hab sends a reminder in about 30 minutes. Then record the pain after the session.")
                 }
             }
 
@@ -172,7 +172,7 @@ struct SessionEditor: View {
                     } header: {
                         Text("Today’s plan")
                     } footer: {
-                        Text("Weight starts at last time. Change it with the plates or stack you have.")
+                        Text("The load starts at the last session. Change the load to match your plates or stack.")
                     }
                 }
                 if showsWarmup {
@@ -242,7 +242,7 @@ struct SessionEditor: View {
         }
         .onChange(of: painDuring) { _, _ in clearError() }
         .confirmationDialog(
-            "Delete this workout?",
+            "Delete this session?",
             isPresented: $confirmDelete,
             titleVisibility: .visible
         ) {
@@ -397,7 +397,7 @@ struct SessionEditor: View {
         } header: {
             Text("Walk")
         } footer: {
-            Text("\(QLLoggingStub.clinicalTargetNote) Log steps, minutes, or both.")
+            Text("\(QLLoggingStub.clinicalTargetNote) Record the steps, the minutes, or both.")
         }
     }
 
@@ -446,9 +446,9 @@ struct SessionEditor: View {
                 Button {
                     lateralityBinding.wrappedValue = laterality == .bilateral ? .unilateral : .bilateral
                 } label: {
-                    Text(laterality == .bilateral ? "Split L/R loads" : "Use one load")
+                    Text(laterality == .bilateral ? "Use separate loads" : "Use one load")
                 }
-                .accessibilityLabel(laterality == .bilateral ? "Split left and right loads" : "Use one load for both legs")
+                .accessibilityLabel(laterality == .bilateral ? "Use a left load and a right load" : "Use one load for both legs")
                 .accessibilityValue(laterality.title)
             }
 
@@ -473,10 +473,10 @@ struct SessionEditor: View {
                             labeledIntField(title: "Time (s)", value: bindingPairHold(pair))
                         }
                         if laterality == .bilateral {
-                            labeledLoadField(title: "Load (lbs)", value: bindingPairLoad(pair, side: nil))
+                            labeledLoadField(title: "Load (lb)", value: bindingPairLoad(pair, side: nil))
                         } else {
-                            labeledLoadField(title: "L lbs", value: bindingPairLoad(pair, side: .left))
-                            labeledLoadField(title: "R lbs", value: bindingPairLoad(pair, side: .right))
+                            labeledLoadField(title: "Left (lb)", value: bindingPairLoad(pair, side: .left))
+                            labeledLoadField(title: "Right (lb)", value: bindingPairLoad(pair, side: .right))
                         }
                     }
                 }
@@ -489,10 +489,10 @@ struct SessionEditor: View {
                 Label(usesIsoHolds ? "Add hold" : "Add set", systemImage: "plus.circle")
             }
         } header: {
-            Text(usesIsoHolds ? "Working holds" : "Working sets")
+            Text(usesIsoHolds ? "Holds" : "Sets")
         } footer: {
             if laterality == .unilateral {
-                Text("Left and right loads can differ. One 24h resolve for the session.")
+                Text("The left load and the right load can differ. Record one 24-hour response for the session.")
             }
         }
     }
@@ -517,7 +517,7 @@ struct SessionEditor: View {
                     HStack {
                         labeledIntField(title: "Reps", value: bindingWarmupReps(index))
                         labeledIntField(title: "Time (s)", value: bindingWarmupHold(index))
-                        labeledLoadField(title: "Load (lbs)", value: bindingWarmupLoad(index))
+                        labeledLoadField(title: "Load (lb)", value: bindingWarmupLoad(index))
                     }
                 }
                 .padding(.vertical, 4)
@@ -532,7 +532,7 @@ struct SessionEditor: View {
         } header: {
             Text("Warm-up (isometric holds)")
         } footer: {
-            Text("Reps = holds · time per hold · load (lbs). Same load for both knees.")
+            Text("Reps are the holds. Time is the seconds for each hold. Use the same load for both knees.")
         }
     }
 

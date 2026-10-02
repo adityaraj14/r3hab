@@ -10,11 +10,11 @@ enum ExportImportError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unsupportedSchema(let v):
-            return "Unsupported backup version \(v). Update the app."
+            return "R3hab does not support backup version \(v). Update R3hab."
         case .decodeFailed:
-            return "Could not read this backup file."
+            return "R3hab cannot read this backup file."
         case .emptyFile:
-            return "Backup file is empty."
+            return "The backup file is empty."
         }
     }
 }
@@ -23,11 +23,11 @@ enum ImportMode: String, CaseIterable, Identifiable {
     case replace
     case merge
     var id: String { rawValue }
-    var title: String { self == .replace ? "Replace all data" : "Merge with existing" }
+    var title: String { self == .replace ? "Replace all records" : "Merge with current records" }
     var detail: String {
         switch self {
-        case .replace: return "Wipes check-ins and sessions, then restores from the file."
-        case .merge: return "Updates matching days/sessions; keeps local-only rows."
+        case .replace: return "Replace removes the current check-ins and sessions. Then R3hab restores the file."
+        case .merge: return "Merge updates the matching days and sessions. R3hab keeps the other records."
         }
     }
 }
