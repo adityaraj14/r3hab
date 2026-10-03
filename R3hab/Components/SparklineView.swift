@@ -95,7 +95,7 @@ struct MetricChartCard: View {
                 ContentUnavailableView(
                     "No data yet",
                     systemImage: "chart.line.uptrend.xyaxis",
-                    description: Text("Log daily check-ins to see trends.")
+                    description: Text("Record check-ins to see the trend.")
                 )
                 .frame(height: 120)
             }
@@ -113,10 +113,10 @@ struct OutcomeMixCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("24h outcomes")
+            Text("24-hour responses")
                 .font(.headline)
             if mix.resolved == 0 && mix.pending == 0 {
-                Text("Resolve a session tomorrow morning. Better / Same is what counts — not zero pain during the set.")
+                Text("Record the 24-hour response the next morning. A clean session is Better or Same. Zero pain during the set is not required.")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             } else {
@@ -138,7 +138,7 @@ struct OutcomeMixCard: View {
                     mixStat("Same", mix.same, .secondary)
                     mixStat("Worse", mix.worse, .orange)
                     if mix.pending > 0 {
-                        mixStat("Open", mix.pending, .orange)
+                        mixStat("Pending", mix.pending, .orange)
                     }
                 }
             }
@@ -151,7 +151,7 @@ struct OutcomeMixCard: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "24 hour outcomes. Clean streak \(mix.cleanStreak). Better \(mix.better), same \(mix.same), worse \(mix.worse)."
+            "24-hour responses. Clean sessions \(mix.cleanStreak). Better \(mix.better), same \(mix.same), worse \(mix.worse)."
         )
     }
 
@@ -195,14 +195,14 @@ struct ConsistencyCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            Text("Showing up")
+            Text("Records")
                 .font(.headline)
             Text(encouragement)
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
             meter(title: "Check-ins", value: summary.checkInDays, total: summary.windowDays)
             meter(title: "Mornings", value: summary.morningDays, total: summary.windowDays)
-            meter(title: "Train days", value: summary.sessionDays, total: summary.windowDays)
+            meter(title: "Session days", value: summary.sessionDays, total: summary.windowDays)
             Text("\(summary.sessionCount) session\(summary.sessionCount == 1 ? "" : "s") in this window")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -215,18 +215,18 @@ struct ConsistencyCard: View {
         )
         .accessibilityElement(children: .combine)
         .accessibilityLabel(
-            "Consistency. \(summary.checkInDays) of \(summary.windowDays) check-ins. \(summary.sessionDays) train days. \(summary.sessionCount) sessions."
+            "Records. \(summary.checkInDays) of \(summary.windowDays) check-ins. \(summary.sessionDays) session days. \(summary.sessionCount) sessions."
         )
     }
 
     private var encouragement: String {
         if summary.checkInDays == 0 {
-            return "One morning score is a start. The diary is the rehab."
+            return "Record one morning pain value. That record starts the chart."
         }
         if summary.checkInDays >= summary.windowDays {
-            return "Every day in this window has a mark. That’s the habit."
+            return "Every day in this window has a record."
         }
-        return "\(summary.checkInDays) of \(summary.windowDays) days logged. Keep it going."
+        return "\(summary.checkInDays) of \(summary.windowDays) days have a record."
     }
 
     private func meter(title: String, value: Int, total: Int) -> some View {

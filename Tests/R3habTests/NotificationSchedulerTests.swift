@@ -165,10 +165,10 @@ final class NotificationSchedulerTests: XCTestCase {
     }
 
     func testMissedSessionCopyIsAdis() {
-        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Don’t miss twice")
+        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Do not miss two")
         XCTAssertEqual(
             WorkoutStreak.missTwiceBody,
-            "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
+            "One missed session is acceptable. Do not miss a second session. Continue the sessions."
         )
     }
 }

@@ -19,9 +19,9 @@ enum InjuryCatalog {
 
     static let patellarTendinopathy = InjuryDefinition(
         id: "patellar-tendinopathy",
-        title: "Jumper’s knee / patellar tendinopathy / patellar tendonitis",
+        title: "Patellar tendinopathy, or jumper's knee, or patellar tendonitis",
         protocolName: "Patellar tendinopathy",
-        protocolDescription: "Progressive loading A→C, pain-guided 24h decisions, one primary lift (default seated leg extension).",
+        protocolDescription: "Increase the load from Phase A to Phase C. Use the pain and the 24-hour response to decide. Use one primary exercise. The default is seated leg extension.",
         systemImage: "figure.strengthtraining.traditional"
     )
 
@@ -29,7 +29,7 @@ enum InjuryCatalog {
         id: "ql-strain",
         title: "QL strain",
         protocolName: "QL strain",
-        protocolDescription: "Log walking, weighted side bends, and hip thrusts. Clinical loads are TBD — this is a diary, not a copied tendon protocol.",
+        protocolDescription: "Record walking, side bends with load, and hip thrusts. Clinical loads are not set. This record is not the patellar tendon plan.",
         systemImage: "figure.walk"
     )
 

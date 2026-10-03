@@ -47,7 +47,7 @@ struct SessionPreset: Identifiable, Hashable {
             id: "ext",
             label: "Seated leg extension",
             sessionType: .isometrics,
-            whatIDid: "Seated leg extension hold ~60°",
+            whatIDid: "Seated leg extension hold at about 60 degrees",
             phases: [.bIsometrics, .aFlareDeLoad],
             tracksResistance: true,
             usesPerSetLogging: true,

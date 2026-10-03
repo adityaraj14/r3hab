@@ -63,7 +63,7 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
 }
 
 enum SessionDraft {
-    static let emptyMessage = "Add a load, a note, or pain during to save a draft."
+    static let emptyMessage = "To save a draft, add a load, a note, or the pain during the session."
 
     static func finalized(_ sessions: [TrainingSessionSnapshot]) -> [TrainingSessionSnapshot] {
         sessions.filter(\.isFinalized)

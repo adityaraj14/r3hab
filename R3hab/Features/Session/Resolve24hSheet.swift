@@ -13,6 +13,9 @@ struct Resolve24hSheet: View {
     @Query(sort: \TrainingSession.date, order: .reverse) private var allSessions: [TrainingSession]
 
     let sessionId: UUID
+    /// Fired after a successful save so Today can drop the prompt in the same
+    /// turn, before the pending query republishes.
+    var onResolved: (UUID, Response24h) -> Void = { _, _ in }
 
     @State private var response: Response24h = .same
     @State private var decision: SessionDecision = .stay
@@ -35,7 +38,7 @@ struct Resolve24hSheet: View {
                 ContentUnavailableView(
                     "Session not found",
                     systemImage: "questionmark.circle",
-                    description: Text("This 24h item may have been deleted or already resolved.")
+                    description: Text("This session was deleted, or the 24-hour response is already recorded.")
                 )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -67,7 +70,7 @@ struct Resolve24hSheet: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .posterCard()
 
-                Text("HOW IS THE TENDON?")
+                Text("How is the tendon?")
                     .font(.caption.weight(.semibold))
                     .tracking(1.1)
                     .foregroundStyle(AppTheme.quiet)
@@ -103,13 +106,13 @@ struct Resolve24hSheet: View {
                     }
                     .padding(.top, 8)
                 } label: {
-                    Text("Choose a different call")
+                    Text("Select a different decision")
                         .font(.subheadline)
                         .foregroundStyle(AppTheme.quiet)
                 }
                 .tint(AppTheme.quiet)
 
-                Button("Close as rest, no judgment") {
+                Button("Record this as rest") {
                     closeAsRest()
                 }
                 .font(.footnote)
@@ -125,7 +128,7 @@ struct Resolve24hSheet: View {
             .padding()
         }
         .appCanvas()
-        .navigationTitle("Resolve 24h")
+        .navigationTitle("24-hour response")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -163,7 +166,7 @@ struct Resolve24hSheet: View {
 
     private func sessionContextLine(_ session: TrainingSession) -> String {
         let date = session.date.formatted(date: .abbreviated, time: .omitted)
-        return "\(date) · during \(session.painDuring) → after \(session.displayPainAfter)"
+        return "\(date). Pain during \(session.painDuring). Pain after \(session.displayPainAfter)."
     }
 
     private func responseCard(_ option: Response24h) -> some View {
@@ -209,7 +212,7 @@ struct Resolve24hSheet: View {
     private func saveClinical() {
         errorMessage = nil
         guard response == .better || response == .same || response == .worse else {
-            errorMessage = "Pick Better, Same, or Worse."
+            errorMessage = "Select Better, Same, or Worse."
             return
         }
         if decision == .hardDrop {
@@ -222,7 +225,7 @@ struct Resolve24hSheet: View {
     private func finalizeSave() {
         // Re-resolve from the current context at write time.
         guard let session else {
-            errorMessage = "This session is no longer available."
+            errorMessage = "This session is not available."
             return
         }
         let previousResponse = session.response24h
@@ -233,6 +236,7 @@ struct Resolve24hSheet: View {
         session.updatedAt = Date()
         do {
             try modelContext.save()
+            onResolved(session.id, response)
             NotificationScheduler.cancelPending(sessionId: session.id)
             Haptics.light()
             let shouldNudge = previousResponse == .pending || previousResponse != response
@@ -261,7 +265,13 @@ struct Resolve24hSheet: View {
         session.resolvedAt = Date()
         session.snoozedUntil = nil
         session.updatedAt = Date()
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            onResolved(session.id, .notApplicable)
+        } catch {
+            dismiss()
+            return
+        }
         NotificationScheduler.cancelPending(sessionId: session.id)
         Haptics.light()
         dismiss()
@@ -287,7 +297,7 @@ struct HardDropPhaseSheet: View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Also change current phase", isOn: $changePhase)
+                    Toggle("Also change the current phase", isOn: $changePhase)
                     if changePhase, !earlier.isEmpty {
                         Picker("New phase", selection: $selected) {
                             ForEach(earlier) { p in
@@ -296,10 +306,10 @@ struct HardDropPhaseSheet: View {
                         }
                     }
                 } footer: {
-                    Text("Hard drop means step back when ready. You can keep the phase and only reduce load.")
+                    Text("Go to the previous phase when you are ready. You can keep this phase. Decrease only the load.")
                 }
             }
-            .navigationTitle("Hard drop")
+            .navigationTitle("Previous phase")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -333,7 +343,7 @@ extension View {
                 }
             )
         ) {
-            Button("Got it") { onAcknowledge() }
+            Button("OK") { onAcknowledge() }
         } message: {
             Text(nudge.wrappedValue?.message ?? "")
         }

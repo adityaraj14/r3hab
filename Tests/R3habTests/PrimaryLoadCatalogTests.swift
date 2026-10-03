@@ -5,7 +5,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     func testDefaultIsSeatedExtension() {
         XCTAssertEqual(PrimaryLoadCatalog.defaultID, "seated-extension")
         XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.title, "Seated leg extension")
-        XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.logCTA, "Log Workout")
+        XCTAssertEqual(PrimaryLoadCatalog.defaultSelectable.logCTA, "Record session")
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "seated-extension").isometricPresetID, "ext")
         XCTAssertEqual(PrimaryLoadCatalog.option(for: "seated-extension").hsrPresetID, "ke")
         XCTAssertFalse(PrimaryLoadCatalog.defaultSelectable.title.contains("HSR"))
@@ -15,7 +15,7 @@ final class PrimaryLoadCatalogTests: XCTestCase {
         let options = PrimaryLoadCatalog.options(for: InjuryCatalog.patellarTendinopathy.id)
         XCTAssertEqual(options.map(\.id), ["seated-extension", "leg-press"])
         XCTAssertEqual(options.map(\.title), ["Seated leg extension", "Leg press"])
-        XCTAssertEqual(options.map(\.logCTA), ["Log Workout", "Log leg press"])
+        XCTAssertEqual(options.map(\.logCTA), ["Record session", "Record leg press"])
         XCTAssertFalse(options.contains { $0.title.contains("HSR") })
         XCTAssertFalse(PrimaryLoadCatalog.contains("spanish-squat"))
         XCTAssertFalse(PrimaryLoadCatalog.contains("wall-sit"))
@@ -151,9 +151,9 @@ final class PrimaryLoadCatalogTests: XCTestCase {
     }
 
     func testNextUpCTAResumesTheLiftWhenADraftExists() {
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: false), "Log Workout")
-        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: true), "Resume seated leg extension")
-        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: false), "Log leg press")
-        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: true), "Resume leg press")
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: false), "Record session")
+        XCTAssertEqual(PrimaryLoadCatalog.seatedExtension.nextUpCTA(hasDraft: true), "Continue seated leg extension")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: false), "Record leg press")
+        XCTAssertEqual(PrimaryLoadCatalog.legPress.nextUpCTA(hasDraft: true), "Continue leg press")
     }
 }

@@ -60,9 +60,9 @@ enum DecisionSuggester {
     static func guidance(for decision: SessionDecision) -> String? {
         switch decision {
         case .softCut:
-            return "Soft cut: stay in this phase, do less next time (−20–30% load, shorter holds, or fewer sets)."
+            return "Keep this phase. Decrease the load by 20 to 30 percent. You can use a shorter hold instead. You can use fewer sets instead."
         case .hardDrop:
-            return "Hard drop: step back a phase when ready (e.g. C→B or B→A). Confirm phase change only if you intend it."
+            return "Go to the previous phase when you are ready. You can go from Phase C to Phase B. You can go from Phase B to Phase A. Change the phase only if you want the change."
         case .stay, .progress, .rest:
             return nil
         }
@@ -73,15 +73,15 @@ enum DecisionSuggester {
     static func closeLine(for decision: SessionDecision) -> String {
         switch decision {
         case .stay:
-            return "Stay. Same load next time."
+            return "Use the same load next time."
         case .progress:
-            return "Progress. A little more next time."
+            return "Use a little more load next time."
         case .softCut:
-            return "Soft cut. A little less next time."
+            return "Use a little less load next time."
         case .hardDrop:
-            return "Hard drop. Step back a phase."
+            return "Go to the previous phase."
         case .rest:
-            return "Rest. No load judgment."
+            return "Do not judge the load."
         }
     }
 }
@@ -106,20 +106,20 @@ enum LoadNudge: Equatable, Identifiable {
     var title: String {
         switch self {
         case .easeOffMorning, .easeOffWorse:
-            return "Take the next session easier"
+            return "Decrease the next session."
         case .progress:
-            return "Ready to add load"
+            return "You can increase the load."
         }
     }
 
     var message: String {
         switch self {
         case .easeOffMorning(let previous, let current):
-            return "This morning’s pain is \(current), up from \(previous) the morning of your last workout. Next time, try a bit less — lower the load, do fewer reps, or shorten the holds. One change is enough."
+            return "The pain this morning is \(current). The pain on the morning of the last session was \(previous). Change only one item. Decrease the load, the reps, or the hold time."
         case .easeOffWorse:
-            return "Pain was worse after that session. Next time, try a bit less — about 20–30% less load, fewer sets, or shorter holds. One change is enough."
+            return "The pain was worse after that session. Make one change only. Decrease the load by about 20 to 30 percent. You can do fewer sets instead. You can use a shorter hold instead."
         case .progress:
-            return "Pain held steady — next time, try a bit more weight with the same sets and reps."
+            return "The pain stayed the same. Increase the load a little next time. Use the same sets and the same reps."
         }
     }
 }

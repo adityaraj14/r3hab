@@ -6,6 +6,24 @@ import XCTest
 #endif
 
 final class SessionEditorChromeTests: XCTestCase {
+    private func draftFields(
+        phase: RehabPhase = .bIsometrics,
+        sessionType: SessionType = .isometrics,
+        whatIDid: String = "Seated leg extension",
+        notes: String = "",
+        painDuring: Int? = nil,
+        sets: [ResistanceSet] = [ResistanceSet(reps: 8, loadLbs: nil, isWarmup: false)]
+    ) -> SessionDraftFields {
+        SessionDraftFields(
+            phase: phase,
+            sessionType: sessionType,
+            whatIDid: whatIDid,
+            notes: notes,
+            painDuring: painDuring,
+            sets: sets.map(SessionDraftFields.SetContent.init)
+        )
+    }
+
     func testNewLogHidesDeleteAnd24h() {
         let kind = SessionEditorKind.classify(existingIsDraft: nil)
         XCTAssertEqual(kind, .newLog)
@@ -107,6 +125,98 @@ final class SessionEditorChromeTests: XCTestCase {
                 resolvedAt: now,
                 snoozedUntil: nil,
                 cancelsPendingNotification: true
+            )
+        )
+    }
+
+    func testSaveDraftHiddenWhenFormMatchesBaseline() {
+        let fields = draftFields()
+        XCTAssertFalse(SessionDraftFields.showsSaveDraft(kind: .newLog, current: fields, baseline: fields))
+        XCTAssertFalse(SessionDraftFields.showsSaveDraft(kind: .draft, current: fields, baseline: fields))
+    }
+
+    func testSaveDraftShownWhenPainNotesOrSetsDiffer() {
+        let baseline = draftFields()
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .newLog,
+                current: draftFields(painDuring: 2),
+                baseline: baseline
+            )
+        )
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .draft,
+                current: draftFields(notes: "halfway"),
+                baseline: baseline
+            )
+        )
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .newLog,
+                current: draftFields(sets: [ResistanceSet(reps: 8, loadLbs: 25, isWarmup: false)]),
+                baseline: baseline
+            )
+        )
+        let withSet = draftFields(sets: [ResistanceSet(reps: 8, loadLbs: 25, isWarmup: false)])
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .draft,
+                current: draftFields(sets: [
+                    ResistanceSet(reps: 8, loadLbs: 25, isWarmup: false),
+                    ResistanceSet(reps: 8, loadLbs: 25, isWarmup: false)
+                ]),
+                baseline: withSet
+            )
+        )
+    }
+
+    func testSaveDraftIgnoresSetIdentity() {
+        let saved = ResistanceSet(reps: 4, loadLbs: 35, holdSeconds: 30, isWarmup: false, side: .left)
+        var rebuilt = saved
+        rebuilt.id = UUID()
+        XCTAssertNotEqual(saved.id, rebuilt.id)
+        XCTAssertFalse(
+            SessionDraftFields.showsSaveDraft(
+                kind: .draft,
+                current: draftFields(sets: [rebuilt]),
+                baseline: draftFields(sets: [saved])
+            )
+        )
+    }
+
+    func testSaveDraftShownForPhaseTypeAndWalkEdits() {
+        let baseline = draftFields()
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .newLog,
+                current: draftFields(phase: .cHeavySlowResistance),
+                baseline: baseline
+            )
+        )
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .draft,
+                current: draftFields(sessionType: .hsrStrength, whatIDid: "Leg press"),
+                baseline: baseline
+            )
+        )
+        XCTAssertTrue(
+            SessionDraftFields.showsSaveDraft(
+                kind: .newLog,
+                current: draftFields(sets: [ResistanceSet(steps: 4000, durationMinutes: 30)]),
+                baseline: draftFields(sets: [ResistanceSet()])
+            )
+        )
+    }
+
+    func testSaveDraftStaysHiddenForHistoricalEdits() {
+        let baseline = draftFields()
+        XCTAssertFalse(
+            SessionDraftFields.showsSaveDraft(
+                kind: .historical,
+                current: draftFields(notes: "edited", painDuring: 6),
+                baseline: baseline
             )
         )
     }

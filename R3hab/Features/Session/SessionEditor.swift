@@ -40,6 +40,9 @@ struct SessionEditor: View {
     @State private var confirmDelete = false
     @State private var planAdvice: String?
     @State private var planReason: String?
+    /// Form as of the end of `load` (seeded new log, or the saved draft).
+    /// Nil until then, so Save draft stays hidden on the first frame.
+    @State private var draftBaseline: SessionDraftFields?
 
     private var calendar: Calendar { .current }
     private var settings: AppSettings? { settingsList.first }
@@ -87,11 +90,32 @@ struct SessionEditor: View {
 
     private var navigationTitleText: String {
         if isEditing { return "Edit session" }
-        return "Log session"
+        return "Record session"
     }
 
     /// New logs and drafts stay quiet. A completed edit opens More options.
     private var usesNewSessionChrome: Bool { kind.usesNewSessionChrome }
+
+    private var draftFields: SessionDraftFields {
+        SessionDraftFields(
+            phase: phase,
+            sessionType: sessionType,
+            whatIDid: whatIDid,
+            notes: notes,
+            painDuring: painDuring,
+            sets: (warmupSets + workSets).map(SessionDraftFields.SetContent.init)
+        )
+    }
+
+    /// Unsaved relative to the loaded baseline. Historical edits never qualify.
+    private var showsSaveDraft: Bool {
+        guard let draftBaseline else { return false }
+        return SessionDraftFields.showsSaveDraft(
+            kind: kind,
+            current: draftFields,
+            baseline: draftBaseline
+        )
+    }
 
     var body: some View {
         Form {
@@ -113,23 +137,23 @@ struct SessionEditor: View {
             // screen before the sets push it below the fold. Save still blocks
             // with the banner if it is empty.
             Section {
-                PainScoreControl(title: "During (required)", value: $painDuring, allowsClear: false)
+                PainScoreControl(title: "Pain during the session", value: $painDuring, allowsClear: false)
                 if kind.shows24hResolution {
-                    Picker("24h", selection: $response24hEdit) {
+                    Picker("Response", selection: $response24hEdit) {
                         Text("Better").tag(Optional.some(Response24h.better))
                         Text("Same").tag(Optional.some(Response24h.same))
                         Text("Worse").tag(Optional.some(Response24h.worse))
                     }
                     .pickerStyle(.segmented)
-                    .accessibilityLabel("24h resolution")
+                    .accessibilityLabel("24-hour response")
                 }
             } header: {
                 Text("Pain")
             } footer: {
                 if kind.shows24hResolution {
-                    Text("Next-morning tendon response. Changing Better, Same, or Worse overwrites the saved 24h.")
+                    Text("This is the 24-hour response. If you select Better, Same, or Worse, R3hab replaces the saved response.")
                 } else {
-                    Text("Pain during is required (0–10). We’ll remind you in about 30 minutes to log pain after.")
+                    Text("Record the pain during the session. Use 0 to 10. R3hab sends a reminder in about 30 minutes. Then record the pain after the session.")
                 }
             }
 
@@ -148,7 +172,7 @@ struct SessionEditor: View {
                     } header: {
                         Text("Today’s plan")
                     } footer: {
-                        Text("Weight starts at last time. Change it with the plates or stack you have.")
+                        Text("The load starts at the last session. Change the load to match your plates or stack.")
                     }
                 }
                 if showsWarmup {
@@ -191,12 +215,6 @@ struct SessionEditor: View {
                     Button("Delete", role: .destructive) { confirmDelete = true }
                 }
             }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save") { persist(as: .finalize) }
-                    .fontWeight(.semibold)
-                    .tint(AppTheme.gold)
-                    .accessibilityLabel("Save")
-            }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
             if let errorMessage {
@@ -205,17 +223,10 @@ struct SessionEditor: View {
             }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            if kind.showsDraftSave {
-                Button("Save draft") { persist(as: .draft) }
-                    .buttonStyle(.plain)
-                    .font(.body.weight(.medium))
-                    .foregroundStyle(AppTheme.quiet)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 14)
-                    .accessibilityLabel("Save draft")
-            }
+            logActionBar
         }
         .animation(.easeInOut(duration: 0.2), value: errorMessage)
+        .animation(.easeInOut(duration: 0.2), value: showsSaveDraft)
         .onAppear(perform: load)
         .onChange(of: workSets) { _, _ in
             clearError()
@@ -231,7 +242,7 @@ struct SessionEditor: View {
         }
         .onChange(of: painDuring) { _, _ in clearError() }
         .confirmationDialog(
-            "Delete this workout?",
+            "Delete this session?",
             isPresented: $confirmDelete,
             titleVisibility: .visible
         ) {
@@ -243,6 +254,25 @@ struct SessionEditor: View {
     private enum PersistKind {
         case draft
         case finalize
+    }
+
+    /// Save stays the lime primary. Save draft is the outlined secondary and
+    /// sits above it, full width, only while the form differs from baseline.
+    private var logActionBar: some View {
+        VStack(spacing: 8) {
+            if showsSaveDraft {
+                Button("Save draft") { persist(as: .draft) }
+                    .buttonStyle(QuietActionButtonStyle(expands: true))
+                    .accessibilityLabel("Save draft")
+            }
+            Button("Save") { persist(as: .finalize) }
+                .buttonStyle(.primaryAction)
+                .accessibilityLabel("Save")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 12)
+        .padding(.bottom, 8)
+        .background(AppTheme.canvas.ignoresSafeArea(edges: .bottom))
     }
 
     /// Selected: solid white fill, ink text. Unselected: faint fill, white text.
@@ -367,7 +397,7 @@ struct SessionEditor: View {
         } header: {
             Text("Walk")
         } footer: {
-            Text("\(QLLoggingStub.clinicalTargetNote) Log steps, minutes, or both.")
+            Text("\(QLLoggingStub.clinicalTargetNote) Record the steps, the minutes, or both.")
         }
     }
 
@@ -416,9 +446,9 @@ struct SessionEditor: View {
                 Button {
                     lateralityBinding.wrappedValue = laterality == .bilateral ? .unilateral : .bilateral
                 } label: {
-                    Text(laterality == .bilateral ? "Split L/R loads" : "Use one load")
+                    Text(laterality == .bilateral ? "Use separate loads" : "Use one load")
                 }
-                .accessibilityLabel(laterality == .bilateral ? "Split left and right loads" : "Use one load for both legs")
+                .accessibilityLabel(laterality == .bilateral ? "Use a left load and a right load" : "Use one load for both legs")
                 .accessibilityValue(laterality.title)
             }
 
@@ -443,10 +473,10 @@ struct SessionEditor: View {
                             labeledIntField(title: "Time (s)", value: bindingPairHold(pair))
                         }
                         if laterality == .bilateral {
-                            labeledLoadField(title: "Load (lbs)", value: bindingPairLoad(pair, side: nil))
+                            labeledLoadField(title: "Load (lb)", value: bindingPairLoad(pair, side: nil))
                         } else {
-                            labeledLoadField(title: "L lbs", value: bindingPairLoad(pair, side: .left))
-                            labeledLoadField(title: "R lbs", value: bindingPairLoad(pair, side: .right))
+                            labeledLoadField(title: "Left (lb)", value: bindingPairLoad(pair, side: .left))
+                            labeledLoadField(title: "Right (lb)", value: bindingPairLoad(pair, side: .right))
                         }
                     }
                 }
@@ -459,10 +489,10 @@ struct SessionEditor: View {
                 Label(usesIsoHolds ? "Add hold" : "Add set", systemImage: "plus.circle")
             }
         } header: {
-            Text(usesIsoHolds ? "Working holds" : "Working sets")
+            Text(usesIsoHolds ? "Holds" : "Sets")
         } footer: {
             if laterality == .unilateral {
-                Text("Left and right loads can differ. One 24h resolve for the session.")
+                Text("The left load and the right load can differ. Record one 24-hour response for the session.")
             }
         }
     }
@@ -487,7 +517,7 @@ struct SessionEditor: View {
                     HStack {
                         labeledIntField(title: "Reps", value: bindingWarmupReps(index))
                         labeledIntField(title: "Time (s)", value: bindingWarmupHold(index))
-                        labeledLoadField(title: "Load (lbs)", value: bindingWarmupLoad(index))
+                        labeledLoadField(title: "Load (lb)", value: bindingWarmupLoad(index))
                     }
                 }
                 .padding(.vertical, 4)
@@ -502,7 +532,7 @@ struct SessionEditor: View {
         } header: {
             Text("Warm-up (isometric holds)")
         } footer: {
-            Text("Reps = holds · time per hold · load (lbs). Same load for both knees.")
+            Text("Reps are the holds. Time is the seconds for each hold. Use the same load for both knees.")
         }
     }
 
@@ -671,6 +701,7 @@ struct SessionEditor: View {
                 && !SessionSummary.looksStructuredWhatIDid(existing.whatIDid)
             showMoreOptions = !existing.isDraft
             refreshSpacing()
+            finishLoad()
             return
         }
 
@@ -683,6 +714,14 @@ struct SessionEditor: View {
             applyPreset(SessionPreset.preferred(for: phase, primaryLoadID: primaryLoadID))
         }
         refreshSpacing()
+        finishLoad()
+    }
+
+    /// Baseline is the form after seeding and the automatic “what I did” line,
+    /// so that generated text is pristine rather than an unsaved edit.
+    private func finishLoad() {
+        syncWhatIDid()
+        draftBaseline = draftFields
     }
 
     private func applyPreset(_ preset: SessionPreset) {

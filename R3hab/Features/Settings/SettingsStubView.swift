@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import UIKit
 import UniformTypeIdentifiers
 
 /// Settings: phase, thresholds, reminders, export/import, clear-all (PR-12/13/14).
@@ -21,6 +22,8 @@ struct SettingsStubView: View {
     @State private var isBusy = false
     @State private var showClearConfirm = false
     @State private var showClearSecondConfirm = false
+    @State private var healthStatus: AppleHealthStatus = .checking
+    @State private var showHealthExplainer = false
     #if DEBUG
     @State private var logPrototype: SessionLogPrototypeKind?
     #endif
@@ -29,9 +32,9 @@ struct SettingsStubView: View {
     private var totalLogs: Int { checkIns.count + sessions.count }
     private var debugFooter: String {
         #if DEBUG
-        return "Simulate onboarding re-opens first launch without wiping logs. Prototypes open guided, live, and quick logging. The standard form stays the default. Temporary — removed before App Store."
+        return "Open onboarding again does not remove records. The prototypes open the guided, live, and quick record forms. The standard form stays the default. This control is temporary."
         #else
-        return "Simulate onboarding re-opens first launch without wiping logs. Temporary — removed before App Store."
+        return "Open onboarding again does not remove records. This control is temporary."
         #endif
     }
 
@@ -53,8 +56,8 @@ struct SettingsStubView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section(InjuryCatalog.isQL(settings.selectedInjuryID) ? "What you log" : "Primary lift") {
-                    Picker("Primary lift", selection: primaryLoadBinding(settings)) {
+                Section(InjuryCatalog.isQL(settings.selectedInjuryID) ? "What you record" : "Primary exercise") {
+                    Picker("Primary exercise", selection: primaryLoadBinding(settings)) {
                         ForEach(PrimaryLoadCatalog.options(for: settings.selectedInjuryID)) { option in
                             Text(option.title).tag(option.id)
                         }
@@ -71,12 +74,12 @@ struct SettingsStubView: View {
                         in: 2...7
                     )
                     Stepper(
-                        "Max AM pain for “stable”: \(settings.phaseAPainThreshold)",
+                        "Maximum morning pain for a stable day: \(settings.phaseAPainThreshold)",
                         value: intBinding(settings, keyPath: \.phaseAPainThreshold),
                         in: 0...5
                     )
                     Stepper(
-                        "Near-normal steps: \(settings.stepNearNormalMin)",
+                        "Minimum steps: \(settings.stepNearNormalMin)",
                         value: intBinding(settings, keyPath: \.stepNearNormalMin),
                         in: 3000...15000,
                         step: 500
@@ -84,7 +87,7 @@ struct SettingsStubView: View {
                 }
 
                 Section("Reminders") {
-                    Toggle("Enable local reminders", isOn: notificationsBinding(settings))
+                    Toggle("Enable reminders", isOn: notificationsBinding(settings))
                     DatePicker(
                         "Morning check-in",
                         selection: reminderTimeBinding(settings, isAM: true),
@@ -95,10 +98,41 @@ struct SettingsStubView: View {
                         selection: reminderTimeBinding(settings, isAM: false),
                         displayedComponents: .hourAndMinute
                     )
-                    Text("Check-in times are adjustable. Also reminds for overdue 24h pending. Works offline.")
+                    Text("You can change the check-in times. R3hab also sends a reminder for an open 24-hour response. R3hab works offline.")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
                 }
+            }
+
+            Section {
+                HStack(spacing: 12) {
+                    Image(systemName: "heart.fill")
+                        .font(.title3)
+                        .foregroundStyle(AppleHealthStyle.heart)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Apple Health")
+                        Text(healthStatus.subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    switch healthStatus {
+                    case .notConnected:
+                        Button("Connect") { showHealthExplainer = true }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    case .connected:
+                        Button("Change access") { openAppSettings() }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                    case .checking, .unavailable:
+                        EmptyView()
+                    }
+                }
+                .accessibilityIdentifier("settingsAppleHealthRow")
+            } footer: {
+                Text("R3hab reads only steps from Apple Health. R3hab never writes to Apple Health. To change access, open Apple Health. Select Sharing. Select Apps. Select R3hab.")
             }
 
             Section("Backup") {
@@ -108,27 +142,27 @@ struct SettingsStubView: View {
                 Button {
                     exportBackup()
                 } label: {
-                    Label("Export JSON backup", systemImage: "square.and.arrow.up")
+                    Label("Export a JSON backup", systemImage: "square.and.arrow.up")
                 }
                 .disabled(isBusy)
 
                 Button {
                     showImportMode = true
                 } label: {
-                    Label("Import JSON backup…", systemImage: "square.and.arrow.down")
+                    Label("Import a JSON backup", systemImage: "square.and.arrow.down")
                 }
                 .disabled(isBusy)
             }
 
             Section {
-                Button("Clear all log entries", role: .destructive) {
+                Button("Remove all records", role: .destructive) {
                     showClearConfirm = true
                 }
                 .disabled(isBusy || totalLogs == 0)
             } header: {
                 Text("Data")
             } footer: {
-                Text("Deletes every daily check-in and training session. Settings (phase, thresholds, reminders) are kept. Export a backup first if you might need the data.")
+                Text("This removes every daily check-in and every session. R3hab keeps the settings. Export a backup first if you need the data.")
             }
 
             Section("Protocol") {
@@ -174,11 +208,11 @@ struct SettingsStubView: View {
             // until onboarding UX sign-off; "Seed sample week" is DEBUG-only.
             // Remove the whole section before App Store / public release.
             Section {
-                Button("Simulate onboarding") {
+                Button("Open onboarding again") {
                     simulateOnboarding()
                 }
                 #if DEBUG
-                Button("Seed sample week") {
+                Button("Add a sample week") {
                     seedSampleWeek()
                 }
                 ForEach(SessionLogPrototypeKind.allCases) { kind in
@@ -200,43 +234,49 @@ struct SettingsStubView: View {
         #endif
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
+            await refreshHealthStatus()
         }
-        .confirmationDialog("Import mode", isPresented: $showImportMode, titleVisibility: .visible) {
-            Button("Replace all data", role: .destructive) {
+        .sheet(isPresented: $showHealthExplainer, onDismiss: {
+            Task { await refreshHealthStatus() }
+        }) {
+            AppleHealthPermissionView()
+        }
+        .confirmationDialog("Select the import mode", isPresented: $showImportMode, titleVisibility: .visible) {
+            Button("Replace all records", role: .destructive) {
                 importMode = .replace
                 showImporter = true
             }
-            Button("Merge with existing") {
+            Button("Merge with current records") {
                 importMode = .merge
                 showImporter = true
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Replace wipes current check-ins and sessions first. Merge updates matching days/IDs and keeps the rest.")
+            Text("Replace removes the current check-ins and sessions first. Merge updates matching days and sessions and keeps the other records.")
         }
         .confirmationDialog(
-            "Clear all log entries?",
+            "Remove all records?",
             isPresented: $showClearConfirm,
             titleVisibility: .visible
         ) {
-            Button("Clear \(totalLogs) entries", role: .destructive) {
+            Button("Remove \(totalLogs) records", role: .destructive) {
                 showClearSecondConfirm = true
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This removes \(checkIns.count) check-ins and \(sessions.count) sessions. Settings stay. Consider exporting a backup first.")
+            Text("This removes \(checkIns.count) check-ins and \(sessions.count) sessions. R3hab keeps the settings. Export a backup first.")
         }
         .confirmationDialog(
-            "Really delete everything?",
+            "Remove all records?",
             isPresented: $showClearSecondConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete all logs", role: .destructive) {
+            Button("Remove all records", role: .destructive) {
                 clearAllLogs()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This cannot be undone without a backup file.")
+            Text("You cannot restore this data without a backup file.")
         }
         .fileImporter(
             isPresented: $showImporter,
@@ -333,8 +373,8 @@ struct SettingsStubView: View {
             try? modelContext.save()
             if !granted {
                 presentAlert(
-                    "Notifications off",
-                    "Permission denied. You can enable them later in iOS Settings → R3hab."
+                    "Reminders are off",
+                    "R3hab cannot send reminders. Open Settings. Select R3hab. Enable reminders."
                 )
             }
         } else {
@@ -408,7 +448,7 @@ struct SettingsStubView: View {
             }
             presentAlert(
                 "Import complete",
-                "Mode: \(importMode.title). Check-ins: \(dailyN), sessions: \(sessN)."
+                "Mode: \(importMode.title). Check-ins: \(dailyN). Sessions: \(sessN)."
             )
             router.requestNotificationSync()
         } catch {
@@ -423,13 +463,27 @@ struct SettingsStubView: View {
             let result = try LogStore.clearAllLogs(context: modelContext)
             Haptics.warning()
             presentAlert(
-                "Logs cleared",
-                "Removed \(result.daily) check-ins and \(result.sessions) sessions. Settings kept."
+                "Records removed",
+                "R3hab removed \(result.daily) check-ins and \(result.sessions) sessions. R3hab kept the settings."
             )
             router.requestNotificationSync()
         } catch {
-            presentAlert("Clear failed", error.localizedDescription)
+            presentAlert("Remove failed", error.localizedDescription)
         }
+    }
+
+    @MainActor
+    private func refreshHealthStatus() async {
+        guard HealthKitSteps.isAvailable else {
+            healthStatus = .unavailable
+            return
+        }
+        healthStatus = await HealthKitSteps.needsAuthorizationPrompt() ? .notConnected : .connected
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString) else { return }
+        UIApplication.shared.open(url)
     }
 
     private func presentAlert(_ title: String, _ message: String) {
@@ -469,7 +523,7 @@ struct SettingsStubView: View {
                 date: today,
                 phase: phase,
                 sessionType: .isometrics,
-                whatIDid: "Seated leg extension 3×1 @ 15 lbs 30s hold",
+                whatIDid: "Seated leg extension 3×1 @ 15 lb, 30 s hold",
                 painDuring: 2,
                 painAfter: 1,
                 sets: 3,
@@ -480,10 +534,28 @@ struct SettingsStubView: View {
             modelContext.insert(s)
         }
         try? modelContext.save()
-        presentAlert("Seeded", "Sample daily rows for the past week (skipped existing day keys).")
+        presentAlert("Sample week added", "R3hab added sample rows for the past week. Existing days stay.")
         router.requestNotificationSync()
     }
     #endif
+}
+
+/// Apple Health row state. HealthKit never reveals whether read access was
+/// granted, so "connected" means the user has answered the Health prompt.
+enum AppleHealthStatus {
+    case checking
+    case connected
+    case notConnected
+    case unavailable
+
+    var subtitle: String {
+        switch self {
+        case .checking: return "R3hab checks Apple Health."
+        case .connected: return "Connected. R3hab reads steps."
+        case .notConnected: return "Not connected"
+        case .unavailable: return "Not available on this device"
+        }
+    }
 }
 
 /// UIKit share sheet wrapper for exporting the JSON file.

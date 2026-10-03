@@ -90,7 +90,7 @@ enum DailyCheckInMerge {
         }
         for score in scores {
             if let score, !PainScore.validRange.contains(score) {
-                return "Pain scores must be 0–10."
+                return "Pain must be 0 to 10."
             }
         }
         return nil

@@ -48,7 +48,7 @@ struct PhaseGuideView: View {
                 Text(injury.protocolName)
             }
 
-            Section("Red flags") {
+            Section("Warning signs") {
                 Text(PhaseGuideCopy.redFlags)
                     .font(.footnote)
                     .foregroundStyle(.secondary)

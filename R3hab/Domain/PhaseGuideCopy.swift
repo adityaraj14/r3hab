@@ -14,11 +14,11 @@ enum PhaseGuideCopy {
         let lift = primaryLift.lowercased()
         switch phase {
         case .aFlareDeLoad:
-            return "Relative rest. No heavy knee loading, impact, or tennis. Optional easy bike if pain-free. Aim for 3 stable mornings ≤2 with a ~6k+ step day before Phase B."
+            return "Rest the knee. Do not do a heavy knee load, impact, or tennis. You can ride a bicycle if you have no pain. Record 3 mornings with pain of 2 or less. Record one day with about 6000 steps or more. Then start Phase B."
         case .bIsometrics:
-            return "Primary load is \(lift) holds. Start 3–4×20–30s, 2×/week, ≥48h apart. Build holds before adding days."
+            return "The primary exercise is \(lift) holds. Start with 3 or 4 holds of 20 to 30 seconds. Do this 2 times each week. Keep at least 48 hours between sessions. Increase the hold time before you add a session day."
         case .cHeavySlowResistance:
-            return "Heavy slow \(lift), slow tempo (3-1-3), 2–3×/week. Main capacity phase — often months."
+            return "Do a heavy slow \(lift) at a tempo of 3-1-3. Do this 2 or 3 times each week. This is the main capacity phase. It often continues for months."
         }
     }
 
@@ -27,15 +27,15 @@ enum PhaseGuideCopy {
     private static func qlSummary(for phase: RehabPhase, modality: String) -> String {
         switch phase {
         case .aFlareDeLoad:
-            return "Ease off. Log \(modality.lowercased()) if it feels okay. Clinical targets are TBD."
+            return "Decrease the load. Record \(modality.lowercased()) if the pain is acceptable. Clinical targets are not set."
         case .bIsometrics, .cHeavySlowResistance:
-            return "Keep logging \(modality.lowercased()). Last load prefills the next weighted session. Clinical targets are TBD."
+            return "Continue to record \(modality.lowercased()). The last load is the start value for the next session. Clinical targets are not set."
         }
     }
 
     static let medicalDisclaimer = BrandCopy.disclaimerBody
 
     static let redFlags = """
-    See a clinician if: resting pain 5+, no improvement after 7–10 days of de-load, swelling, locking, instability, or sharp joint pain (not usual tendon ache).
+    See a clinician if the resting pain is 5 or more. See a clinician if there is no improvement after 7 to 10 days of less load. See a clinician for swelling, locking, or instability. See a clinician for sharp joint pain. Sharp joint pain is not the usual tendon pain.
     """
 }

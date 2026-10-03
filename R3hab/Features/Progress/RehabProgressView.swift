@@ -97,7 +97,7 @@ struct RehabProgressView: View {
                 VStack(alignment: .leading, spacing: 16) {
                     if !hasAnyData {
                         ContentUnavailableView(
-                            "No pain logs or sessions yet",
+                            "No pain records or sessions yet",
                             systemImage: "chart.line.uptrend.xyaxis",
                             description: Text(progressEmptyDescription)
                         )
@@ -172,14 +172,14 @@ struct RehabProgressView: View {
     }
 
     private var progressEmptyDescription: String {
-        "Your first morning pain log or first \(primaryLoad.title.lowercased()) session starts the charts. Progress is the diary filling in — not a grade."
+        "Record the morning pain or one \(primaryLoad.title.lowercased()) session. The chart starts with that record."
     }
 
     private var heroRow: some View {
         HStack(spacing: 12) {
             heroChip(title: "Mornings", value: "\(consistency.morningDays)/\(consistency.windowDays)")
-            heroChip(title: "Train days", value: "\(consistency.sessionDays)")
-            heroChip(title: "Clean streak", value: "\(outcomeMix.cleanStreak)")
+            heroChip(title: "Session days", value: "\(consistency.sessionDays)")
+            heroChip(title: "Clean sessions", value: "\(outcomeMix.cleanStreak)")
         }
     }
 
@@ -188,7 +188,7 @@ struct RehabProgressView: View {
         case .days7: return "Last 7 days"
         case .days28: return "Last 28 days"
         case .days90: return "Last 90 days"
-        case .all: return "All logged days"
+        case .all: return "All recorded days"
         }
     }
 
@@ -280,7 +280,7 @@ struct RehabProgressView: View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Phase B clean sessions")
                 .font(.subheadline.weight(.semibold))
-            Text("\(count) Better/Same since you entered Phase B")
+            Text("\(count) Better or Same sessions since you started Phase B")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
         }
