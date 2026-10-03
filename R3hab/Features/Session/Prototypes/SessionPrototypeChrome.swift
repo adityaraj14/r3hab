@@ -48,11 +48,14 @@ struct PrototypeProgressDots: View {
 struct PrototypePainReadout: View {
     var value: Int?
 
+    /// Shows nothing until a score is selected.
     var body: some View {
-        Text(value.map(String.init) ?? "—")
-            .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
-            .foregroundStyle(value.map { PrototypePainColor.color(for: $0) } ?? AppTheme.quiet)
-            .accessibilityHidden(true)
+        if let value {
+            Text(String(value))
+                .font(.system(size: 64, weight: .bold, design: .rounded).monospacedDigit())
+                .foregroundStyle(PrototypePainColor.color(for: value))
+                .accessibilityHidden(true)
+        }
     }
 }
 

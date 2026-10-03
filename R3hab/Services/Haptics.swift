@@ -9,6 +9,11 @@ enum Haptics {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
+    /// One detent on a dial or ruler.
+    static func tick() {
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
     static func light() {
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

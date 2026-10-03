@@ -14,7 +14,7 @@ final class SessionPrototypeScreenshotTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let skip = app.buttons["Skip for now"]
+        let skip = app.buttons["Not now"]
         if skip.waitForExistence(timeout: 8) {
             skip.tap()
         }

@@ -34,7 +34,7 @@ struct QuickSessionLogView: View {
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 18) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Did today's plan:")
+                    Text("Did you do today's plan?")
                         .font(.title3.weight(.semibold))
                         .foregroundStyle(AppTheme.ivory)
                     Text("\(draft.planLine)?")

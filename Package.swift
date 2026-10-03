@@ -26,6 +26,7 @@ let package = Package(
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
                 "Domain/ProgressionEngine.swift",
+                "Domain/WarmupPlan.swift",
                 "Domain/TodayPlanner.swift",
                 "Domain/TodaySessionEntry.swift"
             ]
@@ -41,6 +42,7 @@ let package = Package(
                 "ProgressionEngineTests.swift",
                 "SessionEditorChromeTests.swift",
                 "SessionPrototypePlanTests.swift",
+                "WarmupPlanTests.swift",
                 "TodaySessionEntryTests.swift",
                 "QLPathwayTests.swift"
             ]

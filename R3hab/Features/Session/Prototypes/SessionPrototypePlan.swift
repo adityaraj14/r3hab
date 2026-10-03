@@ -42,6 +42,9 @@ enum SessionPrototypeAccessibility {
     static let guidedWarmupYes = "prototype-guided-warmup-yes"
     static let guidedWarmupSkip = "prototype-guided-warmup-skip"
     static let guidedSame = "prototype-guided-same-as-target"
+    static let guidedWarmupAdd = "prototype-guided-warmup-add"
+    static let guidedWarmupSource = "prototype-guided-warmup-source"
+    static let guidedInputToggle = "prototype-guided-input-toggle"
     static let guidedPain = "prototype-guided-pain"
     static let guidedNotes = "prototype-guided-notes"
     static let guidedReview = "prototype-guided-review"
@@ -74,6 +77,19 @@ enum SessionPrototypeAccessibility {
 
     static func guidedSet(_ index: Int) -> String {
         "prototype-guided-set-\(index + 1)"
+    }
+
+    static func warmupStep(_ index: Int) -> String {
+        "prototype-guided-warmup-step-\(index + 1)"
+    }
+
+    static func warmupStep(_ index: Int, _ part: String) -> String {
+        "prototype-guided-warmup-step-\(index + 1)-\(part)"
+    }
+
+    /// `field` is "reps" or "load". `style` is "dial" or "ruler".
+    static func setInput(set: Int, field: String, style: String) -> String {
+        "prototype-guided-set-\(set + 1)-\(field)-\(style)"
     }
 
     static func painChip(_ score: Int) -> String {
@@ -149,13 +165,14 @@ struct SessionPrototypeDraft: Equatable, Sendable {
     var stanceLabel: String
     var reason: String
     var includeWarmup: Bool
+    var warmup: WarmupPlan
     var sets: [PrototypeSetDraft]
     var painDuring: Int?
     var notes: String
 
     var planLine: String { target.displayLine }
 
-    var quickQuestion: String { "Did today's plan: \(planLine)?" }
+    var quickQuestion: String { "Did you do today's plan: \(planLine)?" }
 
     var perSetTargetLine: String {
         if let load = target.loadLbs {
@@ -164,20 +181,12 @@ struct SessionPrototypeDraft: Equatable, Sendable {
         return "Target \(target.reps) reps"
     }
 
-    var warmupLine: String {
-        let warm = SessionPrefill.warmupSet(loadLbs: target.loadLbs)
-        let reps = warm.reps ?? 2
-        let hold = warm.holdSeconds ?? 30
-        if let load = warm.loadLbs {
-            return "\(reps) × \(hold)s @ \(LoadCopy.labeled(load))"
-        }
-        return "\(reps) × \(hold)s"
-    }
+    var warmupLine: String { warmup.line }
 
     func resistanceSets() -> [ResistanceSet] {
         var rows: [ResistanceSet] = []
         if includeWarmup {
-            rows.append(SessionPrefill.warmupSet(loadLbs: target.loadLbs))
+            rows.append(contentsOf: warmup.resistanceSets())
         }
         for set in sets {
             rows.append(contentsOf: SessionSummary.makePair(
@@ -203,8 +212,11 @@ enum SessionPrototypePlan {
     static let restSeconds = 90
     static let loadStep = 5.0
     /// Same sentence the session form already shows under pain.
-    static let painDuringNote = "Pain during is required (0\u{2013}10). We\u{2019}ll remind you in about 30 minutes to log pain after."
-    static let under48hWarning = "Less than 48 hours since last hard session. Soft warning only."
+    static let painDuringNote = "Record the pain during the session. Use 0 to 10. R3hab sends a reminder in about 30 minutes. Then record the pain after the session."
+    static let under48hWarning = "Your last hard session was less than 48 hours ago. You can save. This is only a warning."
+    /// Highest values on the set dials and rulers.
+    static let maxReps = 30
+    static let maxLoad = 300.0
 
     static func make(
         sessions: [TrainingSessionSnapshot],
@@ -244,6 +256,11 @@ enum SessionPrototypePlan {
             stanceLabel: result.stance.label,
             reason: result.reason,
             includeWarmup: false,
+            warmup: WarmupPlan.prefill(
+                sessions: sessions,
+                workingLoad: result.target.loadLbs,
+                loadStep: loadStep
+            ),
             sets: sets,
             painDuring: nil,
             notes: ""
@@ -286,6 +303,45 @@ enum SessionPrototypePlan {
         if next < 0 { return load == nil ? nil : 0 }
         if next == 0 && load == nil { return nil }
         return next
+    }
+
+    /// Reps after `ticks` dial or ruler steps. Stays in 1...maxReps.
+    static func reps(_ reps: Int, ticks: Int) -> Int {
+        min(max(reps + ticks, 1), maxReps)
+    }
+
+    /// Load after `ticks` machine steps. Stays in 0...maxLoad. Zero means no load.
+    static func load(_ load: Double?, ticks: Int) -> Double? {
+        let next = min(max((load ?? 0) + Double(ticks) * loadStep, 0), maxLoad)
+        return next > 0 ? next : nil
+    }
+
+    /// Ruler position for a load. Position 0 is no load.
+    static func loadIndex(_ load: Double?) -> Int {
+        Int(((load ?? 0) / loadStep).rounded())
+    }
+
+    static func load(atIndex index: Int) -> Double? {
+        load(nil, ticks: index)
+    }
+
+    static var loadIndexCount: Int { Int(maxLoad / loadStep) + 1 }
+
+    /// "+2 reps", "−1 rep", or "Target".
+    static func repsDelta(_ reps: Int, target: Int) -> String {
+        let delta = reps - target
+        if delta == 0 { return "Target" }
+        let sign = delta > 0 ? "+" : "\u{2212}"
+        let noun = abs(delta) == 1 ? "rep" : "reps"
+        return "\(sign)\(abs(delta)) \(noun)"
+    }
+
+    /// "+5 lb", "−10 lb", or "Target".
+    static func loadDelta(_ load: Double?, target: Double?) -> String {
+        let delta = (load ?? 0) - (target ?? 0)
+        if abs(delta) < 0.001 { return "Target" }
+        let sign = delta > 0 ? "+" : "\u{2212}"
+        return "\(sign)\(LoadCopy.labeled(abs(delta)))"
     }
 
     static func loadToken(_ load: Double?) -> String {
