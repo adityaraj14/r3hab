@@ -9,7 +9,7 @@ enum Haptics {
         UINotificationFeedbackGenerator().notificationOccurred(.warning)
     }
 
-    /// One detent on a dial or ruler.
+    /// One value step on a ruler or stepper.
     static func tick() {
         UISelectionFeedbackGenerator().selectionChanged()
     }

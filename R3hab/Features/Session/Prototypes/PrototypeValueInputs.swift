@@ -1,158 +1,9 @@
 import SwiftUI
 
-/// Debug choice on the guided set screen. The dial is the default.
-enum PrototypeSetInputStyle: String, CaseIterable, Identifiable {
-    case dial
-    case ruler
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .dial: return "Dial"
-        case .ruler: return "Ruler"
-        }
-    }
-
-    static let storageKey = "prototype.guided.setInput"
-}
-
-/// Rotary dial. Turn clockwise to go up. One detent is one step.
-/// The gold mark at the top is the target. The knob shows the distance from the target.
-struct PrototypeRotaryDial: View {
-    var title: String
-    var valueText: String
-    var unit: String
-    var deltaText: String
-    var stepsFromTarget: Int
-    var identifier: String
-    /// Returns true when the value changed.
-    var onStep: (Int) -> Bool
-
-    static let degreesPerStep = 15.0
-    private let ringWidth: CGFloat = 10
-
-    @State private var lastAngle: Double?
-    @State private var carry = 0.0
-
-    var body: some View {
-        VStack(spacing: 8) {
-            Text(title)
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-            GeometryReader { proxy in
-                let size = min(proxy.size.width, proxy.size.height)
-                dial(size: size)
-                    .frame(width: size, height: size)
-                    .contentShape(Circle())
-                    .gesture(drag(size: size))
-                    .position(x: proxy.size.width / 2, y: proxy.size.height / 2)
-            }
-            .aspectRatio(1, contentMode: .fit)
-            Text(deltaText)
-                .font(.subheadline.weight(.bold).monospacedDigit())
-                .foregroundStyle(stepsFromTarget == 0 ? AppTheme.quiet : AppTheme.gold)
-        }
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier(identifier)
-        .accessibilityLabel(title)
-        .accessibilityValue("\(valueText) \(unit), \(deltaText)")
-        .accessibilityAdjustableAction { direction in
-            switch direction {
-            case .increment: _ = onStep(1)
-            case .decrement: _ = onStep(-1)
-            @unknown default: break
-            }
-        }
-    }
-
-    private func dial(size: CGFloat) -> some View {
-        let fraction = min(abs(Double(stepsFromTarget)) * Self.degreesPerStep / 360, 0.999)
-        // Ticks and the target mark sit outside the ring. The knob sits on the ring.
-        let ringInset = ringWidth / 2 + 18
-        return ZStack {
-            ForEach(0..<24, id: \.self) { index in
-                Capsule()
-                    .fill(AppTheme.quietStroke)
-                    .frame(width: 2, height: 6)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .rotationEffect(.degrees(Double(index) * Self.degreesPerStep))
-            }
-            Circle()
-                .stroke(AppTheme.quietFill, lineWidth: ringWidth)
-                .padding(ringInset)
-            Circle()
-                .trim(
-                    from: stepsFromTarget >= 0 ? 0 : 1 - fraction,
-                    to: stepsFromTarget >= 0 ? fraction : 1
-                )
-                .stroke(AppTheme.gold.opacity(0.75), style: StrokeStyle(lineWidth: ringWidth, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-                .padding(ringInset)
-            // Target mark, above the knob so it stays visible.
-            Capsule()
-                .fill(AppTheme.gold)
-                .frame(width: 5, height: 11)
-                .frame(maxHeight: .infinity, alignment: .top)
-            // Knob.
-            Circle()
-                .fill(AppTheme.ivory)
-                .frame(width: ringWidth + 12, height: ringWidth + 12)
-                .overlay(Circle().strokeBorder(AppTheme.canvas, lineWidth: 2))
-                .padding(.top, ringInset - (ringWidth + 12) / 2)
-                .frame(maxHeight: .infinity, alignment: .top)
-                .rotationEffect(.degrees(Double(stepsFromTarget) * Self.degreesPerStep))
-            VStack(spacing: 0) {
-                Text(valueText)
-                    .font(.system(size: size * 0.28, weight: .bold, design: .rounded).monospacedDigit())
-                    .foregroundStyle(AppTheme.ivory)
-                    .minimumScaleFactor(0.5)
-                    .lineLimit(1)
-                Text(unit)
-                    .font(.caption.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-            }
-            .padding(.horizontal, ringInset + ringWidth)
-        }
-    }
-
-    private func drag(size: CGFloat) -> some Gesture {
-        DragGesture(minimumDistance: 0)
-            .onChanged { value in
-                let dx = value.location.x - size / 2
-                let dy = value.location.y - size / 2
-                // Near the center the angle jumps. Ignore it there.
-                guard dx * dx + dy * dy > (size * 0.15) * (size * 0.15) else {
-                    lastAngle = nil
-                    return
-                }
-                let angle = atan2(dy, dx) * 180 / .pi
-                if let lastAngle {
-                    var change = angle - lastAngle
-                    if change > 180 { change -= 360 }
-                    if change < -180 { change += 360 }
-                    carry += change
-                    while carry >= Self.degreesPerStep {
-                        carry -= Self.degreesPerStep
-                        if onStep(1) { Haptics.tick() }
-                    }
-                    while carry <= -Self.degreesPerStep {
-                        carry += Self.degreesPerStep
-                        if onStep(-1) { Haptics.tick() }
-                    }
-                }
-                lastAngle = angle
-            }
-            .onEnded { _ in
-                lastAngle = nil
-                carry = 0
-            }
-    }
-}
-
 /// Horizontal ruler. Swipe left to go up. It stops on each value.
 /// The gold tick is the target. The center line is the value.
+/// The ruler follows the finger. After the finger lifts, a flick adds at most
+/// `SessionPrototypePlan.rulerMaxFlickSteps` steps, so a short flick moves 1 or 2 values.
 struct PrototypeRulerWheel: View {
     var title: String
     var valueText: String
@@ -171,7 +22,12 @@ struct PrototypeRulerWheel: View {
     private let tickWidth: CGFloat = 14
     private let rulerHeight: CGFloat = 62
 
-    @State private var scrolled: Int?
+    /// Ruler position when the drag started. Nil when no drag.
+    @State private var dragStart: Double?
+    /// Ruler position under the finger. Nil when no drag.
+    @State private var livePosition: Double?
+
+    private var position: Double { livePosition ?? Double(index) }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -193,19 +49,17 @@ struct PrototypeRulerWheel: View {
                     .foregroundStyle(AppTheme.quiet)
             }
             GeometryReader { proxy in
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 0) {
-                        ForEach(0..<count, id: \.self) { position in
-                            tick(position)
-                                .frame(width: tickWidth, height: rulerHeight)
-                                .id(position)
-                        }
+                let width = proxy.size.width
+                HStack(spacing: 0) {
+                    ForEach(0..<count, id: \.self) { tickIndex in
+                        tick(tickIndex)
+                            .frame(width: tickWidth, height: rulerHeight)
                     }
-                    .scrollTargetLayout()
                 }
-                .contentMargins(.horizontal, max((proxy.size.width - tickWidth) / 2, 0), for: .scrollContent)
-                .scrollTargetBehavior(.viewAligned)
-                .scrollPosition(id: $scrolled, anchor: .center)
+                .fixedSize()
+                .offset(x: width / 2 - (CGFloat(position) + 0.5) * tickWidth)
+                .frame(width: width, height: rulerHeight, alignment: .leading)
+                .clipped()
                 .overlay(alignment: .top) {
                     Capsule()
                         .fill(AppTheme.ivory)
@@ -224,6 +78,8 @@ struct PrototypeRulerWheel: View {
                         endPoint: .trailing
                     )
                 )
+                .contentShape(Rectangle())
+                .gesture(drag)
             }
             .frame(height: rulerHeight)
         }
@@ -233,15 +89,6 @@ struct PrototypeRulerWheel: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .strokeBorder(AppTheme.cardHairline, lineWidth: 1)
         )
-        .onAppear { scrolled = index }
-        .onChange(of: scrolled) { _, next in
-            guard let next, next != index else { return }
-            onSelect(next)
-            Haptics.tick()
-        }
-        .onChange(of: index) { _, next in
-            if scrolled != next { scrolled = next }
-        }
         .accessibilityElement(children: .ignore)
         .accessibilityIdentifier(identifier)
         .accessibilityLabel(title)
@@ -255,20 +102,56 @@ struct PrototypeRulerWheel: View {
         }
     }
 
-    private func tick(_ position: Int) -> some View {
-        let isTarget = position == targetIndex
-        let isMajor = isMajor(position)
+    private var drag: some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { value in
+                let start = dragStart ?? Double(index)
+                dragStart = start
+                let next = SessionPrototypePlan.rulerPosition(
+                    start: start,
+                    dragPoints: value.translation.width,
+                    tickWidth: tickWidth,
+                    count: count
+                )
+                livePosition = next
+                select(Int(next.rounded()))
+            }
+            .onEnded { value in
+                let final = SessionPrototypePlan.rulerFinalIndex(
+                    position: livePosition ?? Double(index),
+                    momentumPoints: value.predictedEndTranslation.width - value.translation.width,
+                    tickWidth: tickWidth,
+                    count: count
+                )
+                select(final)
+                dragStart = nil
+                withAnimation(.spring(response: 0.25, dampingFraction: 0.9)) {
+                    livePosition = nil
+                }
+            }
+    }
+
+    /// One haptic tick for each value change.
+    private func select(_ next: Int) {
+        guard next != index else { return }
+        onSelect(next)
+        Haptics.tick()
+    }
+
+    private func tick(_ tickIndex: Int) -> some View {
+        let isTarget = tickIndex == targetIndex
+        let major = isMajor(tickIndex)
         return VStack(spacing: 4) {
             Capsule()
                 .fill(isTarget ? AppTheme.gold : AppTheme.quietStroke)
-                .frame(width: isTarget ? 4 : 2, height: isTarget ? 30 : (isMajor ? 22 : 12))
+                .frame(width: isTarget ? 4 : 2, height: isTarget ? 30 : (major ? 22 : 12))
                 .frame(height: 30, alignment: .top)
             if isTarget {
                 Circle()
                     .fill(AppTheme.gold)
                     .frame(width: 6, height: 6)
-            } else if isMajor {
-                Text(label(position))
+            } else if major {
+                Text(label(tickIndex))
                     .font(.caption2.weight(.semibold).monospacedDigit())
                     .foregroundStyle(AppTheme.quiet)
                     .fixedSize()

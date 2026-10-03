@@ -7,12 +7,7 @@ struct GuidedSessionLogView: View {
     var onSave: () -> Void
 
     @State private var index = 0
-    @AppStorage(PrototypeSetInputStyle.storageKey) private var inputStyleRaw = PrototypeSetInputStyle.dial.rawValue
     @FocusState private var notesFocused: Bool
-
-    private var inputStyle: PrototypeSetInputStyle {
-        PrototypeSetInputStyle(rawValue: inputStyleRaw) ?? .dial
-    }
 
     private var isSetPrompt: Bool {
         if case .set = prompt { return true }
@@ -67,7 +62,7 @@ struct GuidedSessionLogView: View {
                         .opacity(prompt == .warmup || prompt == .review ? 1 : 0)
                 }
         }
-        // The set screen has its own drag controls, so the step swipe is off there.
+        // The set screen rulers use drags, so the step swipe is off there.
         .simultaneousGesture(swipe, including: isSetPrompt ? .subviews : .all)
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
@@ -276,65 +271,13 @@ struct GuidedSessionLogView: View {
                 .foregroundStyle(AppTheme.quiet)
                 .accessibilityIdentifier("prototype-guided-dose-\(setIndex + 1)")
             if let set {
-                switch inputStyle {
-                case .dial:
-                    HStack(alignment: .top, spacing: 12) {
-                        repsDial(setIndex, set)
-                        loadDial(setIndex, set)
-                    }
-                case .ruler:
-                    VStack(spacing: 12) {
-                        repsRuler(setIndex, set)
-                        loadRuler(setIndex, set)
-                    }
+                VStack(spacing: 12) {
+                    repsRuler(setIndex, set)
+                    loadRuler(setIndex, set)
                 }
             }
-            inputToggle
         }
         .frame(maxWidth: .infinity)
-    }
-
-    /// Debug only: compare the dial and the ruler.
-    private var inputToggle: some View {
-        HStack(spacing: 8) {
-            Text("Debug input")
-                .font(.caption2.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-            Picker("Debug input", selection: $inputStyleRaw) {
-                ForEach(PrototypeSetInputStyle.allCases) { style in
-                    Text(style.title).tag(style.rawValue)
-                }
-            }
-            .pickerStyle(.segmented)
-            .frame(maxWidth: 180)
-            .accessibilityIdentifier(SessionPrototypeAccessibility.guidedInputToggle)
-        }
-        .padding(.top, 4)
-    }
-
-    private func repsDial(_ setIndex: Int, _ set: PrototypeSetDraft) -> some View {
-        PrototypeRotaryDial(
-            title: "Reps",
-            valueText: "\(set.reps)",
-            unit: set.reps == 1 ? "rep" : "reps",
-            deltaText: SessionPrototypePlan.repsDelta(set.reps, target: draft.target.reps),
-            stepsFromTarget: set.reps - draft.target.reps,
-            identifier: SessionPrototypeAccessibility.setInput(set: setIndex, field: "reps", style: "dial"),
-            onStep: { ticks in stepReps(setIndex, ticks) }
-        )
-    }
-
-    private func loadDial(_ setIndex: Int, _ set: PrototypeSetDraft) -> some View {
-        PrototypeRotaryDial(
-            title: "Load",
-            valueText: LoadCopy.formatted(set.loadLbs ?? 0),
-            unit: LoadCopy.unit,
-            deltaText: SessionPrototypePlan.loadDelta(set.loadLbs, target: draft.target.loadLbs),
-            stepsFromTarget: SessionPrototypePlan.loadIndex(set.loadLbs)
-                - SessionPrototypePlan.loadIndex(draft.target.loadLbs),
-            identifier: SessionPrototypeAccessibility.setInput(set: setIndex, field: "load", style: "dial"),
-            onStep: { ticks in stepLoad(setIndex, ticks) }
-        )
     }
 
     private func repsRuler(_ setIndex: Int, _ set: PrototypeSetDraft) -> some View {
@@ -349,7 +292,7 @@ struct GuidedSessionLogView: View {
             targetIndex: draft.target.reps - 1,
             isMajor: { ($0 + 1) % 5 == 0 },
             label: { "\($0 + 1)" },
-            identifier: SessionPrototypeAccessibility.setInput(set: setIndex, field: "reps", style: "ruler"),
+            identifier: SessionPrototypeAccessibility.setRuler(set: setIndex, field: "reps"),
             onSelect: { position in updateSet(setIndex) { $0.reps = position + 1 } }
         )
         .id("reps-\(setIndex)")
@@ -367,28 +310,10 @@ struct GuidedSessionLogView: View {
             targetIndex: SessionPrototypePlan.loadIndex(draft.target.loadLbs),
             isMajor: { $0 % 2 == 0 },
             label: { LoadCopy.formatted(SessionPrototypePlan.load(atIndex: $0) ?? 0) },
-            identifier: SessionPrototypeAccessibility.setInput(set: setIndex, field: "load", style: "ruler"),
+            identifier: SessionPrototypeAccessibility.setRuler(set: setIndex, field: "load"),
             onSelect: { position in updateSet(setIndex) { $0.loadLbs = SessionPrototypePlan.load(atIndex: position) } }
         )
         .id("load-\(setIndex)")
-    }
-
-    private func stepReps(_ setIndex: Int, _ ticks: Int) -> Bool {
-        guard draft.sets.indices.contains(setIndex) else { return false }
-        let before = draft.sets[setIndex].reps
-        let after = SessionPrototypePlan.reps(before, ticks: ticks)
-        guard after != before else { return false }
-        draft.sets[setIndex].reps = after
-        return true
-    }
-
-    private func stepLoad(_ setIndex: Int, _ ticks: Int) -> Bool {
-        guard draft.sets.indices.contains(setIndex) else { return false }
-        let before = draft.sets[setIndex].loadLbs
-        let after = SessionPrototypePlan.load(before, ticks: ticks)
-        guard after != before else { return false }
-        draft.sets[setIndex].loadLbs = after
-        return true
     }
 
     private var painStep: some View {

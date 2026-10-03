@@ -122,10 +122,26 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertEqual(SessionPrototypePlan.bumpLoad(5, by: -5), 0)
     }
 
-    func testDialAndRulerMath() {
-        XCTAssertEqual(SessionPrototypePlan.reps(8, ticks: 2), 10)
-        XCTAssertEqual(SessionPrototypePlan.reps(1, ticks: -3), 1)
-        XCTAssertEqual(SessionPrototypePlan.reps(29, ticks: 5), SessionPrototypePlan.maxReps)
+    func testRulerFollowsTheFingerAndLimitsTheFlick() {
+        // Drag 3 ticks to the left: up 3 values. Stays inside the ruler.
+        XCTAssertEqual(SessionPrototypePlan.rulerPosition(start: 9, dragPoints: -42, tickWidth: 14, count: 61), 12)
+        XCTAssertEqual(SessionPrototypePlan.rulerPosition(start: 9, dragPoints: 21, tickWidth: 14, count: 61), 7.5)
+        XCTAssertEqual(SessionPrototypePlan.rulerPosition(start: 1, dragPoints: 500, tickWidth: 14, count: 61), 0)
+        XCTAssertEqual(SessionPrototypePlan.rulerPosition(start: 59, dragPoints: -500, tickWidth: 14, count: 61), 60)
+        // A slow release adds nothing. A short flick adds 1 or 2. A hard flick adds 2, no more.
+        XCTAssertEqual(SessionPrototypePlan.rulerFlickSteps(momentumPoints: -10, tickWidth: 14), 0)
+        XCTAssertEqual(SessionPrototypePlan.rulerFlickSteps(momentumPoints: -60, tickWidth: 14), 1)
+        XCTAssertEqual(SessionPrototypePlan.rulerFlickSteps(momentumPoints: -100, tickWidth: 14), 2)
+        XCTAssertEqual(SessionPrototypePlan.rulerFlickSteps(momentumPoints: -2_000, tickWidth: 14), 2)
+        XCTAssertEqual(SessionPrototypePlan.rulerFlickSteps(momentumPoints: 2_000, tickWidth: 14), -2)
+        XCTAssertEqual(SessionPrototypePlan.rulerFinalIndex(position: 9.4, momentumPoints: -2_000, tickWidth: 14, count: 61), 11)
+        XCTAssertEqual(SessionPrototypePlan.rulerFinalIndex(position: 9.6, momentumPoints: 0, tickWidth: 14, count: 61), 10)
+        XCTAssertEqual(SessionPrototypePlan.rulerFinalIndex(position: 60, momentumPoints: -2_000, tickWidth: 14, count: 61), 60)
+        XCTAssertEqual(SessionPrototypePlan.rulerFinalIndex(position: 0, momentumPoints: 2_000, tickWidth: 14, count: 61), 0)
+        XCTAssertEqual(SessionPrototypeAccessibility.setRuler(set: 0, field: "load"), "prototype-guided-set-1-load-ruler")
+    }
+
+    func testLoadStepsAndDeltaLabels() {
         XCTAssertEqual(SessionPrototypePlan.load(45, ticks: 1), 50)
         XCTAssertEqual(SessionPrototypePlan.load(nil, ticks: 2), 10)
         XCTAssertNil(SessionPrototypePlan.load(5, ticks: -1))

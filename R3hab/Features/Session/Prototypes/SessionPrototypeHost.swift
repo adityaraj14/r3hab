@@ -49,7 +49,7 @@ extension View {
             }
             .tint(AppTheme.gold)
             .preferredColorScheme(.dark)
-            // A drag on a dial or ruler must not close the sheet. Use Cancel to close.
+            // A drag on a ruler must not close the sheet. Use Cancel to close.
             .interactiveDismissDisabled()
         }
     }
