@@ -60,6 +60,13 @@ private struct RootTabContent: View {
     @Environment(AppRouter.self) private var router
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
+    /// Same predicate as Today. The badge tracks who is still pending, not the
+    /// full session list, so a resolve drops the count immediately.
+    @Query(
+        filter: #Predicate<TrainingSession> { $0.response24hRaw == "pending" },
+        sort: \TrainingSession.createdAt
+    )
+    private var pendingSessions: [TrainingSession]
 
     @Binding var showOnboarding: Bool
     var syncGeneration: Int
@@ -67,7 +74,7 @@ private struct RootTabContent: View {
     private var settings: AppSettings? { settingsList.first }
 
     private var overdueBadge: Int {
-        PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: Date()).count
+        PendingQueue.overdue(sessions: pendingSessions.map(\.snapshot), now: Date()).count
     }
 
     var body: some View {

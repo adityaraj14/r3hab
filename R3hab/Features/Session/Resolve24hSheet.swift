@@ -13,6 +13,9 @@ struct Resolve24hSheet: View {
     @Query(sort: \TrainingSession.date, order: .reverse) private var allSessions: [TrainingSession]
 
     let sessionId: UUID
+    /// Fired after a successful save so Today can drop the prompt in the same
+    /// turn, before the pending query republishes.
+    var onResolved: (UUID, Response24h) -> Void = { _, _ in }
 
     @State private var response: Response24h = .same
     @State private var decision: SessionDecision = .stay
@@ -233,6 +236,7 @@ struct Resolve24hSheet: View {
         session.updatedAt = Date()
         do {
             try modelContext.save()
+            onResolved(session.id, response)
             NotificationScheduler.cancelPending(sessionId: session.id)
             Haptics.light()
             let shouldNudge = previousResponse == .pending || previousResponse != response
@@ -261,7 +265,13 @@ struct Resolve24hSheet: View {
         session.resolvedAt = Date()
         session.snoozedUntil = nil
         session.updatedAt = Date()
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+            onResolved(session.id, .notApplicable)
+        } catch {
+            dismiss()
+            return
+        }
         NotificationScheduler.cancelPending(sessionId: session.id)
         Haptics.light()
         dismiss()
