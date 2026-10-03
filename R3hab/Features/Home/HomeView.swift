@@ -262,14 +262,14 @@ struct HomeView: View {
                 }
             }
             .confirmationDialog(
-                "Close without 24h judgment?",
+                "Record this session as rest?",
                 isPresented: Binding(
                     get: { restConfirmId != nil },
                     set: { if !$0 { restConfirmId = nil } }
                 ),
                 titleVisibility: .visible
             ) {
-                Button("Mark Rest", role: .destructive) {
+                Button("Record rest", role: .destructive) {
                     if let id = restConfirmId, let s = sessions.first(where: { $0.id == id }) {
                         markRest(s)
                     }
@@ -330,24 +330,24 @@ struct HomeView: View {
                 Button {
                     resolveTargetId = id
                 } label: {
-                    Label("Resolve 24h response", systemImage: "checkmark.circle.fill")
+                    Label("Record the 24-hour response", systemImage: "checkmark.circle.fill")
                 }
                 .buttonStyle(.primaryAction)
 
                 if let session = sessions.first(where: { $0.id == id }) {
                     HStack(spacing: 8) {
                         if session.snoozedUntil == nil {
-                            Button("Snooze to morning") { snooze(session) }
+                            Button("Wait until morning") { snooze(session) }
                                 .buttonStyle(.quietCompact)
                         }
-                        Button("Mark rest") { restConfirmId = session.id }
+                        Button("Record rest") { restConfirmId = session.id }
                             .buttonStyle(.quietCompact)
                     }
                 }
 
             case .logMorning:
                 Button { showAM = true } label: {
-                    Label("Log morning pain", systemImage: "sun.max.fill")
+                    Label("Record morning pain", systemImage: "sun.max.fill")
                 }
                 .buttonStyle(.primaryAction)
 
@@ -355,7 +355,7 @@ struct HomeView: View {
                 Button {
                     afterPainTargetId = id
                 } label: {
-                    Label("Log pain after", systemImage: "bolt.heart.fill")
+                    Label("Record pain after", systemImage: "bolt.heart.fill")
                 }
                 .buttonStyle(.primaryAction)
 
@@ -378,7 +378,7 @@ struct HomeView: View {
 
             case .logEvening:
                 Button { showPM = true } label: {
-                    Label("Log evening pain", systemImage: "moon.stars.fill")
+                    Label("Record evening pain", systemImage: "moon.stars.fill")
                 }
                 .buttonStyle(.primaryAction)
 
@@ -387,7 +387,7 @@ struct HomeView: View {
                     Label("Rest day", systemImage: "leaf.fill")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("The chain holds. Nothing to load today.")
+                    Text("This is a rest day. Do not add load today.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -395,7 +395,7 @@ struct HomeView: View {
                 .padding(.vertical, 6)
 
             case .allDone:
-                Label("Today is logged", systemImage: "checkmark.seal.fill")
+                Label("Today is complete", systemImage: "checkmark.seal.fill")
                     .font(.headline.weight(.semibold))
                     .foregroundStyle(.primary)
                     .padding(.top, 6)
@@ -408,7 +408,7 @@ struct HomeView: View {
             if let pendingID = todayProgression.pendingResolveID,
                sessionSnaps.first(where: { $0.id == pendingID })?.response24h == .pending,
                !actionResolves24h(action) {
-                Button("Resolve 24h response") { resolveTargetId = pendingID }
+                Button("Record the 24-hour response") { resolveTargetId = pendingID }
                     .buttonStyle(.quietCompact)
             }
         }
@@ -498,7 +498,7 @@ struct HomeView: View {
         let entry = sessionEntry
         let isRest = entry == .rest
         let title = isRest ? "Rest day" : activePrimaryLoad.title
-        let placeholder = isRest ? "Optional" : "Not logged"
+        let placeholder = isRest ? "Optional" : "Not recorded"
         let logged = !todaySessions.isEmpty
         let trailing = sessionTrailingValue(entry)
         let lines = sessionDetailLines(entry)
@@ -545,13 +545,13 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(sessionAccessibilityLabel(title: title, trailing: trailing, placeholder: placeholder, lines: lines, status: entry.loggedStatus))
-        .accessibilityHint(logged ? "Edit" : "Log")
+        .accessibilityHint(logged ? "Edit" : "Record")
     }
 
     private func sessionTrailingValue(_ entry: TodaySessionEntry) -> String? {
         switch entry {
         case .resumeDraft:
-            return "Resume draft"
+            return "Continue the draft"
         case .logged(let load, let status) where !load.hasLines:
             return status
         case .rest, .target, .logged:
@@ -597,7 +597,7 @@ struct HomeView: View {
         icon: String,
         title: String,
         value: String?,
-        placeholder: String = "Not logged",
+        placeholder: String = "Not recorded",
         logged: Bool,
         action: @escaping () -> Void
     ) -> some View {
@@ -624,7 +624,7 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(title), \(value ?? placeholder.lowercased())")
-        .accessibilityHint(logged ? "Edit" : "Log")
+        .accessibilityHint(logged ? "Edit" : "Record")
     }
 
     // MARK: Streak — the day's line, then the chain
@@ -687,7 +687,7 @@ struct HomeView: View {
     }
 
     private var streakAccessibilityLabel: String {
-        var parts = ["Streak \(WorkoutStreak.sessionWord(streak.current))"]
+        var parts = [WorkoutStreak.sessionWord(streak.current)]
         if let streakStatus {
             parts.append(streakStatus)
         }

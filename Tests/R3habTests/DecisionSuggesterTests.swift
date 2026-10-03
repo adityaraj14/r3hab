@@ -207,10 +207,10 @@ final class LoadNudgeEvaluatorTests: XCTestCase {
 
     func testProgressCelebrationCopyFavorsWeight() {
         let nudge = LoadNudge.progress(cleanCount: 15)
-        XCTAssertEqual(nudge.title, "Ready to add load")
+        XCTAssertEqual(nudge.title, "You can increase the load.")
         XCTAssertEqual(
             nudge.message,
-            "Pain held steady — next time, try a bit more weight with the same sets and reps."
+            "The pain stayed the same. Increase the load a little next time. Use the same sets and the same reps."
         )
         XCTAssertFalse(nudge.title.contains("Looks like you could progress"))
         XCTAssertFalse(nudge.message.contains("extra reps"))

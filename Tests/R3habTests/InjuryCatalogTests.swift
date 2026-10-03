@@ -6,7 +6,7 @@ final class InjuryCatalogTests: XCTestCase {
         XCTAssertEqual(InjuryCatalog.all.map(\.id), ["patellar-tendinopathy", "ql-strain"])
         XCTAssertEqual(
             InjuryCatalog.defaultSelectable.title,
-            "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
+            "Patellar tendinopathy, or jumper's knee, or patellar tendonitis"
         )
         XCTAssertTrue(InjuryCatalog.contains("patellar-tendinopathy"))
         XCTAssertTrue(InjuryCatalog.contains("ql-strain"))

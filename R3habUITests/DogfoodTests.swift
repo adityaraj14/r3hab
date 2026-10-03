@@ -14,7 +14,7 @@ final class DogfoodTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let skip = app.buttons["Skip for now"]
+        let skip = app.buttons["Not now"]
         if skip.waitForExistence(timeout: 8) {
             skip.tap()
         }
@@ -27,8 +27,8 @@ final class DogfoodTests: XCTestCase {
         }
         XCTAssertTrue(quoteHit, "Poster should carry today’s line. Label: \(poster.label)")
 
-        if app.buttons["Log morning pain"].waitForExistence(timeout: 3) {
-            app.buttons["Log morning pain"].tap()
+        if app.buttons["Record morning pain"].waitForExistence(timeout: 3) {
+            app.buttons["Record morning pain"].tap()
             let morning = app.buttons["Knee resting pain 1"]
             XCTAssertTrue(morning.waitForExistence(timeout: 4), app.debugDescription)
             morning.tap()
@@ -37,11 +37,11 @@ final class DogfoodTests: XCTestCase {
         }
 
         let logSession = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Log Workout")
+            NSPredicate(format: "label BEGINSWITH %@", "Record session")
         ).firstMatch
         if logSession.waitForExistence(timeout: 4) {
             logSession.tap()
-            let during = app.buttons["During (required) 2"]
+            let during = app.buttons["Pain during the session 2"]
             if !during.waitForExistence(timeout: 2) {
                 app.swipeUp()
             }
@@ -58,16 +58,16 @@ final class DogfoodTests: XCTestCase {
         let add = app.buttons["Add a past day"]
         XCTAssertTrue(add.waitForExistence(timeout: 4), app.debugDescription)
         add.tap()
-        app.buttons["Add a past workout"].tap()
+        app.buttons["Add a past session"].tap()
         app.navigationBars.buttons["Continue"].tap()
 
-        let pastPain = app.buttons["During (required) 2"]
+        let pastPain = app.buttons["Pain during the session 2"]
         XCTAssertTrue(pastPain.waitForExistence(timeout: 6), app.debugDescription)
         pastPain.tap()
         app.buttons["Save"].tap()
 
         app.tabBars.buttons["Today"].tap()
-        let resolve = app.buttons["Resolve 24h response"]
+        let resolve = app.buttons["Record the 24-hour response"]
         XCTAssertTrue(resolve.waitForExistence(timeout: 8), app.debugDescription)
         resolve.tap()
 
@@ -78,12 +78,12 @@ final class DogfoodTests: XCTestCase {
         XCTAssertTrue(close.waitForExistence(timeout: 2))
         snap(app, "09-resolve")
         XCTAssertTrue(
-            close.label.contains("Stay.") || close.label.contains("Progress."),
+            close.label.contains("same load") || close.label.contains("more load"),
             close.label
         )
         app.navigationBars.buttons["Save"].tap()
-        if app.buttons["Got it"].waitForExistence(timeout: 2) {
-            app.buttons["Got it"].tap()
+        if app.buttons["OK"].waitForExistence(timeout: 2) {
+            app.buttons["OK"].tap()
         }
 
         app.tabBars.buttons["Progress"].tap()

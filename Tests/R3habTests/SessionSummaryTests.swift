@@ -28,7 +28,7 @@ final class SessionSummaryTests: XCTestCase {
         )
         XCTAssertEqual(
             SessionSummary.lastSessionLine(whatIDid: "Seated leg extension", sets: holds, painDuring: 2),
-            "Last: 4×30s @ 35 lbs · pain 2"
+            "Last session: 4×30s @ 35 lb. Pain 2."
         )
     }
 
@@ -39,14 +39,14 @@ final class SessionSummaryTests: XCTestCase {
         }
         XCTAssertEqual(
             SessionSummary.lastSessionLine(whatIDid: "Seated leg extension", sets: warmup + work, painDuring: 1),
-            "Last: 3×8 @ 15 lbs · pain 1"
+            "Last session: 3×8 @ 15 lb. Pain 1."
         )
     }
 
     func testLastSessionLineOmitsPainWhenNotLogged() {
         XCTAssertEqual(
             SessionSummary.lastSessionLine(whatIDid: "Easy bike", sets: [], painDuring: PainScore.notLogged),
-            "Last: Easy bike"
+            "Last session: Easy bike"
         )
     }
 
@@ -68,7 +68,7 @@ final class SessionSummaryTests: XCTestCase {
             SessionSummary.makePair(reps: 8, loadLbs: 15, holdSeconds: nil, isWarmup: false)
         }
         let compact = SessionSummary.compactResistance(warmup + work)
-        XCTAssertEqual(compact, "3×8 @ 15 lbs both · WU 2×30s @ 15 lbs")
+        XCTAssertEqual(compact, "3×8 @ 15 lb both · Warm-up 2×30s @ 15 lb")
     }
 
     func testCompactResistanceShowsSplitLoads() {
@@ -80,7 +80,7 @@ final class SessionSummaryTests: XCTestCase {
             rightLoadLbs: 20
         )
         let compact = SessionSummary.compactResistance(work)
-        XCTAssertEqual(compact, "8 L @ 15 lbs / R @ 20 lbs")
+        XCTAssertEqual(compact, "8 Left @ 15 lb / Right @ 20 lb")
     }
 
     func testInferUnilateralWhenLoadsDiffer() {
@@ -106,14 +106,14 @@ final class SessionSummaryTests: XCTestCase {
         let work = SessionSummary.makePair(reps: 8, loadLbs: 30, holdSeconds: nil, isWarmup: false)
             + SessionSummary.makePair(reps: 8, loadLbs: 35, holdSeconds: nil, isWarmup: false)
         let list = SessionSummary.historyResistanceList(warmup + work)
-        XCTAssertEqual(list?.header, "2 work · 1 warm-up")
-        XCTAssertEqual(list?.rows.map(\.kind.label), ["WU", "1", "2"])
+        XCTAssertEqual(list?.header, "2 sets · 1 warm-up")
+        XCTAssertEqual(list?.rows.map(\.kind.label), ["Warm-up", "1", "2"])
         XCTAssertEqual(list?.rows.map(\.dose), ["30s", "8", "8"])
-        XCTAssertEqual(list?.rows.map(\.load), ["@ 30", "@ 30", "@ 35"])
+        XCTAssertEqual(list?.rows.map(\.load), ["@ 30 lb", "@ 30 lb", "@ 35 lb"])
         XCTAssertEqual(list?.rows.map(\.laterality), ["both", "both", "both"])
-        XCTAssertEqual(list?.rows[0].spoken, "Warm-up, 30 seconds, at 30, both")
-        XCTAssertEqual(list?.rows[1].spoken, "Set 1, 8 reps, at 30, both")
-        XCTAssertEqual(list?.rows[2].spoken, "Set 2, 8 reps, at 35, both")
+        XCTAssertEqual(list?.rows[0].spoken, "Warm-up, 30 seconds, at 30 lb, both")
+        XCTAssertEqual(list?.rows[1].spoken, "Set 1, 8 reps, at 30 lb, both")
+        XCTAssertEqual(list?.rows[2].spoken, "Set 2, 8 reps, at 35 lb, both")
         XCTAssertTrue(list?.rows[0].isWarmup == true)
     }
 
@@ -126,9 +126,9 @@ final class SessionSummaryTests: XCTestCase {
             rightLoadLbs: 30
         )
         let list = SessionSummary.historyResistanceList(work)
-        XCTAssertEqual(list?.header, "1 work")
+        XCTAssertEqual(list?.header, "1 set")
         XCTAssertEqual(list?.rows[0].dose, "8")
-        XCTAssertEqual(list?.rows[0].load, "@ L 35 / R 30")
+        XCTAssertEqual(list?.rows[0].load, "@ Left 35 lb / Right 30 lb")
         XCTAssertNil(list?.rows[0].laterality)
         XCTAssertEqual(list?.rows[0].spoken, "Set 1, 8 reps, at left 35, right 30")
     }
@@ -143,16 +143,16 @@ final class SessionSummaryTests: XCTestCase {
             )
         }
         let list = SessionSummary.historyResistanceList(work)
-        XCTAssertEqual(list?.header, "7 work")
+        XCTAssertEqual(list?.header, "7 sets")
         XCTAssertEqual(list?.hiddenWorkCount, 3)
         XCTAssertEqual(list?.rows.map(\.kind.label), ["1", "2", "3", "4", "+3"])
-        XCTAssertEqual(list?.rows.last?.spoken, "3 more work sets")
+        XCTAssertEqual(list?.rows.last?.spoken, "3 more sets")
     }
 
     func testHistoryListOmitsZeroWarmupsFromHeader() {
         let work = SessionSummary.makePair(reps: 8, loadLbs: 15, holdSeconds: nil, isWarmup: false)
         let list = SessionSummary.historyResistanceList(work)
-        XCTAssertEqual(list?.header, "1 work")
+        XCTAssertEqual(list?.header, "1 set")
         XCTAssertEqual(list?.warmupCount, 0)
     }
 

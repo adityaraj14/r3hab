@@ -56,7 +56,7 @@ struct OnboardingView: View {
                 .buttonStyle(.primaryAction)
                 .disabled(isBusy)
 
-                Button("Skip for now") {
+                Button("Not now") {
                     Task {
                         let skipped = OnboardingCompletion.result(
                             skipped: true,
@@ -96,11 +96,11 @@ struct OnboardingView: View {
     }
 
     private var primaryCTATitle: String {
-        if isBusy { return "Saving…" }
+        if isBusy { return "Saving the data" }
         switch page {
-        case 1: return "That’s my injury"
-        case 2: return InjuryCatalog.isQL(selectedInjuryID) ? "That’s what I’ll log" : "That’s my lift"
-        case 4: return "Let’s load"
+        case 1: return "Use this injury"
+        case 2: return "Use this exercise"
+        case 4: return "Start"
         default: return "Continue"
         }
     }
@@ -195,7 +195,7 @@ struct OnboardingView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 screenHeader(
-                    eyebrow: "Lift",
+                    eyebrow: "Exercise",
                     title: modalityTitle
                 )
                 Text(modalityLead)
@@ -327,12 +327,12 @@ struct OnboardingView: View {
     }
 
     private var modalityTitle: String {
-        InjuryCatalog.isQL(selectedInjuryID) ? "What will you log?" : BrandCopy.primaryLiftTitle
+        InjuryCatalog.isQL(selectedInjuryID) ? "Select the exercise." : BrandCopy.primaryLiftTitle
     }
 
     private var modalityLead: String {
         if InjuryCatalog.isQL(selectedInjuryID) {
-            return "Walking, weighted side bends, or hip thrusts. Log what you did. Loads can be refined later."
+            return "Select walking, a side bend, or a hip thrust. Record the session. You can adjust the load later."
         }
         return BrandCopy.primaryLiftLead
     }
@@ -368,7 +368,7 @@ struct OnboardingView: View {
                 .strokeBorder(AppTheme.quietStroke, lineWidth: 1)
         )
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("Private. No account, no ads, stored entirely on your iPhone.")
+        .accessibilityLabel("Private. No account. No ads. R3hab stores the data only on your iPhone.")
     }
 
     /// Selectable card. `subtitle` is nil for label-only choices (lifts).

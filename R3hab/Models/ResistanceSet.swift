@@ -22,7 +22,7 @@ enum KneeSide: String, Codable, CaseIterable, Identifiable, Sendable {
 }
 
 enum LoadCopy {
-    static let unit = "lbs"
+    static let unit = "lb"
 
     static func labeled(_ lbs: Double) -> String {
         "\(formatted(lbs)) \(unit)"
@@ -86,7 +86,7 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
 
     var summary: String {
         var parts: [String] = []
-        if isWarmup { parts.append("WU") }
+        if isWarmup { parts.append("Warm-up") }
         if let holdSeconds, holdSeconds > 0 {
             if let reps {
                 parts.append("\(reps)×\(holdSeconds)s")
@@ -94,10 +94,10 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
                 parts.append("\(holdSeconds)s")
             }
         } else if let reps {
-            parts.append("\(reps)r")
+            parts.append("\(reps) reps")
         }
         if let side {
-            parts.append(side.shortLabel)
+            parts.append(side.title)
         }
         if let loadLbs {
             parts.append("@ \(LoadCopy.labeled(loadLbs))")
@@ -106,7 +106,7 @@ struct ResistanceSet: Codable, Identifiable, Equatable, Hashable, Sendable {
             parts.append("\(steps) steps")
         }
         if let durationMinutes, durationMinutes > 0 {
-            parts.append("\(durationMinutes) min")
+            parts.append("\(durationMinutes) minutes")
         }
         return parts.joined(separator: " ")
     }
@@ -159,7 +159,7 @@ struct HistoryResistanceList: Equatable, Sendable {
     var header: String? {
         var parts: [String] = []
         if workCount > 0 {
-            parts.append(workCount == 1 ? "1 work" : "\(workCount) work")
+            parts.append(workCount == 1 ? "1 set" : "\(workCount) sets")
         }
         if warmupCount > 0 {
             parts.append(warmupCount == 1 ? "1 warm-up" : "\(warmupCount) warm-ups")
@@ -190,7 +190,7 @@ struct HistoryResistanceRow: Equatable, Identifiable, Sendable {
 
         var label: String {
             switch self {
-            case .warmup: return "WU"
+            case .warmup: return "Warm-up"
             case .work(let n): return "\(n)"
             case .overflow(let n): return "+\(n)"
             }
@@ -254,9 +254,9 @@ enum SessionSummary {
             body = displayTitle(whatIDid: whatIDid)
         }
         if PainScore.isLogged(painDuring) {
-            return "Last: \(body) · pain \(painDuring)"
+            return "Last session: \(body). Pain \(painDuring)."
         }
-        return "Last: \(body)"
+        return "Last session: \(body)"
     }
 
     static func groupWorkSets(_ sets: [ResistanceSet]) -> [WorkSetPair] {
@@ -420,17 +420,17 @@ enum SessionSummary {
     private static func historyLoad(_ pair: WorkSetPair) -> String {
         if pair.loadsMatch {
             guard let lbs = pair.leftLoad else { return "" }
-            return "@ \(LoadCopy.formatted(lbs))"
+            return "@ \(LoadCopy.formatted(lbs)) lb"
         }
         let left = pair.leftLoad.map(LoadCopy.formatted) ?? "—"
         let right = pair.rightLoad.map(LoadCopy.formatted) ?? "—"
-        return "@ L \(left) / R \(right)"
+        return "@ Left \(left) lb / Right \(right) lb"
     }
 
     private static func historyLaterality(_ pair: WorkSetPair) -> String? {
         if !pair.loadsMatch { return nil }
         if pair.right != nil || pair.left.side == nil { return "both" }
-        return pair.left.side?.shortLabel
+        return pair.left.side?.title
     }
 
     private static func historySpoken(
@@ -447,7 +447,7 @@ enum SessionSummary {
         case .work(let number):
             label = "Set \(number)"
         case .overflow(let count):
-            return count == 1 ? "1 more work set" : "\(count) more work sets"
+            return count == 1 ? "1 more set" : "\(count) more sets"
         }
 
         let effort: String
@@ -466,7 +466,7 @@ enum SessionSummary {
         let load: String
         if pair.loadsMatch {
             if let lbs = pair.leftLoad {
-                load = "at \(LoadCopy.formatted(lbs))"
+                load = "at \(LoadCopy.formatted(lbs)) lb"
             } else {
                 load = ""
             }
@@ -485,7 +485,7 @@ enum SessionSummary {
         let walkBits = sets.compactMap { row -> String? in
             var bits: [String] = []
             if let steps = row.steps, steps > 0 { bits.append("\(steps) steps") }
-            if let minutes = row.durationMinutes, minutes > 0 { bits.append("\(minutes) min") }
+            if let minutes = row.durationMinutes, minutes > 0 { bits.append("\(minutes) minutes") }
             return bits.isEmpty ? nil : bits.joined(separator: " · ")
         }
         if !walkBits.isEmpty, sets.allSatisfy({ $0.reps == nil && $0.loadLbs == nil && $0.holdSeconds == nil }) {
@@ -533,7 +533,7 @@ enum SessionSummary {
         let body = clusters
             .map { formatCluster($0.0, count: $0.1, warmup: warmup) }
             .joined(separator: ", ")
-        return warmup ? "WU \(body)" : body
+        return warmup ? "Warm-up \(body)" : body
     }
 
     private static func formatCluster(_ signature: ClusterSignature, count: Int, warmup: Bool) -> String {
@@ -570,7 +570,7 @@ enum SessionSummary {
         } else {
             let left = signature.leftLoad.map(LoadCopy.labeled) ?? "—"
             let right = signature.rightLoad.map(LoadCopy.labeled) ?? "—"
-            load = "L @ \(left) / R @ \(right)"
+            load = "Left @ \(left) / Right @ \(right)"
         }
         return [counted, load].filter { !$0.isEmpty }.joined(separator: " ")
     }

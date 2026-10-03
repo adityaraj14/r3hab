@@ -27,7 +27,7 @@ enum BrandCopy {
     static let onboardingTitle = "Your personal rehab assistant."
 
     static let onboardingLead = """
-    R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — let the numbers guide you.
+    R3hab helps you with your rehab. When you are not sure, open R3hab. Read the data. Use the numbers for each decision.
     """
 
     /// The 3 in R3. Welcome shows these three cards and nothing else.
@@ -36,36 +36,36 @@ enum BrandCopy {
         BrandCard(
             icon: "arrow.down.circle",
             title: "Reduce",
-            body: "Ease pain and load while the flare settles."
+            body: "Decrease the pain and the load during a flare."
         ),
         BrandCard(
             icon: "figure.strengthtraining.traditional",
             title: "Rebuild",
-            body: "Progressive strength into the tendon (isometrics → HSR)."
+            body: "Increase tendon strength with isometrics, then with heavy slow resistance (HSR)."
         ),
         BrandCard(
             icon: "figure.run",
             title: "Return",
-            body: "Back to the activity — or daily life — that got you here."
+            body: "Return to your activity or to daily life."
         )
     ]
 
     /// One injury ships today, so this page confirms — it is not a picker.
-    static let injuryTitle = "Confirm your injury"
+    static let injuryTitle = "Your injury"
 
     static let injuryDiagnosisNote = """
-    Getting a professional diagnosis first is recommended. R3hab helps you track and decide from your own numbers — it isn’t a diagnosis, and we don’t take on the risk if you move ahead without care.
+    Get a professional diagnosis first. R3hab helps you record data and decide from your numbers. R3hab is not a diagnosis. R3hab does not accept the risk if you continue without a clinician.
     """
 
-    static let primaryLiftTitle = "Pick your resistance lift"
-    static let primaryLiftLead = "Choose the exercise you’ll use during the resistance training phase."
-    static let primaryLiftTip = "Prefer something convenient and easy to stick with."
+    static let primaryLiftTitle = "Select your exercise"
+    static let primaryLiftLead = "Select the exercise for the resistance phase."
+    static let primaryLiftTip = "Select an exercise that is easy to continue."
 
     static let setupEyebrow = "Setup"
-    static let setupTitle = "Where are you right now?"
-    static let setupLead = "Pick your starting point. Change it anytime in Settings."
+    static let setupTitle = "Select your current phase."
+    static let setupLead = "Select the start phase. You can change it in Settings."
     /// Ties the phase cards to the tenets without renaming the phases.
-    static let setupTenetFraming = "Phase A is Reduce. B and C are Rebuild. Return is the goal — we’ll get there."
+    static let setupTenetFraming = "Phase A is Reduce. Phase B and Phase C are Rebuild. Return is the goal."
 
     /// The three selectable starting points. Title + explanation live on the
     /// card itself; there is no separate phase explainer.
@@ -73,59 +73,59 @@ enum BrandCopy {
         SetupPhaseChoice(
             phase: .aFlareDeLoad,
             title: "Phase A · Flare",
-            body: "Ease off until resting pain settles."
+            body: "Decrease the load until the resting pain is stable."
         ),
         SetupPhaseChoice(
             phase: .bIsometrics,
             title: "Phase B · Isometrics",
-            body: "Easy, consistent isometric work with your primary lift."
+            body: "Do easy isometric holds with your primary exercise."
         ),
         SetupPhaseChoice(
             phase: .cHeavySlowResistance,
             title: "Phase C · Heavy slow resistance (HSR)",
-            body: "The main phase for rebuilding the tendon."
+            body: "This phase rebuilds the tendon."
         )
     ]
 
     static let disclaimerEyebrow = "Before you start"
-    static let disclaimerTitle = "Not a clinic."
+    static let disclaimerTitle = "R3hab is not a clinic."
     static let disclaimerBody = """
-    R3hab is a personal log for your rehab journey. It helps you see patterns and decide with data. It is not a medical device, not a diagnosis, and not a substitute for a clinician. If something feels wrong — sharp joint pain, swelling, locking, or pain that won’t settle — see a professional.
+    R3hab is a personal record of your rehab. R3hab helps you see patterns in the data. R3hab helps you decide with the data. R3hab is not a medical device. R3hab is not a diagnosis. R3hab does not replace a clinician. See a clinician for sharp joint pain, swelling, or locking. See a clinician if the pain does not decrease.
     """
 
-    static let notificationsToggleTitle = "Notifications"
+    static let notificationsToggleTitle = "Reminders"
     static let notificationsToggleBody =
-        "Reminders for check-ins, workout sessions, and the occasional dose of motivation."
+        "Reminders for check-ins, sessions, and a daily quote."
 
     static let settingsSectionTitle = "Why R3hab"
     static let settingsBlurb = """
-    R3hab is your personal rehab assistant. Logs stay on this iPhone — private, no ads. When the week feels messy, look at the numbers instead of re-arguing the plan.
+    R3hab is your personal rehab assistant. R3hab stores the records on this iPhone. R3hab has no ads. When a week is difficult, read the numbers.
     """
     static let benefits: [BrandCard] = [
         BrandCard(
             icon: "chart.line.uptrend.xyaxis",
-            title: "Track the journey",
-            body: "Pain, sessions, and load in one place."
+            title: "Record the rehab",
+            body: "R3hab keeps pain, sessions, and load together."
         ),
         BrandCard(
             icon: "checkmark.circle",
-            title: "Stay accountable",
-            body: "Show up, log it, keep the chain going."
+            title: "Continue the sessions",
+            body: "Record each session."
         ),
         BrandCard(
             icon: "scalemass",
-            title: "Trust the data",
-            body: "Decisions backed by real data from your hard work."
+            title: "Use the data",
+            body: "Use your data for each decision."
         ),
         BrandCard(
             icon: "square.and.arrow.up",
-            title: "Your data is yours",
-            body: "Export anytime from Settings."
+            title: "You control the data",
+            body: "You can export the data from Settings."
         )
     ]
 
     /// The one-line privacy card on Welcome.
-    static let privacySummary = "No account · No ads · Stored entirely on your iPhone"
+    static let privacySummary = "No account. No ads. R3hab stores the data only on your iPhone."
 }
 
 /// Adi’s signed-off cycle: the 10 attributed lines from PR 14, wording

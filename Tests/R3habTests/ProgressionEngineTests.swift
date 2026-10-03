@@ -24,7 +24,7 @@ final class ProgressionEngineTests: XCTestCase {
         )
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil))
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold load")
+        XCTAssertEqual(result.stance.label, "Hold the load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonStart)
         XCTAssertFalse(result.reason.isEmpty)
         XCTAssertEqual(result.blockedBy, [])
@@ -36,7 +36,7 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 3, response: .same)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.stance.label, "Increase the load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
@@ -53,7 +53,7 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 3, response: .better)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.stance.label, "Increase the load")
         XCTAssertFalse(result.blockedBy.contains(.painDuring))
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
         XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
@@ -82,7 +82,7 @@ final class ProgressionEngineTests: XCTestCase {
         let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.stance.label, "Decrease load")
+        XCTAssertEqual(result.stance.label, "Decrease the load")
         XCTAssertEqual(result.target.loadLbs, 35)
         XCTAssertNotEqual(result.target.loadLbs, 30)
     }
@@ -92,7 +92,7 @@ final class ProgressionEngineTests: XCTestCase {
         let result = today([only])
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold load")
+        XCTAssertEqual(result.stance.label, "Hold the load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonOneClean)
         XCTAssertNil(result.suggestedChangeLoadLbs)
         XCTAssertEqual(result.cardReason, ProgressionEngine.reasonOneClean)
@@ -114,10 +114,10 @@ final class ProgressionEngineTests: XCTestCase {
         let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.stance.label, "Decrease load")
-        XCTAssertEqual(result.reason, "Pain during was 4")
+        XCTAssertEqual(result.stance.label, "Decrease the load")
+        XCTAssertEqual(result.reason, "The pain during the session was 4.")
         XCTAssertNil(result.suggestedChangeLoadLbs)
-        XCTAssertEqual(result.cardReason, "Pain during was 4")
+        XCTAssertEqual(result.cardReason, "The pain during the session was 4.")
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
@@ -126,7 +126,7 @@ final class ProgressionEngineTests: XCTestCase {
         let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 6, response: .same)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "Pain during was 6")
+        XCTAssertEqual(result.reason, "The pain during the session was 6.")
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
 
@@ -139,7 +139,7 @@ final class ProgressionEngineTests: XCTestCase {
         hot.resistanceSets[0].painDuring = 4
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "Pain during was 4")
+        XCTAssertEqual(result.reason, "The pain during the session was 4.")
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
     }
@@ -149,7 +149,7 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 4, reps: 8, load: 35, pain: 3, response: .worse)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, "24h Worse — holding load")
+        XCTAssertEqual(result.reason, "The 24-hour response is Worse. Hold the load.")
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
         XCTAssertEqual(result.blockedBy, [.responseWorse])
         XCTAssertEqual(
@@ -162,7 +162,7 @@ final class ProgressionEngineTests: XCTestCase {
         )
         let advice = DecisionSuggester.guidance(for: .softCut)
         XCTAssertNotNil(advice)
-        XCTAssertTrue(advice?.contains("Soft cut") == true)
+        XCTAssertTrue(advice?.contains("Decrease the load") == true)
         XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
     }
 
@@ -230,7 +230,7 @@ final class ProgressionEngineTests: XCTestCase {
         let waiting = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1, response: .pending)
         let result = today([ready, waiting])
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, "Waiting on 24h check-in")
+        XCTAssertEqual(result.reason, "The 24-hour response is not recorded.")
         XCTAssertFalse(result.reason.isEmpty)
         XCTAssertEqual(result.blockedBy, [.awaiting24h])
         XCTAssertEqual(result.pendingResolveID, waiting.id)
@@ -283,7 +283,7 @@ final class ProgressionEngineTests: XCTestCase {
         let second = hsr(dayOffset: -2, sets: 4, reps: 10, load: 35, pain: 2)
         let result = today([first, second])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.stance.label, "Increase the load")
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
         XCTAssertNotEqual(result.target.loadLbs, 40)
     }
@@ -294,9 +294,9 @@ final class ProgressionEngineTests: XCTestCase {
             hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 1, response: .same)
         ]
         let result = today(sessions)
-        XCTAssertEqual(result.target.displayLine, "3×8 @ 35 lbs")
+        XCTAssertEqual(result.target.displayLine, "3×8 @ 35 lb")
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase load")
+        XCTAssertEqual(result.stance.label, "Increase the load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
         XCTAssertEqual(result.cardReason, ProgressionEngine.reasonTwoCleanIncrease)
         XCTAssertFalse(result.cardReason.contains("Last time"))
@@ -428,7 +428,7 @@ final class ProgressionEngineTests: XCTestCase {
             pendingResolveID: nil
         )
         XCTAssertEqual(increase.suggestedChangeLoadLbs, 50)
-        XCTAssertEqual(increase.cardReason, "Increase load: try 50 lbs")
+        XCTAssertEqual(increase.cardReason, "Increase the load. Try 50 lb.")
 
         let decrease = ProgressionResult(
             target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40),
@@ -440,7 +440,7 @@ final class ProgressionEngineTests: XCTestCase {
             pendingResolveID: nil
         )
         XCTAssertEqual(decrease.suggestedChangeLoadLbs, 40)
-        XCTAssertEqual(decrease.cardReason, "Decrease load: try 40 lbs")
+        XCTAssertEqual(decrease.cardReason, "Decrease the load. Try 40 lb.")
 
         let hold = ProgressionResult(
             target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50),
@@ -468,16 +468,16 @@ final class ProgressionEngineTests: XCTestCase {
     }
 
     func testDropStanceLabel() {
-        XCTAssertEqual(ProgressionStance.drop.label, "Decrease load")
-        XCTAssertEqual(ProgressionStance.advance.label, "Increase load")
-        XCTAssertEqual(ProgressionStance.hold.label, "Hold load")
+        XCTAssertEqual(ProgressionStance.drop.label, "Decrease the load")
+        XCTAssertEqual(ProgressionStance.advance.label, "Increase the load")
+        XCTAssertEqual(ProgressionStance.hold.label, "Hold the load")
     }
 
     func testPainAboveThreeWinsOverAMissingResolve() {
         let hot = hsr(dayOffset: -1, sets: 3, reps: 8, load: 40, pain: 5, response: .pending)
         let result = today([hot])
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "Pain during was 5")
+        XCTAssertEqual(result.reason, "The pain during the session was 5.")
         XCTAssertEqual(result.pendingResolveID, hot.id)
         XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
     }

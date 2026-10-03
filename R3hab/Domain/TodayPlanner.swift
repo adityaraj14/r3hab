@@ -43,12 +43,12 @@ enum TodayPlanner {
 
     /// Done-state line under “Today is logged”. The only Next up variant
     /// that keeps a line under its title — it is a status, not a prompt.
-    static let allDoneLine = "All done for the day. Let’s pick it back up tomorrow."
+    static let allDoneLine = "You completed this day. Continue tomorrow."
 
     static func eyebrow(for action: TodayNextAction, hasSessionDraft: Bool = false) -> String {
         switch action {
         case .resolvePending:
-            return "Needs your 24h call"
+            return "24-hour response"
         case .restDay:
             return "Rest day"
         case .allDone:
@@ -56,7 +56,7 @@ enum TodayPlanner {
         case .logSession where hasSessionDraft:
             return "Draft saved"
         case .logMorning, .logAfterPain, .logEvening, .logSession:
-            return "Next up"
+            return "Next"
         }
     }
 

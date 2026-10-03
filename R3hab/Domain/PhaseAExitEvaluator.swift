@@ -59,11 +59,11 @@ enum PhaseAExitEvaluator {
         let ready = stable >= required && !needsSteps
         let message: String
         if ready {
-            message = "Exit criteria looking good — switch to Phase B when ready (Settings)"
+            message = "You meet the exit criteria. Select Phase B in Settings."
         } else if stable >= required && needsSteps {
-            message = "\(stable)/\(required) stable · steps still low — aim ~6–8k when pain stays ≤\(painMax)"
+            message = "\(stable) of \(required) mornings are stable. The steps are low. Record about 6000 to 8000 steps when the pain stays at \(painMax) or less."
         } else {
-            message = "Stable mornings: \(stable)/\(required)"
+            message = "Stable mornings: \(stable) of \(required)."
         }
 
         return PhaseAExitStatus(

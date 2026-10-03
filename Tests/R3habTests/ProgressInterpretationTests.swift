@@ -37,8 +37,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .positive)
-        XCTAssertEqual(readout.headline, "You're doing well.")
-        XCTAssertEqual(readout.detail, "Volume is up and pain is holding steady.")
+        XCTAssertEqual(readout.headline, "This result is good.")
+        XCTAssertEqual(readout.detail, "The load is higher and the pain stays the same.")
     }
 
     func testVolumeUpPainDownIsDoingWell() {
@@ -49,8 +49,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .positive)
-        XCTAssertEqual(readout.headline, "You're doing well.")
-        XCTAssertEqual(readout.detail, "You're loading more and pain is easing.")
+        XCTAssertEqual(readout.headline, "This result is good.")
+        XCTAssertEqual(readout.detail, "The load is higher and the pain decreases.")
     }
 
     func testVolumeUpPainUpIsCaution() {
@@ -61,8 +61,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .caution)
-        XCTAssertEqual(readout.headline, "Worth a closer look.")
-        XCTAssertEqual(readout.detail, "Volume is up, and pain is climbing with it.")
+        XCTAssertEqual(readout.headline, "Examine this result.")
+        XCTAssertEqual(readout.detail, "The load is higher and the pain increases with it.")
     }
 
     func testVolumeDownPainUpIsCaution() {
@@ -73,8 +73,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .caution)
-        XCTAssertEqual(readout.headline, "Worth a closer look.")
-        XCTAssertEqual(readout.detail, "Pain is rising while training is quieter.")
+        XCTAssertEqual(readout.headline, "Examine this result.")
+        XCTAssertEqual(readout.detail, "The pain increases and the sessions are fewer.")
     }
 
     func testVolumeFlatPainUpIsCaution() {
@@ -85,8 +85,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .caution)
-        XCTAssertEqual(readout.headline, "Worth a closer look.")
-        XCTAssertEqual(readout.detail, "Pain is rising while training is quieter.")
+        XCTAssertEqual(readout.headline, "Examine this result.")
+        XCTAssertEqual(readout.detail, "The pain increases and the sessions are fewer.")
     }
 
     func testNotEnoughDataIsQuiet() {
@@ -94,7 +94,7 @@ final class ProgressInterpretationTests: XCTestCase {
             points: points(pain: [3, nil], volume: [nil, nil])
         )
         XCTAssertEqual(readout.tone, .insufficient)
-        XCTAssertEqual(readout.headline, "Not enough days yet to read this window.")
+        XCTAssertEqual(readout.headline, "This window does not have enough days.")
         XCTAssertNil(readout.detail)
     }
 
@@ -106,8 +106,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .partial)
-        XCTAssertEqual(readout.headline, "Pain is easing.")
-        XCTAssertEqual(readout.detail, "Log a few sessions and the load story will show up too.")
+        XCTAssertEqual(readout.headline, "The pain decreases.")
+        XCTAssertEqual(readout.detail, "Record more sessions to see the load.")
     }
 
     func testPainOnlyFlatIsPartial() {
@@ -118,8 +118,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .partial)
-        XCTAssertEqual(readout.headline, "Pain is holding steady.")
-        XCTAssertEqual(readout.detail, "Session volume will tell the rest of the story.")
+        XCTAssertEqual(readout.headline, "The pain stays the same.")
+        XCTAssertEqual(readout.detail, "The session volume shows the rest of the result.")
     }
 
     func testPainOnlyUpIsPartial() {
@@ -130,8 +130,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .partial)
-        XCTAssertEqual(readout.headline, "Pain is creeping up.")
-        XCTAssertEqual(readout.detail, "That's worth watching. Volume logs will fill this in.")
+        XCTAssertEqual(readout.headline, "The pain increases.")
+        XCTAssertEqual(readout.detail, "Examine this pain. Record the session volume.")
     }
 
     func testVolumeOnlyUpIsPartial() {
@@ -142,8 +142,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .partial)
-        XCTAssertEqual(readout.headline, "You're loading more.")
-        XCTAssertEqual(readout.detail, "Morning scores will tell you if it's sitting well.")
+        XCTAssertEqual(readout.headline, "The load is higher.")
+        XCTAssertEqual(readout.detail, "The morning pain shows if the load is acceptable.")
     }
 
     func testVolumeOnlyDownIsPartial() {
@@ -154,8 +154,8 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .partial)
-        XCTAssertEqual(readout.headline, "Volume is quiet this window.")
-        XCTAssertEqual(readout.detail, "Pain logs will fill in the picture.")
+        XCTAssertEqual(readout.headline, "The session volume is low in this window.")
+        XCTAssertEqual(readout.detail, "Record the pain to complete this window.")
     }
 
     func testBothFlatIsSteady() {
@@ -166,7 +166,7 @@ final class ProgressInterpretationTests: XCTestCase {
             )
         )
         XCTAssertEqual(readout.tone, .steady)
-        XCTAssertEqual(readout.headline, "A steady window.")
-        XCTAssertEqual(readout.detail, "Pain and volume are both holding.")
+        XCTAssertEqual(readout.headline, "This window is stable.")
+        XCTAssertEqual(readout.detail, "The pain and the load stay the same.")
     }
 }

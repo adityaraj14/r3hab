@@ -62,9 +62,9 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(BrandCopy.onboardingTitle, "Your personal rehab assistant.")
         XCTAssertEqual(
             BrandCopy.onboardingLead,
-            "R3hab helps you stay on track with your rehab. When you wonder if you’re going the right way, open the app and look at the data. You don’t have to unpack the whole journey every time doubt shows up — let the numbers guide you."
+            "R3hab helps you with your rehab. When you are not sure, open R3hab. Read the data. Use the numbers for each decision."
         )
-        XCTAssertEqual(BrandCopy.privacySummary, "No account · No ads · Stored entirely on your iPhone")
+        XCTAssertEqual(BrandCopy.privacySummary, "No account. No ads. R3hab stores the data only on your iPhone.")
     }
 
     func testWelcomeShowsTheThreeTenets() {
@@ -72,9 +72,9 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(
             BrandCopy.tenets.map(\.body),
             [
-                "Ease pain and load while the flare settles.",
-                "Progressive strength into the tendon (isometrics → HSR).",
-                "Back to the activity — or daily life — that got you here."
+                "Decrease the pain and the load during a flare.",
+                "Increase tendon strength with isometrics, then with heavy slow resistance (HSR).",
+                "Return to your activity or to daily life."
             ]
         )
         XCTAssertEqual(BrandCopy.tenetLine, "R3 · Reduce · Rebuild · Return")
@@ -84,15 +84,15 @@ final class BrandCopyTests: XCTestCase {
     func testBenefitCardsMovedFromWelcomeToSettings() {
         XCTAssertEqual(
             BrandCopy.benefits.map(\.title),
-            ["Track the journey", "Stay accountable", "Trust the data", "Your data is yours"]
+            ["Record the rehab", "Continue the sessions", "Use the data", "You control the data"]
         )
         XCTAssertEqual(
             BrandCopy.benefits.map(\.body),
             [
-                "Pain, sessions, and load in one place.",
-                "Show up, log it, keep the chain going.",
-                "Decisions backed by real data from your hard work.",
-                "Export anytime from Settings."
+                "R3hab keeps pain, sessions, and load together.",
+                "Record each session.",
+                "Use your data for each decision.",
+                "You can export the data from Settings."
             ]
         )
         let welcomeTitles = Set(BrandCopy.tenets.map(\.title))
@@ -105,7 +105,7 @@ final class BrandCopyTests: XCTestCase {
     func testPhasesKeepTheirNamesAndSetupFramesThemAsTenets() {
         XCTAssertEqual(
             BrandCopy.setupTenetFraming,
-            "Phase A is Reduce. B and C are Rebuild. Return is the goal — we’ll get there."
+            "Phase A is Reduce. Phase B and Phase C are Rebuild. Return is the goal."
         )
         for phase in RehabPhase.allCases {
             for tenet in BrandCopy.tenets {
@@ -115,13 +115,13 @@ final class BrandCopyTests: XCTestCase {
     }
 
     func testInjuryPageConfirmsOneInjuryWithNoComingSoonPromise() {
-        XCTAssertEqual(BrandCopy.injuryTitle, "Confirm your injury")
+        XCTAssertEqual(BrandCopy.injuryTitle, "Your injury")
         for rejected in ["Select your injury", "What’s your injury", "Choose your starting injury"] {
             XCTAssertNotEqual(BrandCopy.injuryTitle, rejected)
         }
         XCTAssertEqual(
             InjuryCatalog.patellarTendinopathy.title,
-            "Jumper’s knee / patellar tendinopathy / patellar tendonitis"
+            "Patellar tendinopathy, or jumper's knee, or patellar tendonitis"
         )
         XCTAssertTrue(BrandCopy.injuryDiagnosisNote.contains("professional diagnosis"))
         // App Review: no placeholders that imply unfinished features.
@@ -132,12 +132,12 @@ final class BrandCopyTests: XCTestCase {
     }
 
     func testPrimaryLiftCopyIsLabelsOnly() {
-        XCTAssertEqual(BrandCopy.primaryLiftTitle, "Pick your resistance lift")
+        XCTAssertEqual(BrandCopy.primaryLiftTitle, "Select your exercise")
         XCTAssertEqual(
             BrandCopy.primaryLiftLead,
-            "Choose the exercise you’ll use during the resistance training phase."
+            "Select the exercise for the resistance phase."
         )
-        XCTAssertEqual(BrandCopy.primaryLiftTip, "Prefer something convenient and easy to stick with.")
+        XCTAssertEqual(BrandCopy.primaryLiftTip, "Select an exercise that is easy to continue.")
         XCTAssertEqual(
             PrimaryLoadCatalog.options(for: InjuryCatalog.patellarTendinopathy.id).map(\.title),
             ["Seated leg extension", "Leg press"]
@@ -145,8 +145,8 @@ final class BrandCopyTests: XCTestCase {
     }
 
     func testSetupPageHasThreeSelectablePhasesWithInlineExplanations() {
-        XCTAssertEqual(BrandCopy.setupTitle, "Where are you right now?")
-        XCTAssertEqual(BrandCopy.setupLead, "Pick your starting point. Change it anytime in Settings.")
+        XCTAssertEqual(BrandCopy.setupTitle, "Select your current phase.")
+        XCTAssertEqual(BrandCopy.setupLead, "Select the start phase. You can change it in Settings.")
         XCTAssertEqual(
             BrandCopy.setupPhaseChoices.map(\.phase),
             [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance]
@@ -158,9 +158,9 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(
             BrandCopy.setupPhaseChoices.map(\.body),
             [
-                "Ease off until resting pain settles.",
-                "Easy, consistent isometric work with your primary lift.",
-                "The main phase for rebuilding the tendon."
+                "Decrease the load until the resting pain is stable.",
+                "Do easy isometric holds with your primary exercise.",
+                "This phase rebuilds the tendon."
             ]
         )
         XCTAssertEqual(OnboardingCompletion.initialPhase, .aFlareDeLoad)
@@ -168,13 +168,13 @@ final class BrandCopyTests: XCTestCase {
 
     func testDisclaimerTitleAndNotificationsCopy() {
         XCTAssertEqual(BrandCopy.disclaimerEyebrow, "Before you start")
-        XCTAssertEqual(BrandCopy.disclaimerTitle, "Not a clinic.")
+        XCTAssertEqual(BrandCopy.disclaimerTitle, "R3hab is not a clinic.")
         XCTAssertFalse(BrandCopy.disclaimerTitle.contains("intentional"))
         XCTAssertTrue(BrandCopy.disclaimerBody.contains("not a medical device"))
-        XCTAssertEqual(BrandCopy.notificationsToggleTitle, "Notifications")
+        XCTAssertEqual(BrandCopy.notificationsToggleTitle, "Reminders")
         XCTAssertEqual(
             BrandCopy.notificationsToggleBody,
-            "Reminders for check-ins, workout sessions, and the occasional dose of motivation."
+            "Reminders for check-ins, sessions, and a daily quote."
         )
     }
 

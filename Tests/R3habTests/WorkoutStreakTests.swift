@@ -244,9 +244,9 @@ final class WorkoutStreakTests: XCTestCase {
     func testStreakStatusIsOneShortWordPerMissState() {
         XCTAssertNil(WorkoutStreak.statusLabel(for: .none))
         XCTAssertEqual(WorkoutStreak.statusLabel(for: .approaching), "Due today")
-        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), "Don’t miss twice")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), "Do not miss two")
         XCTAssertEqual(WorkoutStreak.statusLabel(for: .oneMiss), WorkoutStreak.missTwiceTitle)
-        XCTAssertEqual(WorkoutStreak.statusLabel(for: .twoMiss), "Missed twice")
+        XCTAssertEqual(WorkoutStreak.statusLabel(for: .twoMiss), "Missed two sessions")
 
         // The card is count + status only; the explanatory bodies stay in the
         // notification and the quote cycle, never on the streak card.
@@ -260,10 +260,10 @@ final class WorkoutStreakTests: XCTestCase {
     }
 
     func testNotificationBodyIsUnchangedByTheCardCleanup() {
-        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Don’t miss twice")
+        XCTAssertEqual(WorkoutStreak.missTwiceTitle, "Do not miss two")
         XCTAssertEqual(
             WorkoutStreak.missTwiceBody,
-            "One miss is alright, but try not to miss twice. Consistency is what matters the most. Keep going."
+            "One missed session is acceptable. Do not miss a second session. Continue the sessions."
         )
     }
 

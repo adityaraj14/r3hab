@@ -29,7 +29,7 @@ struct AfterPainSheet: View {
                 ContentUnavailableView(
                     "Session not found",
                     systemImage: "questionmark.circle",
-                    description: Text("This workout may have been deleted.")
+                    description: Text("This session was deleted.")
                 )
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
@@ -56,11 +56,11 @@ struct AfterPainSheet: View {
             }
 
             Section {
-                PainScoreControl(title: "After (required)", value: $painAfter, allowsClear: false)
+                PainScoreControl(title: "Pain after the session", value: $painAfter, allowsClear: false)
             } header: {
-                Text("Post-session pain")
+                Text("Pain after")
             } footer: {
-                Text("How the tendon felt once you finished — not the next-morning 24h resolve.")
+                Text("Record how the tendon felt after the session. This is not the 24-hour response.")
             }
         }
         .navigationTitle("Pain after")

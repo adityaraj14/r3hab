@@ -12,9 +12,9 @@ enum HealthKitStepsError: LocalizedError {
         case .notAvailable:
             return "Apple Health is not available on this device."
         case .unauthorized:
-            return "Steps access was denied. Enable it in Settings → Health → Data Access → R3hab."
+            return "Apple Health denied access to steps. Open Settings. Select Health. Select Data Access. Select R3hab."
         case .noData:
-            return "No step data found for that day yet."
+            return "Apple Health has no steps for that day."
         case .queryFailed(let msg):
             return msg
         }
@@ -34,7 +34,7 @@ enum HealthKitSteps {
 
     /// Shown before the system Health prompt (App Review 2.5.1).
     static let permissionExplanation =
-        "R3hab reads your step count from Apple Health. It only reads steps, never writes, and the data stays on your iPhone."
+        "R3hab reads only steps from Apple Health. R3hab never writes to Apple Health. The data stays on your iPhone."
 
     /// True until the system Health prompt has been shown once for steps.
     /// HealthKit hides whether read access was granted, so this is the only
@@ -65,7 +65,7 @@ enum HealthKitSteps {
 
         let start = calendar.startOfDay(for: day)
         guard let end = calendar.date(byAdding: .day, value: 1, to: start) else {
-            throw HealthKitStepsError.queryFailed("Invalid date range.")
+            throw HealthKitStepsError.queryFailed("The date range is not valid.")
         }
 
         let predicate = HKQuery.predicateForSamples(

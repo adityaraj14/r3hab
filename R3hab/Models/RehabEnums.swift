@@ -11,7 +11,7 @@ enum RehabPhase: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .aFlareDeLoad: return "A · Flare de-load"
+        case .aFlareDeLoad: return "A · Flare"
         case .bIsometrics: return "B · Isometrics"
         case .cHeavySlowResistance: return "C · Heavy slow resistance"
         }
@@ -55,9 +55,9 @@ enum SessionType: String, Codable, CaseIterable, Identifiable, Sendable {
     var title: String {
         switch self {
         case .isometrics: return "Isometrics"
-        case .hsrStrength: return "HSR"
+        case .hsrStrength: return "Heavy slow resistance"
         case .energyStorage: return "Energy storage"
-        case .tennisSport: return "Tennis / sport"
+        case .tennisSport: return "Tennis or sport"
         case .other: return "Other"
         }
     }
@@ -95,7 +95,7 @@ enum Response24h: String, Codable, CaseIterable, Identifiable, Sendable {
         case .better: return "Better"
         case .same: return "Same"
         case .worse: return "Worse"
-        case .notApplicable: return "N/A"
+        case .notApplicable: return "Not applicable"
         }
     }
 }
@@ -137,23 +137,23 @@ enum SessionSaveIssue: Equatable, Sendable {
     var message: String {
         switch self {
         case .missingPainDuring:
-            return "Pain during is required (0–10)."
+            return "Record the pain during the session. Use 0 to 10."
         case .painDuringOutOfRange:
-            return "Pain during must be 0–10."
+            return "The pain during the session must be 0 to 10."
         case .painAfterOutOfRange:
-            return "Pain after must be 0–10."
+            return "The pain after the session must be 0 to 10."
         case .emptyWhatIDid:
-            return "Describe what you did (or pick a preset)."
+            return "Describe the exercise or select a preset."
         case .nonPositiveReps:
-            return "Reps must be positive."
+            return "The reps must be more than zero."
         case .nonPositiveHold:
-            return "Hold time must be positive."
+            return "The hold time must be more than zero."
         case .negativeLoad:
-            return "Load must be ≥ 0."
+            return "The load must be 0 or more."
         case .nonPositiveSteps:
-            return "Steps must be positive."
+            return "The steps must be more than zero."
         case .nonPositiveDuration:
-            return "Minutes must be positive."
+            return "The minutes must be more than zero."
         }
     }
 }
@@ -194,10 +194,10 @@ enum SessionDecision: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .stay: return "Stay"
-        case .softCut: return "Soft cut"
-        case .progress: return "Progress"
-        case .hardDrop: return "Hard drop"
+        case .stay: return "Same load"
+        case .softCut: return "Less load"
+        case .progress: return "More load"
+        case .hardDrop: return "Previous phase"
         case .rest: return "Rest"
         }
     }
