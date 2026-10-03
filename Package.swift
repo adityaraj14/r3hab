@@ -20,6 +20,7 @@ let package = Package(
                 "Models/PrimaryLoadCatalog.swift",
                 "Features/Session/SessionPresets.swift",
                 "Features/Session/Prototypes/SessionPrototypePlan.swift",
+                "Features/Session/Prototypes/GuidedCheckpoint.swift",
                 "Domain/DomainSnapshots.swift",
                 "Domain/ChartAggregates.swift",
                 "Domain/ProgressInterpretation.swift",
@@ -28,7 +29,10 @@ let package = Package(
                 "Domain/ProgressionEngine.swift",
                 "Domain/WarmupPlan.swift",
                 "Domain/TodayPlanner.swift",
-                "Domain/TodaySessionEntry.swift"
+                "Domain/TodaySessionEntry.swift",
+                "Domain/PendingQueue.swift",
+                "Domain/SessionSpacing.swift",
+                "Domain/WorkoutStreak.swift"
             ]
         ),
         .testTarget(
@@ -44,7 +48,9 @@ let package = Package(
                 "SessionPrototypePlanTests.swift",
                 "WarmupPlanTests.swift",
                 "TodaySessionEntryTests.swift",
-                "QLPathwayTests.swift"
+                "QLPathwayTests.swift",
+                "GuidedCheckpointTests.swift",
+                "SessionCompletionTests.swift"
             ]
         )
     ]

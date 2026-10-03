@@ -37,6 +37,15 @@ final class TrainingSession {
     var updatedAt: Date
     /// Existing rows stay `false` through lightweight migration.
     var isDraft: Bool = false
+    /// Guided form step where the draft stopped. Nil on finalized rows and on
+    /// drafts from the older form. Optional, so lightweight migration adds it.
+    var guidedStepIndex: Int?
+
+    /// Complete only after the final save, with a pain-during score.
+    /// Use this, not `!isDraft`, for "trained", streak, and 24h checks.
+    var isComplete: Bool {
+        SessionCompletion.isComplete(isDraft: isDraft, painDuring: painDuring)
+    }
 
     var phase: RehabPhase {
         get { RehabPhase.normalized(rawValue: phaseRaw) }
@@ -77,6 +86,7 @@ final class TrainingSession {
         warmupHoldSeconds: Int? = nil,
         warmupLoadLbs: Double? = nil,
         resistanceSets: [ResistanceSet] = [],
+        isDraft: Bool = false,
         calendar: Calendar = .current
     ) {
         self.id = id
@@ -103,7 +113,8 @@ final class TrainingSession {
         self.resolvedAt = nil
         self.createdAt = Date()
         self.updatedAt = Date()
-        self.isDraft = false
+        self.isDraft = isDraft
+        self.guidedStepIndex = nil
         if !resistanceSets.isEmpty {
             self.setResistanceSets(resistanceSets)
         }

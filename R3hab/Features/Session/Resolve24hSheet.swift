@@ -27,7 +27,7 @@ struct Resolve24hSheet: View {
 
     private var settings: AppSettings? { settingsList.first }
     private var session: TrainingSession? {
-        allSessions.first { $0.id == sessionId && !$0.isDraft }
+        allSessions.first { $0.id == sessionId && $0.isComplete }
     }
 
     var body: some View {

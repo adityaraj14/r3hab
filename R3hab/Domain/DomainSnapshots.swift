@@ -59,7 +59,19 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         PainScore.isLogged(painAfter)
     }
 
-    var isFinalized: Bool { !isDraft }
+    /// Complete only after the final save, with a pain-during score.
+    var isFinalized: Bool { SessionCompletion.isComplete(isDraft: isDraft, painDuring: painDuring) }
+}
+
+/// One rule for "this session is complete". Streak, Today, Next Up, the 24h
+/// queue, pain-after reminders, and progression all read it.
+/// A draft is never complete. A row without a pain-during score is not
+/// complete either, even if its draft flag is false: the final save always
+/// requires that score, so such a row did not come from a final save.
+enum SessionCompletion {
+    static func isComplete(isDraft: Bool, painDuring: Int) -> Bool {
+        !isDraft && PainScore.isLogged(painDuring)
+    }
 }
 
 enum SessionDraft {
