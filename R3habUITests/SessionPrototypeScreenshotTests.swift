@@ -1,7 +1,7 @@
 import XCTest
 
 /// Screenshots of the three Debug logging prototypes for review.
-/// Shots land in /tmp/r3hab-prototypes. Requires a Debug build: the picker is compiled out of Release.
+/// Shots land in /tmp/r3hab-prototypes. The Prototypes menu is in Debug and Release (TestFlight) builds.
 final class SessionPrototypeScreenshotTests: XCTestCase {
     private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-prototypes", isDirectory: true)
 

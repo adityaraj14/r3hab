@@ -1,7 +1,7 @@
 import SwiftData
 import SwiftUI
 
-/// Debug entry on Today. The Log Workout button still opens SessionEditor.
+/// TEMPORARY entry on Today (Debug and TestFlight). The Log Workout button still opens SessionEditor.
 struct SessionPrototypeMenu: View {
     @Binding var selection: SessionLogPrototypeKind?
     var openStandard: () -> Void
@@ -25,7 +25,7 @@ struct SessionPrototypeMenu: View {
 }
 
 extension View {
-    /// Toolbar menu plus sheet. Call from Debug builds only.
+    /// Toolbar menu plus sheet. Temporary: remove before App Store release.
     func sessionPrototypeEntry(
         selection: Binding<SessionLogPrototypeKind?>,
         date: Date,

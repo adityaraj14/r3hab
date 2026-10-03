@@ -24,18 +24,12 @@ struct SettingsStubView: View {
     @State private var showClearSecondConfirm = false
     @State private var healthStatus: AppleHealthStatus = .checking
     @State private var showHealthExplainer = false
-    #if DEBUG
     @State private var logPrototype: SessionLogPrototypeKind?
-    #endif
 
     private var settings: AppSettings? { settingsList.first }
     private var totalLogs: Int { checkIns.count + sessions.count }
     private var debugFooter: String {
-        #if DEBUG
-        return "Open onboarding again does not remove records. The prototypes open the guided, live, and quick record forms. The standard form stays the default. This control is temporary."
-        #else
-        return "Open onboarding again does not remove records. This control is temporary."
-        #endif
+        "Open onboarding again does not remove records. The prototypes open the guided, live, and quick record forms. The standard form stays the default. This control is temporary."
     }
 
     var body: some View {
@@ -204,8 +198,8 @@ struct SettingsStubView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // TEMPORARY: one Debug section. "Simulate onboarding" ships in TestFlight
-            // until onboarding UX sign-off; "Seed sample week" is DEBUG-only.
+            // TEMPORARY: one Debug section. "Open onboarding again" and the log
+            // prototypes ship in TestFlight for review; "Add a sample week" is DEBUG-only.
             // Remove the whole section before App Store / public release.
             Section {
                 Button("Open onboarding again") {
@@ -215,11 +209,11 @@ struct SettingsStubView: View {
                 Button("Add a sample week") {
                     seedSampleWeek()
                 }
+                #endif
                 ForEach(SessionLogPrototypeKind.allCases) { kind in
                     Button(kind.settingsTitle) { logPrototype = kind }
                         .accessibilityIdentifier(SessionPrototypeAccessibility.open(kind))
                 }
-                #endif
             } header: {
                 Text("Debug")
             } footer: {
@@ -229,9 +223,7 @@ struct SettingsStubView: View {
         .appListCanvas()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
-        #if DEBUG
         .sessionPrototypeSheet(selection: $logPrototype, date: Date())
-        #endif
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
             await refreshHealthStatus()
