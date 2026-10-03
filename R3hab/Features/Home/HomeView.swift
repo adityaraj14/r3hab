@@ -21,6 +21,7 @@ struct HomeView: View {
     @State private var showAM = false
     @State private var showPM = false
     @State private var showSession = false
+    @State private var logPrototype: SessionLogPrototypeKind?
     @State private var resolveTargetId: UUID?
     /// Answers saved in the resolve sheet before the pending query republishes.
     @State private var locallyResolved: [UUID: Response24h] = [:]
@@ -240,6 +241,11 @@ struct HomeView: View {
                     )
                 }
                 .preferredColorScheme(.dark)
+            }
+            // TEMPORARY: Prototypes menu, in Debug and TestFlight builds.
+            // Log Workout still opens the standard form.
+            .sessionPrototypeEntry(selection: $logPrototype, date: today) {
+                showSession = true
             }
             .sheet(isPresented: Binding(
                 get: { resolveTargetId != nil },

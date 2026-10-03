@@ -24,9 +24,13 @@ struct SettingsStubView: View {
     @State private var showClearSecondConfirm = false
     @State private var healthStatus: AppleHealthStatus = .checking
     @State private var showHealthExplainer = false
+    @State private var logPrototype: SessionLogPrototypeKind?
 
     private var settings: AppSettings? { settingsList.first }
     private var totalLogs: Int { checkIns.count + sessions.count }
+    private var debugFooter: String {
+        "Open onboarding again does not remove records. The prototypes open the guided, live, and quick record forms. The standard form stays the default. This control is temporary."
+    }
 
     var body: some View {
         List {
@@ -194,8 +198,8 @@ struct SettingsStubView: View {
                     .foregroundStyle(.tertiary)
             }
 
-            // TEMPORARY: one Debug section. "Simulate onboarding" ships in TestFlight
-            // until onboarding UX sign-off; "Seed sample week" is DEBUG-only.
+            // TEMPORARY: one Debug section. "Open onboarding again" and the log
+            // prototypes ship in TestFlight for review; "Add a sample week" is DEBUG-only.
             // Remove the whole section before App Store / public release.
             Section {
                 Button("Open onboarding again") {
@@ -206,15 +210,20 @@ struct SettingsStubView: View {
                     seedSampleWeek()
                 }
                 #endif
+                ForEach(SessionLogPrototypeKind.allCases) { kind in
+                    Button(kind.settingsTitle) { logPrototype = kind }
+                        .accessibilityIdentifier(SessionPrototypeAccessibility.open(kind))
+                }
             } header: {
                 Text("Debug")
             } footer: {
-                Text("Open onboarding again does not remove records. This control is temporary.")
+                Text(debugFooter)
             }
         }
         .appListCanvas()
         .navigationTitle("Settings")
         .navigationBarTitleDisplayMode(.inline)
+        .sessionPrototypeSheet(selection: $logPrototype, date: Date())
         .task {
             _ = try? AppBootstrap.ensureSettings(context: modelContext)
             await refreshHealthStatus()

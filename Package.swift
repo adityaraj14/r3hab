@@ -19,12 +19,14 @@ let package = Package(
                 "Models/InjuryCatalog.swift",
                 "Models/PrimaryLoadCatalog.swift",
                 "Features/Session/SessionPresets.swift",
+                "Features/Session/Prototypes/SessionPrototypePlan.swift",
                 "Domain/DomainSnapshots.swift",
                 "Domain/ChartAggregates.swift",
                 "Domain/ProgressInterpretation.swift",
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
                 "Domain/ProgressionEngine.swift",
+                "Domain/WarmupPlan.swift",
                 "Domain/TodayPlanner.swift",
                 "Domain/TodaySessionEntry.swift"
             ]
@@ -39,6 +41,8 @@ let package = Package(
                 "ProgressInterpretationTests.swift",
                 "ProgressionEngineTests.swift",
                 "SessionEditorChromeTests.swift",
+                "SessionPrototypePlanTests.swift",
+                "WarmupPlanTests.swift",
                 "TodaySessionEntryTests.swift",
                 "QLPathwayTests.swift"
             ]
