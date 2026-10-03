@@ -1,37 +1,10 @@
 import Foundation
 
-/// Which logging prototype is on screen. The standard form stays the default.
-enum SessionLogPrototypeKind: String, CaseIterable, Identifiable, Equatable, Sendable {
-    case guided
-    case live
-    case quick
-
-    var id: String { rawValue }
-
-    var menuTitle: String {
-        switch self {
-        case .guided: return "Guided steps"
-        case .live: return "Live tracker"
-        case .quick: return "Quick log"
-        }
-    }
-
-    var settingsTitle: String { "Prototype: \(menuTitle)" }
-
-    var screenTitle: String {
-        switch self {
-        case .guided: return "Guided"
-        case .live: return "Live"
-        case .quick: return "Quick log"
-        }
-    }
-}
-
-/// Stable identifiers for the prototype screenshot UI test.
+/// Stable identifiers for the guided session form and its UI tests.
 enum SessionPrototypeAccessibility {
-    static let menu = "session-log-prototype-menu"
-    static let openStandard = "prototype-open-standard"
+    static let screen = "guided-session-screen"
     static let cancel = "prototype-cancel"
+    static let saveDraft = "guided-save-draft"
     static let progress = "prototype-progress"
     static let next = "prototype-next"
     static let back = "prototype-back"
@@ -47,32 +20,6 @@ enum SessionPrototypeAccessibility {
     static let guidedPain = "prototype-guided-pain"
     static let guidedNotes = "prototype-guided-notes"
     static let guidedReview = "prototype-guided-review"
-
-    static let liveDose = "prototype-live-dose"
-    static let liveDone = "prototype-live-done-set"
-    static let liveRest = "prototype-live-rest"
-    static let liveSkipRest = "prototype-live-skip-rest"
-    static let liveRepsMinus = "prototype-live-reps-minus"
-    static let liveRepsPlus = "prototype-live-reps-plus"
-    static let liveLoadMinus = "prototype-live-load-minus"
-    static let liveLoadPlus = "prototype-live-load-plus"
-    static let livePain = "prototype-live-pain"
-    static let liveSlider = "prototype-live-pain-slider"
-
-    static let quickPlan = "prototype-quick-plan"
-    static let quickYes = "prototype-quick-yes"
-    static let quickAdjust = "prototype-quick-adjust"
-    static let quickAdjustPanel = "prototype-quick-adjust-panel"
-    static let quickAdjustDone = "prototype-quick-adjust-done"
-    static let quickPain = "prototype-quick-pain"
-
-    static func open(_ kind: SessionLogPrototypeKind) -> String {
-        "prototype-open-\(kind.rawValue)"
-    }
-
-    static func screen(_ kind: SessionLogPrototypeKind) -> String {
-        "prototype-\(kind.rawValue)-screen"
-    }
 
     static func guidedSet(_ index: Int) -> String {
         "prototype-guided-set-\(index + 1)"
@@ -93,14 +40,6 @@ enum SessionPrototypeAccessibility {
 
     static func painChip(_ score: Int) -> String {
         "prototype-pain-chip-\(score)"
-    }
-
-    static func quickReps(set: Int, reps: Int) -> String {
-        "prototype-quick-set-\(set)-reps-\(reps)"
-    }
-
-    static func quickLoad(set: Int, token: String) -> String {
-        "prototype-quick-set-\(set)-load-\(token)"
     }
 }
 
@@ -171,8 +110,6 @@ struct SessionPrototypeDraft: Equatable, Sendable {
 
     var planLine: String { target.displayLine }
 
-    var quickQuestion: String { "Did you do today's plan: \(planLine)?" }
-
     var perSetTargetLine: String {
         if let load = target.loadLbs {
             return "Target \(target.reps) × \(LoadCopy.labeled(load))"
@@ -208,7 +145,6 @@ struct SessionPrototypeDraft: Equatable, Sendable {
 }
 
 enum SessionPrototypePlan {
-    static let restSeconds = 90
     static let loadStep = 5.0
     /// Same sentence the session form already shows under pain.
     static let painDuringNote = "Record the pain during the session. Use 0 to 10. R3hab sends a reminder in about 30 minutes. Then record the pain after the session."
@@ -275,33 +211,6 @@ enum SessionPrototypePlan {
         steps.append(contentsOf: (0..<setCount).map { .set($0) })
         steps.append(contentsOf: [.pain, .notes, .review])
         return steps
-    }
-
-    static func repChoices(around reps: Int) -> [Int] {
-        Array(Set([6, 8, 10, 12, 15, reps].filter { $0 > 0 })).sorted()
-    }
-
-    static func loadChoices(around load: Double?) -> [Double?] {
-        guard let load else { return [nil, 10, 20, 30, 40, 50] }
-        let raw = [-10.0, -5, 0, 5, 10].map { max(0, load + $0) }
-        var unique: [Double] = []
-        for value in raw {
-            if unique.contains(where: { abs($0 - value) < 0.001 }) { continue }
-            unique.append(value)
-        }
-        return unique.sorted().map { Optional($0) }
-    }
-
-    static func bumpReps(_ reps: Int, by delta: Int) -> Int {
-        max(1, reps + delta)
-    }
-
-    static func bumpLoad(_ load: Double?, by delta: Double) -> Double? {
-        let base = load ?? 0
-        let next = base + delta
-        if next < 0 { return load == nil ? nil : 0 }
-        if next == 0 && load == nil { return nil }
-        return next
     }
 
     /// After the finger lifts, a flick adds at most this many steps.

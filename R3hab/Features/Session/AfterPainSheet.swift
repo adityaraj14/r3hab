@@ -18,7 +18,7 @@ struct AfterPainSheet: View {
     @State private var errorDismissTask: Task<Void, Never>?
 
     private var session: TrainingSession? {
-        sessions.first { $0.id == sessionId && !$0.isDraft }
+        sessions.first { $0.id == sessionId && $0.isComplete }
     }
 
     var body: some View {

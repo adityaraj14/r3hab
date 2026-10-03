@@ -1,12 +1,13 @@
 import SwiftUI
 
-/// One question per card. Prefill is the engine target, so a set is usually one tap.
+/// The session recorder. One question per card. Prefill is the engine target, so a set is usually one tap.
 struct GuidedSessionLogView: View {
     @Binding var draft: SessionPrototypeDraft
+    /// Current step. The host keeps it, so a draft save stores it and a resume opens there.
+    @Binding var index: Int
     var spacingWarning: String?
     var onSave: () -> Void
 
-    @State private var index = 0
     @FocusState private var notesFocused: Bool
 
     private var isSetPrompt: Bool {
@@ -48,7 +49,7 @@ struct GuidedSessionLogView: View {
             }
             .animation(.easeInOut(duration: 0.18), value: index)
         }
-        .prototypeScreen(identifier: SessionPrototypeAccessibility.screen(.guided))
+        .prototypeScreen(identifier: SessionPrototypeAccessibility.screen)
         .safeAreaInset(edge: .bottom, spacing: 0) {
             bottomBar
                 .padding(.horizontal, 20)

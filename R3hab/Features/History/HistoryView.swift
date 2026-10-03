@@ -2,7 +2,8 @@ import SwiftUI
 import SwiftData
 
 /// History — chronological daily + session feed with backdate.
-/// Workout rows open SessionEditor. Check-in rows still swipe-delete.
+/// Saved workout rows open SessionEditor. Guided drafts open the guided form.
+/// A past session uses SessionEditor. Check-in rows still swipe-delete.
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
@@ -11,6 +12,8 @@ struct HistoryView: View {
     @State private var filter: Filter = .all
     @State private var editDailyDate: Date?
     @State private var editSessionId: UUID?
+    /// Drafts from the guided form continue there, at the saved step.
+    @State private var guidedSession: GuidedSessionRequest?
     @State private var showBackdate = false
     @State private var backdateKind: BackdateKind = .daily
     @State private var backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
@@ -107,6 +110,7 @@ struct HistoryView: View {
                     .preferredColorScheme(.dark)
                 }
             }
+            .guidedSessionSheet($guidedSession)
             .sheet(isPresented: $showBackdate) {
                 NavigationStack {
                     Form {
@@ -222,11 +226,20 @@ struct HistoryView: View {
         }
     }
 
+    private func open(_ session: TrainingSession) {
+        if session.isDraft,
+           GuidedCheckpointing.resumesInGuidedForm(sessionType: session.sessionType, stepIndex: session.guidedStepIndex) {
+            guidedSession = GuidedSessionRequest(draftId: session.id, targetDate: session.date)
+        } else {
+            editSessionId = session.id
+        }
+    }
+
     private var workoutsList: some View {
         List {
             ForEach(sessionRows, id: \.id) { session in
                 Button {
-                    editSessionId = session.id
+                    open(session)
                 } label: {
                     sessionRow(session)
                 }
@@ -257,7 +270,7 @@ struct HistoryView: View {
         var id: String { dayKey }
 
         var hasPendingWorkout: Bool {
-            sessions.contains { !$0.isDraft && $0.response24h == .pending }
+            sessions.contains { $0.isComplete && $0.response24h == .pending }
         }
     }
 

@@ -23,7 +23,7 @@ struct RehabProgressView: View {
     }
 
     private var finalizedSessions: [TrainingSession] {
-        sessions.filter { !$0.isDraft }
+        sessions.filter(\.isComplete)
     }
 
     private var sessionPains: [SessionPainSnapshot] {

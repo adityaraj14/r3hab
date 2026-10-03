@@ -302,7 +302,7 @@ struct SessionEditor: View {
     }
 
     private var lastSessionContext: TrainingSession? {
-        sessions.first { $0.id != existingId && !$0.isDraft }
+        sessions.first { $0.id != existingId && $0.isComplete }
     }
 
     private var showsLastSession: Bool {
@@ -924,6 +924,8 @@ struct SessionEditor: View {
                 painDuring: storedDuring,
                 painAfter: storedAfter,
                 resistanceSets: allSets,
+                // Born as a draft, so no frame ever sees an unfinished row as complete.
+                isDraft: persistKind == .draft,
                 calendar: calendar
             )
             row.notes = notes
@@ -931,6 +933,7 @@ struct SessionEditor: View {
             isInsert = true
         }
         row.isDraft = persistKind == .draft
+        row.guidedStepIndex = nil
         let cancelPending24h = shouldWrite24h && apply24hIfNeeded(to: row)
 
         do {

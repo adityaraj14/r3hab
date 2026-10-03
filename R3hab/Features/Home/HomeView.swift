@@ -20,8 +20,10 @@ struct HomeView: View {
 
     @State private var showAM = false
     @State private var showPM = false
+    /// Walk and QL primary loads keep the standard form.
     @State private var showSession = false
-    @State private var logPrototype: SessionLogPrototypeKind?
+    /// Seated-extension ladder: the guided recorder, new or resumed.
+    @State private var guidedSession: GuidedSessionRequest?
     @State private var resolveTargetId: UUID?
     /// Answers saved in the resolve sheet before the pending query republishes.
     @State private var locallyResolved: [UUID: Response24h] = [:]
@@ -66,7 +68,7 @@ struct HomeView: View {
     }
 
     private var todaySessions: [TrainingSession] {
-        sessions.filter { !$0.isDraft && calendar.isDate($0.date, inSameDayAs: today) }
+        sessions.filter { $0.isComplete && calendar.isDate($0.date, inSameDayAs: today) }
     }
 
     private var todayDraftId: UUID? {
@@ -242,11 +244,7 @@ struct HomeView: View {
                 }
                 .preferredColorScheme(.dark)
             }
-            // TEMPORARY: Prototypes menu, in Debug and TestFlight builds.
-            // Log Workout still opens the standard form.
-            .sessionPrototypeEntry(selection: $logPrototype, date: today) {
-                showSession = true
-            }
+            .guidedSessionSheet($guidedSession)
             .sheet(isPresented: Binding(
                 get: { resolveTargetId != nil },
                 set: { if !$0 { resolveTargetId = nil } }
@@ -366,7 +364,7 @@ struct HomeView: View {
                 .buttonStyle(.primaryAction)
 
             case .logSession:
-                Button { showSession = true } label: {
+                Button { recordSession() } label: {
                     VStack(alignment: .leading, spacing: 8) {
                         if showsPatellarLadder {
                             stanceLine(todayProgression, onGold: true)
@@ -509,7 +507,7 @@ struct HomeView: View {
         let trailing = sessionTrailingValue(entry)
         let lines = sessionDetailLines(entry)
         return Button {
-            showSession = true
+            recordSession()
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: logged ? "checkmark.circle.fill" : (isRest ? "leaf" : activeInjury.systemImage))
@@ -798,6 +796,23 @@ struct HomeView: View {
         }
         Haptics.light()
         router.requestNotificationSync()
+    }
+
+    /// Record button, Next Up, and the session row. The knee ladder opens the
+    /// guided recorder at the saved step of today's draft, if there is one.
+    private func recordSession() {
+        guard showsPatellarLadder else {
+            showSession = true
+            return
+        }
+        if let id = todayDraftId,
+           let row = sessions.first(where: { $0.id == id }),
+           !GuidedCheckpointing.resumesInGuidedForm(sessionType: row.sessionType, stepIndex: row.guidedStepIndex) {
+            // An older hold draft keeps the standard form, so its values stay.
+            showSession = true
+            return
+        }
+        guidedSession = GuidedSessionRequest(draftId: todayDraftId, targetDate: today)
     }
 
     private func markRest(_ session: TrainingSession) {

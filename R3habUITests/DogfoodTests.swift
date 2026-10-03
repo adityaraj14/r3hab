@@ -36,19 +36,29 @@ final class DogfoodTests: XCTestCase {
             app.navigationBars.buttons["Save"].tap()
         }
 
+        // The session row opens the guided recorder.
         let logSession = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Record session")
+            NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")
         ).firstMatch
-        if logSession.waitForExistence(timeout: 4) {
-            logSession.tap()
-            let during = app.buttons["Pain during the session 2"]
-            if !during.waitForExistence(timeout: 2) {
-                app.swipeUp()
-            }
-            XCTAssertTrue(during.waitForExistence(timeout: 4), app.debugDescription)
-            during.tap()
-            app.buttons["Save"].tap()
+        XCTAssertTrue(logSession.waitForExistence(timeout: 6), app.debugDescription)
+        let exercise = app.descendants(matching: .any)["prototype-guided-exercise"]
+        for _ in 0..<4 where !exercise.exists {
+            if logSession.isHittable { logSession.tap() }
+            _ = exercise.waitForExistence(timeout: 3)
         }
+        XCTAssertTrue(exercise.exists, app.debugDescription)
+        app.buttons["prototype-next"].tap()
+        app.buttons["prototype-guided-warmup-skip"].tap()
+        let pain = app.descendants(matching: .any)["prototype-guided-pain"]
+        for _ in 0..<6 where !pain.exists {
+            let same = app.buttons["prototype-guided-same-as-target"]
+            if same.waitForExistence(timeout: 2) { same.tap() }
+        }
+        XCTAssertTrue(pain.waitForExistence(timeout: 4), app.debugDescription)
+        app.buttons["prototype-pain-chip-2"].tap()
+        app.buttons["prototype-next"].tap()
+        app.buttons["prototype-next"].tap()
+        app.buttons["prototype-save"].tap()
 
         XCTAssertTrue(poster.waitForExistence(timeout: 8))
         snap(app, "08-today-after-session")
@@ -66,9 +76,13 @@ final class DogfoodTests: XCTestCase {
         pastPain.tap()
         app.buttons["Save"].tap()
 
-        app.tabBars.buttons["Today"].tap()
         let resolve = app.buttons["Record the 24-hour response"]
-        XCTAssertTrue(resolve.waitForExistence(timeout: 8), app.debugDescription)
+        // The tab tap right after a sheet closes can be lost. Tap again.
+        for _ in 0..<3 where !resolve.exists {
+            app.tabBars.buttons["Today"].tap()
+            _ = resolve.waitForExistence(timeout: 4)
+        }
+        XCTAssertTrue(resolve.waitForExistence(timeout: 4), app.debugDescription)
         resolve.tap()
 
         let better = app.buttons["response-better"]

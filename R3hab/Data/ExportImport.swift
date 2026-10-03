@@ -98,13 +98,15 @@ struct SessionDTO: Codable {
     var resolvedAt: Date?
     var createdAt: Date
     var isDraft: Bool
+    /// Guided form step of a draft. Absent in older backups.
+    var guidedStepIndex: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
         case sets, reps, loadLbs, holdSeconds, loadRegion, track, resistanceSets
         case warmupReps, warmupHoldSeconds, warmupLoadLbs
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
-        case isDraft
+        case isDraft, guidedStepIndex
         case loadKg // legacy key
     }
 
@@ -133,7 +135,8 @@ struct SessionDTO: Codable {
         snoozeUsed: Bool,
         resolvedAt: Date?,
         createdAt: Date,
-        isDraft: Bool = false
+        isDraft: Bool = false,
+        guidedStepIndex: Int? = nil
     ) {
         self.id = id
         self.date = date
@@ -160,6 +163,7 @@ struct SessionDTO: Codable {
         self.resolvedAt = resolvedAt
         self.createdAt = createdAt
         self.isDraft = isDraft
+        self.guidedStepIndex = guidedStepIndex
     }
 
     init(from decoder: Decoder) throws {
@@ -190,6 +194,7 @@ struct SessionDTO: Codable {
         resolvedAt = try c.decodeIfPresent(Date.self, forKey: .resolvedAt)
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         isDraft = try c.decodeIfPresent(Bool.self, forKey: .isDraft) ?? false
+        guidedStepIndex = try c.decodeIfPresent(Int.self, forKey: .guidedStepIndex)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -219,6 +224,7 @@ struct SessionDTO: Codable {
         try c.encodeIfPresent(resolvedAt, forKey: .resolvedAt)
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(isDraft, forKey: .isDraft)
+        try c.encodeIfPresent(guidedStepIndex, forKey: .guidedStepIndex)
     }
 }
 
@@ -308,7 +314,8 @@ enum ExportImportService {
                     snoozeUsed: $0.snoozeUsed,
                     resolvedAt: $0.resolvedAt,
                     createdAt: $0.createdAt,
-                    isDraft: $0.isDraft
+                    isDraft: $0.isDraft,
+                    guidedStepIndex: $0.guidedStepIndex
                 )
             }
         )
@@ -465,6 +472,7 @@ enum ExportImportService {
         s.resolvedAt = dto.resolvedAt
         s.createdAt = dto.createdAt
         s.isDraft = dto.isDraft
+        s.guidedStepIndex = dto.isDraft ? dto.guidedStepIndex : nil
         s.updatedAt = Date()
     }
 }

@@ -138,7 +138,7 @@ struct WarmupPlan: Equatable, Sendable {
     /// Steps from the newest saved session that has warm-up rows. Nil when no session has one.
     static func lastWarmup(from sessions: [TrainingSessionSnapshot]) -> [WarmupStep]? {
         let ordered = sessions
-            .filter { !$0.isDraft }
+            .filter(\.isFinalized)
             .sorted { ($0.date, $0.createdAt) > ($1.date, $1.createdAt) }
         for session in ordered {
             let steps = steps(from: session.resistanceSets)

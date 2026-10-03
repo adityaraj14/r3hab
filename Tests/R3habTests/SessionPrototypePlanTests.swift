@@ -29,7 +29,6 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertEqual(draft.sets.count, 3)
         XCTAssertTrue(draft.sets.allSatisfy { $0.matchesTarget(draft.target) })
         XCTAssertEqual(draft.planLine, "3×8")
-        XCTAssertEqual(draft.quickQuestion, "Did you do today's plan: 3×8?")
         XCTAssertFalse(draft.includeWarmup)
         XCTAssertTrue(draft.whatIDid().hasPrefix("Seated leg extension"))
     }
@@ -46,7 +45,6 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertEqual(draft.sets.count, 3)
         XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 8 && $0.loadLbs == 45 })
         XCTAssertEqual(draft.planLine, "3×8 @ 45 lb")
-        XCTAssertEqual(draft.quickQuestion, "Did you do today's plan: 3×8 @ 45 lb?")
         XCTAssertEqual(draft.stanceLabel, "Hold the load")
         let work = draft.resistanceSets().filter { !$0.isWarmup }
         XCTAssertEqual(work.count, 6)
@@ -104,22 +102,9 @@ final class SessionPrototypePlanTests: XCTestCase {
             .exercise, .warmup, .set(0), .set(1), .set(2), .pain, .notes, .review
         ])
         XCTAssertEqual(GuidedPrompt.set(0).accessibilityIdentifier, "prototype-guided-set-1")
-        XCTAssertEqual(SessionPrototypeAccessibility.screen(.guided), "prototype-guided-screen")
-        XCTAssertEqual(SessionPrototypeAccessibility.open(.live), "prototype-open-live")
+        XCTAssertEqual(SessionPrototypeAccessibility.screen, "guided-session-screen")
+        XCTAssertEqual(SessionPrototypeAccessibility.saveDraft, "guided-save-draft")
         XCTAssertEqual(SessionPrototypeAccessibility.painChip(2), "prototype-pain-chip-2")
-        XCTAssertEqual(SessionPrototypeAccessibility.quickYes, "prototype-quick-yes")
-        XCTAssertEqual(SessionPrototypeAccessibility.liveDone, "prototype-live-done-set")
-    }
-
-    func testChoiceChipsIncludeTheTarget() {
-        XCTAssertEqual(SessionPrototypePlan.repChoices(around: 9), [6, 8, 9, 10, 12, 15])
-        let loads: [Double?] = [35, 40, 45, 50, 55]
-        XCTAssertEqual(SessionPrototypePlan.loadChoices(around: 45), loads)
-        XCTAssertEqual(SessionPrototypePlan.loadChoices(around: nil), [nil, 10, 20, 30, 40, 50])
-        XCTAssertEqual(SessionPrototypePlan.bumpReps(1, by: -1), 1)
-        XCTAssertEqual(SessionPrototypePlan.bumpLoad(nil, by: 5), 5)
-        XCTAssertNil(SessionPrototypePlan.bumpLoad(nil, by: -5))
-        XCTAssertEqual(SessionPrototypePlan.bumpLoad(5, by: -5), 0)
     }
 
     func testRulerFollowsTheFingerAndLimitsTheFlick() {
