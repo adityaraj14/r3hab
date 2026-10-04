@@ -62,7 +62,7 @@ enum TodayPlanner {
 
     /// Priority: the forced 24h loop first, then the morning score (it is the
     /// protocol’s judge), then a fresh after-pain, then the day’s one load
-    /// (evening pain wins once the evening reminder hour has passed). On a rest
+    /// (evening pain wins once it is evening, see `isEvening`). On a rest
     /// day the load is never pushed; the card goes calm until evening.
     static func nextAction(_ input: TodayPlannerInput) -> TodayNextAction {
         if let first = input.overduePending.first {
@@ -89,7 +89,13 @@ enum TodayPlanner {
         return .allDone
     }
 
-    /// Evening starts at the PM reminder time (default 18:30).
+    /// Today promotes evening pain from 17:00 local time.
+    static let eveningStartMinutes = 17 * 60
+
+    /// Evening starts at 17:00, or at the PM reminder time if it is earlier.
+    /// Before this rule, evening started only at the PM reminder (default 18:30).
+    /// So at 17:57 on a rest day, Today showed the calm rest card and evening
+    /// pain was only a "Not recorded" row.
     static func isEvening(
         now: Date,
         pmReminderHour: Int,
@@ -98,7 +104,8 @@ enum TodayPlanner {
     ) -> Bool {
         let comps = calendar.dateComponents([.hour, .minute], from: now)
         let minutes = (comps.hour ?? 0) * 60 + (comps.minute ?? 0)
-        return minutes >= pmReminderHour * 60 + pmReminderMinute
+        let reminder = pmReminderHour * 60 + pmReminderMinute
+        return minutes >= min(eveningStartMinutes, reminder)
     }
 
     /// Sessions still worth pushing for an after score, newest first.

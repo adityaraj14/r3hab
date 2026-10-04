@@ -53,7 +53,8 @@ let package = Package(
                 "GuidedCheckpointTests.swift",
                 "SessionCompletionTests.swift",
                 "NotificationRouteTests.swift",
-                "TodayResolvePromptTests.swift"
+                "TodayResolvePromptTests.swift",
+                "TodayEveningPromptTests.swift"
             ]
         )
     ]
