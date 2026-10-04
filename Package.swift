@@ -52,7 +52,8 @@ let package = Package(
                 "QLPathwayTests.swift",
                 "GuidedCheckpointTests.swift",
                 "SessionCompletionTests.swift",
-                "NotificationRouteTests.swift"
+                "NotificationRouteTests.swift",
+                "TodayResolvePromptTests.swift"
             ]
         )
     ]

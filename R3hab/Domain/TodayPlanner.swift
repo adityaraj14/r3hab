@@ -122,6 +122,32 @@ enum TodayPlanner {
     }
 }
 
+/// The quiet "Record the 24-hour response" link under Next up.
+enum TodayResolvePrompt {
+    /// The session the quiet link opens, or nil for no link.
+    /// Only a session from an earlier day is due. A session recorded today
+    /// gets its 24-hour response tomorrow; before this rule, the link showed
+    /// the same words as the gold card for it, right after the due save.
+    /// A snoozed session from an earlier day keeps the link.
+    /// The gold card already asks for an overdue response, so the link stays
+    /// off while it shows.
+    static func sessionID(
+        latestPendingID: UUID?,
+        sessions: [TrainingSessionSnapshot],
+        action: TodayNextAction,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> UUID? {
+        if case .resolvePending = action { return nil }
+        guard let id = latestPendingID,
+              let session = sessions.first(where: { $0.id == id }),
+              session.response24h == .pending,
+              calendar.startOfDay(for: session.date) < calendar.startOfDay(for: now)
+        else { return nil }
+        return id
+    }
+}
+
 /// Today’s pending-24h set after a save.
 ///
 /// The session query Today already holds does not change membership when

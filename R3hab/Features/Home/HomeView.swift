@@ -409,9 +409,13 @@ struct HomeView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            if let pendingID = todayProgression.pendingResolveID,
-               sessionSnaps.first(where: { $0.id == pendingID })?.response24h == .pending,
-               !actionResolves24h(action) {
+            if let pendingID = TodayResolvePrompt.sessionID(
+                latestPendingID: todayProgression.pendingResolveID,
+                sessions: sessionSnaps,
+                action: action,
+                now: Date(),
+                calendar: calendar
+            ) {
                 Button("Record the 24-hour response") { resolveTargetId = pendingID }
                     .buttonStyle(.quietCompact)
             }
@@ -455,11 +459,6 @@ struct HomeView: View {
 
     private func actionShowsDose(_ action: TodayNextAction) -> Bool {
         if case .logSession = action { return true }
-        return false
-    }
-
-    private func actionResolves24h(_ action: TodayNextAction) -> Bool {
-        if case .resolvePending = action { return true }
         return false
     }
 
