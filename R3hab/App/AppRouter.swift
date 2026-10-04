@@ -26,6 +26,19 @@ final class AppRouter {
         selectedTab = 0
     }
 
+    /// Notification tap. The sheets look up the session themselves and show
+    /// "Session not found" for a deleted row or a draft.
+    func open(_ open: NotificationOpen) {
+        switch open.kind {
+        case .painAfter:
+            if let id = open.sessionId { openAfterPain(sessionId: id) } else { openToday() }
+        case .pending:
+            if let id = open.sessionId { openResolve(sessionId: id) } else { openToday() }
+        case .hardOverdue, .today:
+            openToday()
+        }
+    }
+
     func requestNotificationSync() {
         notificationSyncToken &+= 1
     }
