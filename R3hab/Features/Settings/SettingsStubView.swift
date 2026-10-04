@@ -128,7 +128,7 @@ struct SettingsStubView: View {
                 Text("R3hab reads only steps from Apple Health. R3hab never writes to Apple Health. To change access, open Apple Health. Select Sharing. Select Apps. Select R3hab.")
             }
 
-            Section("Backup") {
+            Section {
                 LabeledContent("Check-ins", value: "\(checkIns.count)")
                 LabeledContent("Sessions", value: "\(sessions.count)")
 
@@ -145,6 +145,18 @@ struct SettingsStubView: View {
                     Label("Import a JSON backup", systemImage: "square.and.arrow.down")
                 }
                 .disabled(isBusy)
+
+                NavigationLink {
+                    BackupListView()
+                } label: {
+                    Label(BackupCopy.listTitle, systemImage: "clock.arrow.circlepath")
+                }
+                .disabled(isBusy)
+                .accessibilityIdentifier("settings-backups")
+            } header: {
+                Text("Backup")
+            } footer: {
+                Text("R3hab keeps a copy of each backup on this iPhone. Open Backups to restore a backup with one tap.")
             }
 
             Section {
@@ -405,6 +417,8 @@ struct SettingsStubView: View {
         defer { isBusy = false }
         do {
             let data = try ExportImportService.exportBackup(context: modelContext)
+            // Keep a copy for Settings → Backups. The share sheet still opens if this fails.
+            _ = try? BackupLibrary.app().add(data)
             let name = "R3hab-backup-\(Date().formatted(.iso8601.year().month().day())).json"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
             try data.write(to: url, options: .atomic)
@@ -422,19 +436,12 @@ struct SettingsStubView: View {
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         do {
             let data = try Data(contentsOf: url)
-            try ExportImportService.importBackup(data: data, mode: importMode, context: modelContext)
-            let dailyN = (try? modelContext.fetchCount(FetchDescriptor<DailyCheckIn>())) ?? checkIns.count
-            let sessN = (try? modelContext.fetchCount(FetchDescriptor<TrainingSession>())) ?? sessions.count
-            if let settings {
-                let latest = (try? modelContext.fetch(FetchDescriptor<TrainingSession>())) ?? sessions
-                let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: latest)
-                Task {
-                    await LogStore.reconcileNotifications(snapshot)
-                }
-            }
+            let result = try BackupRestore.restore(data, mode: importMode, context: modelContext)
+            // Add the file to Settings → Backups, so the next restore is one tap.
+            _ = try? BackupLibrary.app().add(data)
             presentAlert(
                 "Import complete",
-                "Mode: \(importMode.title). Check-ins: \(dailyN). Sessions: \(sessN)."
+                "Mode: \(importMode.title). Check-ins: \(result.checkIns). Sessions: \(result.sessions)."
             )
             router.requestNotificationSync()
         } catch {

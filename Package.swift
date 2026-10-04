@@ -4,7 +4,7 @@ import PackageDescription
 let package = Package(
     name: "R3habDomain",
     platforms: [
-        .macOS(.v13)
+        .macOS(.v14)
     ],
     products: [
         .library(name: "R3habDomain", targets: ["R3habDomain"])
@@ -18,6 +18,13 @@ let package = Package(
                 "Models/ResistanceSet.swift",
                 "Models/InjuryCatalog.swift",
                 "Models/PrimaryLoadCatalog.swift",
+                "Models/AppSettings.swift",
+                "Models/DailyCheckIn.swift",
+                "Models/TrainingSession.swift",
+                "Data/ModelMapping.swift",
+                "Data/AppBootstrap.swift",
+                "Data/ExportImport.swift",
+                "Data/BackupLibrary.swift",
                 "Features/Session/SessionPresets.swift",
                 "Features/Session/Prototypes/SessionPrototypePlan.swift",
                 "Features/Session/Prototypes/GuidedCheckpoint.swift",
@@ -53,7 +60,9 @@ let package = Package(
                 "GuidedCheckpointTests.swift",
                 "SessionCompletionTests.swift",
                 "NotificationRouteTests.swift",
-                "TodayResolvePromptTests.swift"
+                "TodayResolvePromptTests.swift",
+                "BackupLibraryTests.swift",
+                "BackupRestoreRoundTripTests.swift"
             ]
         )
     ]
