@@ -7,7 +7,7 @@ enum NotificationScheduler {
     static let amReminderId = "am-reminder"
     static let pmReminderId = "pm-reminder"
     static let leftoverStretchIds = (0..<3).map { "stretch-\($0)" }
-    static let hardOverdueId = "hard-session-overdue"
+    static let hardOverdueId = NotificationRoute.hardOverdueId
 
     /// Remind after the session has settled — not mid-cooldown, not next morning
     /// (that's the 24h resolve). 30 minutes is enough to shower and still remember.
@@ -19,21 +19,19 @@ enum NotificationScheduler {
     private static let log = Logger(subsystem: "com.devrising.r3hab", category: "notifications")
 
     static func pendingId(for sessionId: UUID) -> String {
-        "pending-\(sessionId.uuidString)"
+        "\(NotificationRoute.pendingPrefix)\(sessionId.uuidString)"
     }
 
     static func painAfterId(for sessionId: UUID) -> String {
-        "pain-after-\(sessionId.uuidString)"
+        "\(NotificationRoute.painAfterPrefix)\(sessionId.uuidString)"
     }
 
     static func sessionId(fromPendingId identifier: String) -> UUID? {
-        guard identifier.hasPrefix("pending-") else { return nil }
-        return UUID(uuidString: String(identifier.dropFirst("pending-".count)))
+        NotificationRoute.sessionId(fromPendingId: identifier)
     }
 
     static func sessionId(fromPainAfterId identifier: String) -> UUID? {
-        guard identifier.hasPrefix("pain-after-") else { return nil }
-        return UUID(uuidString: String(identifier.dropFirst("pain-after-".count)))
+        NotificationRoute.sessionId(fromPainAfterId: identifier)
     }
 
     static func painAfterFireDate(createdAt: Date, now: Date) -> Date? {
@@ -445,18 +443,18 @@ enum NotificationScheduler {
     }
 }
 
-enum NotificationOpenKind: String, Sendable {
-    case pending
-    case painAfter
-    case hardOverdue
-}
-
-/// Handles notification taps → deep resolve or after-pain sheet.
+/// Handles notification taps: the 24h resolve sheet, the pain-after sheet, or Today.
+///
+/// Both delegate methods run on the main actor. UIKit requires the system's
+/// completion handler on the main thread. A nonisolated `async` delegate
+/// method finishes on a background thread, and Swift calls that completion
+/// handler there. In Release builds this terminates the app on a tap:
+/// "NSInternalInconsistencyException: Call must be made on main thread".
 final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    var onOpenNotification: ((UUID?, NotificationOpenKind) -> Void)?
-    /// Legacy alias used by older call sites; treated as a 24h resolve.
-    var onOpenSession: ((UUID) -> Void)?
+    /// Main thread only. R3habApp installs the handler.
+    let inbox = NotificationOpenInbox()
 
+    @MainActor
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
@@ -464,33 +462,15 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         [.banner, .sound, .badge]
     }
 
+    @MainActor
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        let info = response.notification.request.content.userInfo
-        let nid = response.notification.request.identifier
-        let sessionId = (info["sessionId"] as? String).flatMap(UUID.init(uuidString:))
-        let kind: NotificationOpenKind
-        if let rawKind = info["kind"] as? String, let parsed = NotificationOpenKind(rawValue: rawKind) {
-            kind = parsed
-        } else if nid == NotificationScheduler.hardOverdueId {
-            kind = .hardOverdue
-        } else if nid.hasPrefix("pain-after-") {
-            kind = .painAfter
-        } else {
-            kind = .pending
-        }
-
-        let resolvedId = sessionId
-            ?? NotificationScheduler.sessionId(fromPainAfterId: nid)
-            ?? NotificationScheduler.sessionId(fromPendingId: nid)
-
-        await MainActor.run {
-            onOpenNotification?(resolvedId, kind)
-            if kind == .pending, let resolvedId {
-                onOpenSession?(resolvedId)
-            }
-        }
+        let request = response.notification.request
+        inbox.deliver(NotificationRoute.parse(
+            identifier: request.identifier,
+            userInfo: request.content.userInfo
+        ))
     }
 }

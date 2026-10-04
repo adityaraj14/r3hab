@@ -32,7 +32,8 @@ let package = Package(
                 "Domain/TodaySessionEntry.swift",
                 "Domain/PendingQueue.swift",
                 "Domain/SessionSpacing.swift",
-                "Domain/WorkoutStreak.swift"
+                "Domain/WorkoutStreak.swift",
+                "Domain/NotificationRoute.swift"
             ]
         ),
         .testTarget(
@@ -50,7 +51,8 @@ let package = Package(
                 "TodaySessionEntryTests.swift",
                 "QLPathwayTests.swift",
                 "GuidedCheckpointTests.swift",
-                "SessionCompletionTests.swift"
+                "SessionCompletionTests.swift",
+                "NotificationRouteTests.swift"
             ]
         )
     ]
