@@ -33,15 +33,9 @@ struct R3habApp: App {
                 .environment(router)
                 .preferredColorScheme(.dark)
                 .task {
-                    AppServices.shared.notificationDelegate.onOpenNotification = { [router] id, kind in
-                        switch kind {
-                        case .painAfter:
-                            if let id { router.openAfterPain(sessionId: id) }
-                        case .pending:
-                            if let id { router.openResolve(sessionId: id) }
-                        case .hardOverdue:
-                            router.openToday()
-                        }
+                    // A tap from a cold launch waits in the inbox until this runs.
+                    AppServices.shared.notificationDelegate.inbox.handler = { [router] open in
+                        router.open(open)
                     }
                 }
                 .onOpenURL { url in
