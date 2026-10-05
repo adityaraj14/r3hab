@@ -10,21 +10,26 @@ struct GuidedCheckpoint: Equatable, Sendable {
     var painDuring: Int
     var notes: String
     var resistanceSets: [ResistanceSet]
-    /// Index into `SessionPrototypePlan.guidedPrompts`. Nil on drafts from the older form.
+    /// Index into `SessionPrototypeDraft.prompts`. Nil on drafts from the older form.
     var stepIndex: Int?
 }
 
 enum GuidedCheckpointing {
-    /// Position of the warm-up step in the guided prompts.
-    static let warmupIndex = 1
+    /// Position of the first warm-up step in the guided prompts.
+    static let firstWarmupIndex = 1
+
+    /// Position of the last warm-up step. Equal to the exercise step (0) when there is no warm-up.
+    static func lastWarmupIndex(_ draft: SessionPrototypeDraft) -> Int {
+        draft.warmup.steps.count
+    }
 
     /// The draft row values for this point in the flow.
-    /// Warm-up rows are kept while the warm-up step is not passed, so edits
-    /// stay. After that, only a warm-up the user did is kept.
+    /// Warm-up rows are kept while the user is on (or before) the warm-up steps,
+    /// so edits stay. After that, only a warm-up the user did is kept.
     static func checkpoint(_ draft: SessionPrototypeDraft, stepIndex: Int) -> GuidedCheckpoint {
-        let step = clamp(stepIndex, setCount: draft.sets.count)
+        let step = clamp(stepIndex, draft: draft)
         var rows: [ResistanceSet] = []
-        if draft.includeWarmup || step <= warmupIndex {
+        if draft.includeWarmup || step <= lastWarmupIndex(draft) {
             rows.append(contentsOf: draft.warmup.resistanceSets())
         }
         var workOnly = draft
@@ -71,7 +76,6 @@ enum GuidedCheckpointing {
                 draft.warmup = WarmupPlan(
                     steps: restoredSteps.map { var step = $0; step.fromLastSession = false; return step },
                     planned: base.warmup.planned,
-                    planIndex: restoredSteps.count,
                     source: base.warmup.source
                 )
             }
@@ -81,11 +85,11 @@ enum GuidedCheckpointing {
         draft.notes = checkpoint.notes
         draft.phase = checkpoint.phase
 
-        let prompts = SessionPrototypePlan.guidedPrompts(setCount: draft.sets.count)
+        let prompts = draft.prompts
         let painIndex = prompts.firstIndex(of: .pain) ?? max(prompts.count - 3, 0)
         var step: Int
         if let saved = checkpoint.stepIndex {
-            step = clamp(saved, setCount: draft.sets.count)
+            step = clamp(saved, draft: draft)
         } else {
             // Older drafts have no step. With a pain value, go to the review.
             // Else start at step 1.
@@ -95,7 +99,7 @@ enum GuidedCheckpointing {
         if draft.painDuring == nil, step > painIndex {
             step = painIndex
         }
-        draft.includeWarmup = !restoredSteps.isEmpty && (checkpoint.stepIndex == nil || step > warmupIndex)
+        draft.includeWarmup = !restoredSteps.isEmpty && (checkpoint.stepIndex == nil || step > lastWarmupIndex(draft))
         return (draft, step)
     }
 
@@ -106,8 +110,8 @@ enum GuidedCheckpointing {
         stepIndex != nil || sessionType == .hsrStrength
     }
 
-    static func clamp(_ index: Int, setCount: Int) -> Int {
-        let count = SessionPrototypePlan.guidedPrompts(setCount: setCount).count
+    static func clamp(_ index: Int, draft: SessionPrototypeDraft) -> Int {
+        let count = draft.prompts.count
         return min(max(index, 0), max(count - 1, 0))
     }
 
@@ -118,9 +122,16 @@ enum GuidedCheckpointing {
         leavingForeground && changedSinceSave
     }
 
-    /// Save right after a warm-up set is added or removed, or a working set is recorded.
+    /// Save after each Next and each Back, when a value or the step changed.
     static func shouldAutosaveOnRecord(changedSinceSave: Bool) -> Bool {
         changedSinceSave
+    }
+
+    /// Back on step 1 closes the sheet. With no draft row and no entered value,
+    /// it closes without a save, so no empty draft shows on Today.
+    /// Else it saves the draft and then closes.
+    static func savesDraftOnClose(rowExists: Bool, changedSinceSave: Bool) -> Bool {
+        rowExists || changedSinceSave
     }
 
     private static func sameWarmup(_ a: [WarmupStep], _ b: [WarmupStep]) -> Bool {

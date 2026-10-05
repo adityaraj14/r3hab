@@ -18,15 +18,15 @@ extension View {
             }
             .tint(AppTheme.gold)
             .preferredColorScheme(.dark)
-            // A drag on a ruler must not close the sheet. Use the close (x) button.
+            // A drag on a ruler must not close the sheet. Back on step 1 closes it.
             .interactiveDismissDisabled()
         }
     }
 }
 
-/// Records a session one step at a time. "Save draft" on each step writes the
-/// values and the step to the day's draft row. The final Save makes that row
-/// a complete session.
+/// Records a session one step at a time. Each Next and each Back writes the
+/// values and the step to the day's draft row. "Save draft" writes and closes.
+/// Back on step 1 writes and closes. The final Save makes that row a complete session.
 struct GuidedSessionHost: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -39,6 +39,8 @@ struct GuidedSessionHost: View {
 
     @State private var draft: SessionPrototypeDraft
     @State private var stepIndex = 0
+    /// The first unfinished step. The draft row stores it, so a resume opens there.
+    @State private var furthestStep = 0
     @State private var didLoad = false
     @State private var errorMessage: String?
     /// The draft row this sheet writes to. Set on load or on the first draft save.
@@ -65,12 +67,14 @@ struct GuidedSessionHost: View {
                 GuidedSessionLogView(
                     draft: $draft,
                     index: $stepIndex,
+                    furthest: $furthestStep,
                     spacingWarning: spacingWarning,
                     onSave: save,
                     onCheckpointSave: {
                         guard GuidedCheckpointing.shouldAutosaveOnRecord(changedSinceSave: changedSinceSave) else { return }
                         saveDraft(closeAfter: false)
-                    }
+                    },
+                    onClose: closeFromFirstStep
                 )
             } else {
                 AppTheme.canvas
@@ -80,16 +84,10 @@ struct GuidedSessionHost: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // The step view puts Back and the step dots on the leading side and in the center.
-            ToolbarItemGroup(placement: .topBarTrailing) {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button("Save draft") { saveDraft(closeAfter: true) }
                     .disabled(!didLoad)
                     .accessibilityIdentifier(SessionPrototypeAccessibility.saveDraft)
-                Button { dismiss() } label: {
-                    Image(systemName: "xmark")
-                        .font(.body.weight(.semibold))
-                }
-                .accessibilityLabel("Cancel")
-                .accessibilityIdentifier(SessionPrototypeAccessibility.cancel)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -116,7 +114,16 @@ struct GuidedSessionHost: View {
     }
 
     private var changedSinceSave: Bool {
-        draft != savedDraft || stepIndex != savedStep
+        draft != savedDraft || furthestStep != savedStep
+    }
+
+    /// Back on step 1: save the draft and close. With nothing entered and no draft row, close only.
+    private func closeFromFirstStep() {
+        if GuidedCheckpointing.savesDraftOnClose(rowExists: rowId != nil, changedSinceSave: changedSinceSave) {
+            saveDraft(closeAfter: true)
+        } else {
+            dismiss()
+        }
     }
 
     private func load() {
@@ -134,27 +141,29 @@ struct GuidedSessionHost: View {
             let restored = GuidedCheckpointing.restore(GuidedSessionStore.checkpoint(of: row), onto: plan)
             draft = restored.draft
             stepIndex = restored.stepIndex
+            furthestStep = restored.stepIndex
             rowId = row.id
         } else {
             draft = plan
             stepIndex = 0
+            furthestStep = 0
             rowId = nil
         }
         savedDraft = draft
-        savedStep = stepIndex
+        savedStep = furthestStep
     }
 
     private func saveDraft(closeAfter: Bool) {
         do {
             rowId = try GuidedSessionStore.saveDraft(
                 draft: draft,
-                stepIndex: stepIndex,
+                stepIndex: furthestStep,
                 draftId: rowId,
                 context: modelContext,
                 date: targetDate
             )
             savedDraft = draft
-            savedStep = stepIndex
+            savedStep = furthestStep
             if closeAfter {
                 Haptics.light()
                 dismiss()

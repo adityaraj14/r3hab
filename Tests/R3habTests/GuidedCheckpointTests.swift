@@ -29,17 +29,9 @@ final class GuidedCheckpointTests: XCTestCase {
     /// A draft with values on each kind of step: warm-up edit, two changed sets, pain, notes.
     private func filled() -> SessionPrototypeDraft {
         var draft = plan()
-        // Prefill feeds the composer; commit finished sets like the Add button.
-        let planned = draft.warmup.planned
-        if planned.count >= 2 {
-            _ = draft.warmup.addFromComposer(planned[0])
-            var second = planned[1]
-            second.reps = 5
-            _ = draft.warmup.addFromComposer(second)
-        } else {
-            _ = draft.warmup.addFromComposer(.hold())
-            _ = draft.warmup.addFromComposer(.reps(5, loadLbs: 20))
-        }
+        // The warm-up nodes are prefilled with the plan. Change the reps on node 2.
+        XCTAssertGreaterThanOrEqual(draft.warmup.steps.count, 2)
+        draft.warmup.update(id: draft.warmup.steps[1].id) { $0.reps = 5 }
         draft.includeWarmup = true
         draft.sets[0].reps = 10
         draft.sets[0].loadLbs = 50
@@ -53,11 +45,11 @@ final class GuidedCheckpointTests: XCTestCase {
 
     func testCheckpointRoundTripsOnEveryStep() {
         let source = filled()
-        let prompts = SessionPrototypePlan.guidedPrompts(setCount: source.sets.count)
+        let prompts = source.prompts
         for (index, prompt) in prompts.enumerated() {
             var draft = source
-            // Before the warm-up choice, the user has not said "Warm-up done".
-            if index <= GuidedCheckpointing.warmupIndex { draft.includeWarmup = false }
+            // On the warm-up steps, Next on the last warm-up step is not done yet.
+            if index <= GuidedCheckpointing.lastWarmupIndex(source) { draft.includeWarmup = false }
             // Before the pain step, there is no pain value yet.
             let painIndex = prompts.firstIndex(of: .pain)!
             if index < painIndex { draft.painDuring = nil }
@@ -87,11 +79,12 @@ final class GuidedCheckpointTests: XCTestCase {
     func testSkippedWarmupStaysSkipped() {
         var draft = plan()
         draft.includeWarmup = false
-        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: 3)
+        let firstSet = draft.prompts.firstIndex(of: .set(0))!
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: firstSet)
         XCTAssertFalse(saved.resistanceSets.contains(where: \.isWarmup))
         let restored = GuidedCheckpointing.restore(saved, onto: plan())
         XCTAssertFalse(restored.draft.includeWarmup)
-        XCTAssertEqual(restored.stepIndex, 3)
+        XCTAssertEqual(restored.stepIndex, firstSet)
         // The planned warm-up is still there if the user goes back.
         XCTAssertEqual(restored.draft.warmup.planned.map(\.loadLbs), plan().warmup.planned.map(\.loadLbs))
         XCTAssertEqual(restored.draft.warmup.source, plan().warmup.source)
@@ -105,11 +98,10 @@ final class GuidedCheckpointTests: XCTestCase {
         )
         let base = plan(history: history)
         XCTAssertEqual(base.warmup.source, .lastSession)
-        XCTAssertTrue(base.warmup.steps.isEmpty)
+        XCTAssertEqual(base.warmup.steps.map(\.reps), [4])
         XCTAssertEqual(base.warmup.planned.map(\.reps), [4])
         var draft = base
-        // Add the planned set so Warm-up done can be true (finished list was empty).
-        XCTAssertTrue(draft.warmup.addFromComposer(draft.warmup.composerForPlan().makeStep()))
+        // Next on the one warm-up node.
         draft.includeWarmup = true
         let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: 2)
         let restored = GuidedCheckpointing.restore(saved, onto: base)
@@ -121,7 +113,7 @@ final class GuidedCheckpointTests: XCTestCase {
 
     func testStepIndexIsClamped() {
         var saved = GuidedCheckpointing.checkpoint(filled(), stepIndex: 99)
-        let last = SessionPrototypePlan.guidedPrompts(setCount: 3).count - 1
+        let last = filled().prompts.count - 1
         XCTAssertEqual(saved.stepIndex, last)
         saved.stepIndex = -4
         XCTAssertEqual(GuidedCheckpointing.restore(saved, onto: plan()).stepIndex, 0)
@@ -130,10 +122,10 @@ final class GuidedCheckpointTests: XCTestCase {
     func testStepsAfterPainNeedAPainValue() {
         var draft = filled()
         draft.painDuring = nil
-        let review = SessionPrototypePlan.guidedPrompts(setCount: 3).count - 1
+        let review = draft.prompts.count - 1
         let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: review)
         let restored = GuidedCheckpointing.restore(saved, onto: plan())
-        let painIndex = SessionPrototypePlan.guidedPrompts(setCount: 3).firstIndex(of: .pain)!
+        let painIndex = draft.prompts.firstIndex(of: .pain)!
         XCTAssertEqual(restored.stepIndex, painIndex)
     }
 
@@ -176,7 +168,7 @@ final class GuidedCheckpointTests: XCTestCase {
             stepIndex: nil
         )
         let restored = GuidedCheckpointing.restore(old, onto: plan())
-        let prompts = SessionPrototypePlan.guidedPrompts(setCount: restored.draft.sets.count)
+        let prompts = restored.draft.prompts
         XCTAssertEqual(prompts[restored.stepIndex], .review)
         XCTAssertEqual(restored.draft.painDuring, 2)
         XCTAssertTrue(restored.draft.includeWarmup)
@@ -210,17 +202,68 @@ final class GuidedCheckpointTests: XCTestCase {
     }
 
 
-    func testAutosaveOnAddWarmupKeepsTheNewStep() {
+    func testAutosaveOnPlusNodeKeepsTheExtraStep() {
+        var draft = plan()
+        XCTAssertTrue(draft.warmup.addStep())
+        let extraIndex = GuidedCheckpointing.lastWarmupIndex(draft)
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: extraIndex)
+        XCTAssertEqual(saved.resistanceSets.filter(\.isWarmup).count, 4)
+        let restored = GuidedCheckpointing.restore(saved, onto: plan())
+        XCTAssertEqual(restored.draft.warmup.steps.count, 4)
+        XCTAssertTrue(restored.draft.warmup.isExtra(at: 3))
+        XCTAssertEqual(restored.stepIndex, extraIndex, "Resume opens on the extra step")
+    }
+
+    // MARK: Back, edit, delete
+
+    /// Back goes one step back. The values stay, and the autosave keeps them. Nothing reverts.
+    func testBackAutosaveKeepsTheValues() {
         var draft = plan()
         draft.includeWarmup = true
-        draft.warmup = WarmupPlan(steps: [], source: .blank)
-        XCTAssertTrue(draft.warmup.addCommitted(.hold(seconds: 30, loadLbs: 10)))
-        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: GuidedCheckpointing.warmupIndex)
-        XCTAssertEqual(saved.resistanceSets.filter(\.isWarmup).count, 1)
+        let set2 = draft.prompts.firstIndex(of: .set(1))!
+        // On set 2: change the load, then Back to set 1. The first unfinished step is still set 2.
+        draft.sets[1].loadLbs = 60
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: set2)
         let restored = GuidedCheckpointing.restore(saved, onto: plan())
-        XCTAssertEqual(restored.draft.warmup.steps.count, 1)
-        XCTAssertEqual(restored.draft.warmup.steps[0].seconds, 30)
-        XCTAssertEqual(restored.draft.warmup.steps[0].loadLbs, 10)
+        XCTAssertEqual(restored.draft.sets[1].loadLbs, 60, "Back does not revert the change")
+        XCTAssertEqual(restored.draft.sets.map(\.loadLbs), draft.sets.map(\.loadLbs))
+        XCTAssertEqual(restored.stepIndex, set2, "Resume opens at the first unfinished step")
+    }
+
+    func testBackOnStepOneSavesOnlyWhenThereIsSomethingToKeep() {
+        // A new log with nothing entered: close, no draft.
+        XCTAssertFalse(GuidedCheckpointing.savesDraftOnClose(rowExists: false, changedSinceSave: false))
+        // A value was entered: save the draft, then close.
+        XCTAssertTrue(GuidedCheckpointing.savesDraftOnClose(rowExists: false, changedSinceSave: true))
+        // The draft row exists (a Next saved it, or this is a resume): save and close.
+        XCTAssertTrue(GuidedCheckpointing.savesDraftOnClose(rowExists: true, changedSinceSave: false))
+    }
+
+    func testEditOnADoneWarmupStepIsSaved() {
+        var draft = plan()
+        draft.includeWarmup = true
+        let firstSet = draft.prompts.firstIndex(of: .set(0))!
+        // Reopen warm-up 1 from set 1 and change the hold.
+        draft.warmup.update(id: draft.warmup.steps[0].id) { $0.seconds = 45 }
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: firstSet)
+        let restored = GuidedCheckpointing.restore(saved, onto: plan())
+        XCTAssertEqual(restored.draft.warmup.steps[0].seconds, 45)
+        XCTAssertTrue(restored.draft.includeWarmup)
+        XCTAssertEqual(restored.stepIndex, firstSet)
+    }
+
+    func testDeleteOfADoneWarmupStepIsSaved() {
+        var draft = plan()
+        draft.includeWarmup = true
+        let firstSet = draft.prompts.firstIndex(of: .set(0))!
+        draft.warmup.removeStep(at: 0)
+        let after = SessionPrototypePlan.afterDelete(deleted: 1, furthest: firstSet, count: draft.prompts.count)
+        XCTAssertEqual(draft.prompts[after.current], .set(0), "After the delete, the first unfinished step is still set 1")
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: after.furthest)
+        XCTAssertEqual(saved.resistanceSets.filter(\.isWarmup).count, 2)
+        let restored = GuidedCheckpointing.restore(saved, onto: plan())
+        XCTAssertEqual(restored.draft.warmup.steps.map(\.reps), [3, 2])
+        XCTAssertEqual(restored.draft.prompts[restored.stepIndex], .set(0))
     }
 
     // MARK: Helpers

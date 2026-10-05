@@ -51,8 +51,8 @@ final class DogfoodTests: XCTestCase {
         app.buttons["prototype-guided-warmup-skip"].tap()
         let pain = app.descendants(matching: .any)["prototype-guided-pain"]
         for _ in 0..<6 where !pain.exists {
-            let same = app.buttons["prototype-guided-same-as-target"]
-            if same.waitForExistence(timeout: 2) { same.tap() }
+            let next = app.buttons["prototype-next"]
+            if next.waitForExistence(timeout: 2) { next.tap() }
         }
         XCTAssertTrue(pain.waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-pain-chip-2"].tap()

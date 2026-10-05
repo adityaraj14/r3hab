@@ -21,11 +21,13 @@ extension View {
     }
 }
 
-/// Step dots in the navigation bar. Tap a completed dot to go back to that step.
-/// The current step and later steps do not respond.
+/// Step dots in the navigation bar. Tap a done dot to open that step.
+/// Steps after the first unfinished step do not respond.
 struct PrototypeProgressDots: View {
     var count: Int
     var index: Int
+    /// The first unfinished step.
+    var furthest: Int
     var onSelect: (Int) -> Void = { _ in }
 
     var body: some View {
@@ -41,12 +43,12 @@ struct PrototypeProgressDots: View {
 
     @ViewBuilder
     private func dot(_ step: Int) -> some View {
-        if let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index) {
+        if let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index, furthest: furthest) {
             Button { onSelect(target) } label: { capsule(step) }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(SessionPrototypeAccessibility.progressStep(step))
                 .accessibilityLabel("Step \(step + 1)")
-                .accessibilityHint("Go back to this step.")
+                .accessibilityHint("Open this step.")
         } else {
             capsule(step)
                 .accessibilityElement()
@@ -68,71 +70,104 @@ struct PrototypeProgressDots: View {
 
     private func fill(for step: Int) -> Color {
         if step == index { return AppTheme.gold }
-        if step < index { return Color.white.opacity(0.85) }
+        if SessionPrototypePlan.isStepDone(step, furthest: furthest) { return Color.white.opacity(0.85) }
         return AppTheme.quietFill
     }
 }
 
-/// Horizontal working-set progress. One node per recommended set. Filled nodes are logged.
+/// Horizontal step progress for the warm-up steps and the working sets.
+/// Numbered nodes joined by a line. A done node shows a check and opens its step.
+/// An optional small "+" node at the end adds a step.
 struct PrototypeSetStepper: View {
-    /// Recommended working sets (N).
-    var total: Int
-    /// How many sets are already logged (0...total).
-    var filled: Int
-    /// The set on screen now, if any.
+    var count: Int
+    /// The node on screen now, if any.
     var current: Int?
+    var isDone: (Int) -> Bool
+    /// "Set" or "Warm-up". Used in the VoiceOver labels.
+    var noun: String = "Set"
+    /// Prefix for the node ids, for example "prototype-guided-set".
+    var identifierPrefix: String = "prototype-guided-set"
+    var onSelect: (Int) -> Void = { _ in }
+    var onAdd: (() -> Void)?
+    var addIdentifier: String?
 
     var body: some View {
-        let count = max(total, 1)
-        HStack(spacing: 10) {
-            ForEach(0..<count, id: \.self) { i in
+        let total = max(count, 1)
+        HStack(spacing: 0) {
+            ForEach(0..<total, id: \.self) { i in
+                if i > 0 { connector(done: isDone(i - 1)) }
                 node(i)
+            }
+            if let onAdd {
+                connector(done: false)
+                Button(action: onAdd) {
+                    Image(systemName: "plus")
+                        .font(.caption2.weight(.bold))
+                        .foregroundStyle(AppTheme.gold)
+                        .frame(width: 22, height: 22)
+                        .background(Circle().strokeBorder(AppTheme.gold.opacity(0.6), lineWidth: 1.5))
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add a \(noun.lowercased()) step")
+                .accessibilityIdentifier(addIdentifier ?? "\(identifierPrefix)-add")
             }
         }
         .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .ignore)
-        .accessibilityIdentifier("prototype-guided-set-stepper")
-        .accessibilityLabel(label)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("\(identifierPrefix)-stepper")
     }
 
-    private var label: String {
-        if let current {
-            return "Set \(current + 1) of \(max(total, 1)). \(min(filled, total)) logged."
-        }
-        return "\(min(filled, total)) of \(max(total, 1)) sets logged."
+    private func connector(done: Bool) -> some View {
+        Rectangle()
+            .fill(done ? AppTheme.gold.opacity(0.85) : AppTheme.quietStroke)
+            .frame(width: 16, height: 2)
     }
 
+    @ViewBuilder
     private func node(_ i: Int) -> some View {
         let isCurrent = current == i
-        let isFilled = i < filled
-        return ZStack {
+        let done = isDone(i)
+        if done && !isCurrent {
+            Button { onSelect(i) } label: { circle(i, isCurrent: false, done: true) }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(noun) \(i + 1), done")
+                .accessibilityHint("Open this step.")
+                .accessibilityIdentifier("\(identifierPrefix)-node-\(i + 1)")
+        } else {
+            circle(i, isCurrent: isCurrent, done: done)
+                .accessibilityElement()
+                .accessibilityLabel(isCurrent ? "\(noun) \(i + 1), current" : "\(noun) \(i + 1), not done")
+                .accessibilityAddTraits(isCurrent ? .isSelected : [])
+                .accessibilityIdentifier("\(identifierPrefix)-node-\(i + 1)")
+        }
+    }
+
+    private func circle(_ i: Int, isCurrent: Bool, done: Bool) -> some View {
+        ZStack {
             Circle()
                 .strokeBorder(isCurrent ? AppTheme.gold : AppTheme.quietStroke, lineWidth: isCurrent ? 2.5 : 1.5)
-                .background(Circle().fill(fill(isFilled: isFilled, isCurrent: isCurrent)))
-            if isFilled && !isCurrent {
+                .background(Circle().fill(fill(done: done, isCurrent: isCurrent)))
+            if done && !isCurrent {
                 Image(systemName: "checkmark")
                     .font(.caption.weight(.bold))
                     .foregroundStyle(AppTheme.ink)
             } else {
                 Text("\(i + 1)")
                     .font(.caption.weight(.bold).monospacedDigit())
-                    .foregroundStyle(isCurrent || isFilled ? AppTheme.ink : AppTheme.quiet)
+                    .foregroundStyle(isCurrent || done ? AppTheme.ink : AppTheme.quiet)
             }
         }
         .frame(width: 28, height: 28)
-        .accessibilityLabel(nodeLabel(i, isFilled: isFilled, isCurrent: isCurrent))
+        .frame(height: 44)
+        .contentShape(Rectangle())
     }
 
-    private func fill(isFilled: Bool, isCurrent: Bool) -> Color {
+    private func fill(done: Bool, isCurrent: Bool) -> Color {
         if isCurrent { return AppTheme.gold }
-        if isFilled { return AppTheme.gold.opacity(0.85) }
+        if done { return AppTheme.gold.opacity(0.85) }
         return AppTheme.quietFill
-    }
-
-    private func nodeLabel(_ i: Int, isFilled: Bool, isCurrent: Bool) -> String {
-        if isCurrent { return "Set \(i + 1), current" }
-        if isFilled { return "Set \(i + 1), logged" }
-        return "Set \(i + 1), not logged"
     }
 }
 

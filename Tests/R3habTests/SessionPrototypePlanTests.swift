@@ -51,18 +51,21 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertTrue(work.allSatisfy { $0.loadLbs == 45 && $0.reps == 8 })
     }
 
-    func testSameAsTargetRestoresEdits() {
+    func testSetRulersOpenAtTheTargetAndNextKeepsTheShownValues() {
         var draft = SessionPrototypePlan.make(
             sessions: [session(dayOffset: -3, reps: 8, load: 45)],
             phase: .aFlareDeLoad,
             asOf: day0,
             calendar: calendar
         )
-        draft.sets[0].reps = 12
-        draft.sets[0].loadLbs = 55
-        XCTAssertFalse(draft.sets[0].matchesTarget(draft.target))
-        draft.sets[0] = draft.sets[0].aligned(to: draft.target)
-        XCTAssertTrue(draft.sets[0].matchesTarget(draft.target))
+        XCTAssertTrue(draft.sets.allSatisfy { $0.matchesTarget(draft.target) })
+        XCTAssertEqual(SessionPrototypePlan.loadDelta(draft.sets[0].loadLbs, target: draft.target.loadLbs), "Target")
+        // Off target: the delta label shows. The shown values are the values that save.
+        draft.sets[0].loadLbs = 50
+        XCTAssertEqual(SessionPrototypePlan.loadDelta(draft.sets[0].loadLbs, target: draft.target.loadLbs), "+5 lb")
+        draft.painDuring = 1
+        let work = SessionPrototypePlan.setsForSave(draft).filter { !$0.isWarmup }
+        XCTAssertEqual(work.first?.loadLbs, 50)
         XCTAssertEqual(draft.phase, .aFlareDeLoad)
     }
 
@@ -73,11 +76,8 @@ final class SessionPrototypePlanTests: XCTestCase {
             asOf: day0,
             calendar: calendar
         )
+        // Next on each warm-up node includes the warm-up. The nodes are prefilled with the plan.
         draft.includeWarmup = true
-        // Prefill is planned only; commit the template so Save includes warm-up rows.
-        for step in draft.warmup.planned {
-            XCTAssertTrue(draft.warmup.addFromComposer(step))
-        }
         draft.painDuring = 2
         let saved = SessionPrototypePlan.setsForSave(draft)
         let warmup = saved.filter(\.isWarmup)
@@ -101,11 +101,15 @@ final class SessionPrototypePlanTests: XCTestCase {
     }
 
     func testGuidedStepsCoverTheQuestions() {
-        let prompts = SessionPrototypePlan.guidedPrompts(setCount: 3)
+        let prompts = SessionPrototypePlan.guidedPrompts(warmupCount: 3, setCount: 3)
         XCTAssertEqual(prompts, [
-            .exercise, .warmup, .set(0), .set(1), .set(2), .pain, .notes, .review
+            .exercise, .warmup(0), .warmup(1), .warmup(2), .set(0), .set(1), .set(2), .pain, .notes, .review
         ])
+        let draft = SessionPrototypePlan.make(sessions: [], phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
+        XCTAssertEqual(draft.prompts.filter { if case .warmup = $0 { return true } else { return false } }.count, 3,
+                       "Each template step is one warm-up node")
         XCTAssertEqual(GuidedPrompt.set(0).accessibilityIdentifier, "prototype-guided-set-1")
+        XCTAssertEqual(GuidedPrompt.warmup(1).accessibilityIdentifier, "prototype-guided-warmup-step-2")
         XCTAssertEqual(SessionPrototypeAccessibility.screen, "guided-session-screen")
         XCTAssertEqual(SessionPrototypeAccessibility.saveDraft, "guided-save-draft")
         XCTAssertEqual(SessionPrototypeAccessibility.painChip(2), "prototype-pain-chip-2")
@@ -181,24 +185,44 @@ final class SessionPrototypePlanTests: XCTestCase {
             resistanceSets: rows
         )
     }
-    func testSetStepperFillsAsEachSetIsLogged() {
-        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 0, setCount: 3), 0)
-        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 1, setCount: 3), 1)
-        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 2, setCount: 3), 2)
-        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: nil, setCount: 3), 3)
+    func testNextGoesToTheNextStepOrBackToTheFirstUnfinishedStep() {
+        // Normal: one step forward.
+        XCTAssertEqual(SessionPrototypePlan.nextIndex(current: 2, furthest: 2, count: 10), 3)
+        // Reopened warm-up 1 (index 1) while set 2 (index 5) is unfinished: Next goes to set 2.
+        XCTAssertEqual(SessionPrototypePlan.nextIndex(current: 1, furthest: 5, count: 10), 5)
+        // After Back from set 2 to set 1: Next goes to set 2.
+        XCTAssertEqual(SessionPrototypePlan.nextIndex(current: 4, furthest: 5, count: 10), 5)
+        XCTAssertEqual(SessionPrototypePlan.nextIndex(current: 9, furthest: 9, count: 10), 9)
     }
 
-    func testStepDotsJumpBackOnly() {
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 0, current: 3), 0)
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 2, current: 3), 2)
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 3, current: 3), "The current step is not a jump")
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 4, current: 3), "A later step does not open")
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: -1, current: 3))
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 0, current: 0))
+    func testStepperNodesFillAsEachStepIsDone() {
+        XCTAssertTrue(SessionPrototypePlan.isStepDone(1, furthest: 3))
+        XCTAssertTrue(SessionPrototypePlan.isStepDone(2, furthest: 3))
+        XCTAssertFalse(SessionPrototypePlan.isStepDone(3, furthest: 3), "The first unfinished step is not done")
+        XCTAssertFalse(SessionPrototypePlan.isStepDone(4, furthest: 3))
+        XCTAssertFalse(SessionPrototypePlan.isStepDone(-1, furthest: 3))
     }
 
-    func testWarmupPrimaryIsSkipUntilASetIsAdded() {
-        XCTAssertEqual(SessionPrototypePlan.warmupPrimaryTitle(hasWarmupSets: false), "Skip")
-        XCTAssertEqual(SessionPrototypePlan.warmupPrimaryTitle(hasWarmupSets: true), "Done")
+    func testNodeAndDotTapsOpenOnlyDoneSteps() {
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 0, current: 3, furthest: 3), 0)
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 2, current: 3, furthest: 3), 2)
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 3, current: 3, furthest: 3), "The current step is not a jump")
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 4, current: 3, furthest: 3), "A later step does not open")
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: -1, current: 3, furthest: 3))
+        // From a reopened step, a later done step and the first unfinished step open.
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 4, current: 1, furthest: 5), 4)
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 5, current: 1, furthest: 5), 5)
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 6, current: 1, furthest: 5))
+    }
+
+    func testDeleteGoesToTheFirstUnfinishedStep() {
+        // Delete warm-up 1 (index 1) while set 1 (index 4) is unfinished: set 1 is now index 3.
+        let after = SessionPrototypePlan.afterDelete(deleted: 1, furthest: 4, count: 9)
+        XCTAssertEqual(after.current, 3)
+        XCTAssertEqual(after.furthest, 3)
+        // Delete the current extra step (at the first unfinished step): the next step moves into its place.
+        let extra = SessionPrototypePlan.afterDelete(deleted: 4, furthest: 4, count: 9)
+        XCTAssertEqual(extra.current, 4)
+        XCTAssertEqual(extra.furthest, 4)
     }
 }

@@ -3,7 +3,6 @@ import Foundation
 /// Stable identifiers for the guided session form and its UI tests.
 enum SessionPrototypeAccessibility {
     static let screen = "guided-session-screen"
-    static let cancel = "prototype-cancel"
     static let saveDraft = "guided-save-draft"
     static let progress = "prototype-progress"
     static let next = "prototype-next"
@@ -12,10 +11,10 @@ enum SessionPrototypeAccessibility {
 
     static let guidedExercise = "prototype-guided-exercise"
     static let guidedWarmup = "prototype-guided-warmup"
-    static let guidedWarmupYes = "prototype-guided-warmup-yes"
     static let guidedWarmupSkip = "prototype-guided-warmup-skip"
-    static let guidedSame = "prototype-guided-same-as-target"
+    /// The "+" node at the end of the warm-up stepper.
     static let guidedWarmupAdd = "prototype-guided-warmup-add"
+    static let guidedWarmupRemove = "prototype-guided-warmup-remove"
     static let guidedWarmupSource = "prototype-guided-warmup-source"
     static let guidedPain = "prototype-guided-pain"
     static let guidedNotes = "prototype-guided-notes"
@@ -50,7 +49,8 @@ enum SessionPrototypeAccessibility {
 
 enum GuidedPrompt: Equatable, Sendable {
     case exercise
-    case warmup
+    /// Warm-up step (0-based), one per node on the warm-up stepper.
+    case warmup(Int)
     case set(Int)
     case pain
     case notes
@@ -59,7 +59,7 @@ enum GuidedPrompt: Equatable, Sendable {
     var accessibilityIdentifier: String {
         switch self {
         case .exercise: return SessionPrototypeAccessibility.guidedExercise
-        case .warmup: return SessionPrototypeAccessibility.guidedWarmup
+        case .warmup(let index): return SessionPrototypeAccessibility.warmupStep(index)
         case .set(let index): return SessionPrototypeAccessibility.guidedSet(index)
         case .pain: return SessionPrototypeAccessibility.guidedPain
         case .notes: return SessionPrototypeAccessibility.guidedNotes
@@ -91,13 +91,6 @@ struct PrototypeSetDraft: Equatable, Identifiable, Sendable {
             return false
         }
     }
-
-    func aligned(to target: LoadPrescription) -> PrototypeSetDraft {
-        var copy = self
-        copy.reps = target.reps
-        copy.loadLbs = target.loadLbs
-        return copy
-    }
 }
 
 struct SessionPrototypeDraft: Equatable, Sendable {
@@ -114,6 +107,11 @@ struct SessionPrototypeDraft: Equatable, Sendable {
     var notes: String
 
     var planLine: String { target.displayLine }
+
+    /// The guided steps for this draft: exercise, each warm-up step, each set, pain, notes, review.
+    var prompts: [GuidedPrompt] {
+        SessionPrototypePlan.guidedPrompts(warmupCount: warmup.steps.count, setCount: sets.count)
+    }
 
     var perSetTargetLine: String {
         if let load = target.loadLbs {
@@ -211,31 +209,41 @@ enum SessionPrototypePlan {
         ProgressionEngine.applySessionPain(draft.painDuring, to: draft.resistanceSets())
     }
 
-    /// How many working-set nodes are filled on the set stepper.
-    /// Sets before the current set index are logged. Past the last set, all are logged.
-    static func setStepperFilled(currentSetIndex: Int?, setCount: Int) -> Int {
-        let total = max(setCount, 0)
-        guard let currentSetIndex else { return total }
-        return min(max(currentSetIndex, 0), total)
-    }
-
-    static func guidedPrompts(setCount: Int) -> [GuidedPrompt] {
-        var steps: [GuidedPrompt] = [.exercise, .warmup]
-        steps.append(contentsOf: (0..<setCount).map { .set($0) })
+    static func guidedPrompts(warmupCount: Int, setCount: Int) -> [GuidedPrompt] {
+        var steps: [GuidedPrompt] = [.exercise]
+        steps.append(contentsOf: (0..<max(warmupCount, 0)).map { .warmup($0) })
+        steps.append(contentsOf: (0..<max(setCount, 0)).map { .set($0) })
         steps.append(contentsOf: [.pain, .notes, .review])
         return steps
     }
 
-    /// A tap on a step dot. Only a completed step (before the current step) opens.
-    /// Returns nil for the current step or a later step.
-    static func jumpTarget(tapped: Int, current: Int) -> Int? {
-        guard tapped >= 0, tapped < current else { return nil }
+    // MARK: Guided navigation
+    // `furthest` is the first step the user has not finished. Steps before it are done.
+
+    /// A step before the first unfinished step is done.
+    static func isStepDone(_ index: Int, furthest: Int) -> Bool {
+        index >= 0 && index < furthest
+    }
+
+    /// Next records the step and goes forward: to the next step, or back to the
+    /// first unfinished step when the user opened an earlier step.
+    static func nextIndex(current: Int, furthest: Int, count: Int) -> Int {
+        guard count > 0 else { return 0 }
+        return min(max(current + 1, furthest), count - 1)
+    }
+
+    /// A tap on a step dot or a stepper node. A done step opens, and so does the
+    /// first unfinished step. A later step does not open. Nil when nothing changes.
+    static func jumpTarget(tapped: Int, current: Int, furthest: Int) -> Int? {
+        guard tapped >= 0, tapped <= furthest, tapped != current else { return nil }
         return tapped
     }
 
-    /// The warm-up primary. "Skip" until a warm-up set is added. Then "Done".
-    static func warmupPrimaryTitle(hasWarmupSets: Bool) -> String {
-        hasWarmupSets ? "Done" : "Skip"
+    /// After the delete of the step at `deleted`, go to the first unfinished step.
+    static func afterDelete(deleted: Int, furthest: Int, count: Int) -> (current: Int, furthest: Int) {
+        let shifted = deleted < furthest ? furthest - 1 : furthest
+        let next = min(max(shifted, 0), max(count - 1, 0))
+        return (next, next)
     }
 
     /// After the finger lifts, a flick adds at most this many steps.
@@ -289,6 +297,14 @@ enum SessionPrototypePlan {
         let sign = delta > 0 ? "+" : "\u{2212}"
         let noun = abs(delta) == 1 ? "rep" : "reps"
         return "\(sign)\(abs(delta)) \(noun)"
+    }
+
+    /// "+5 s", "−10 s", or "Target".
+    static func secondsDelta(_ seconds: Int, target: Int) -> String {
+        let delta = seconds - target
+        if delta == 0 { return "Target" }
+        let sign = delta > 0 ? "+" : "\u{2212}"
+        return "\(sign)\(abs(delta)) s"
     }
 
     /// "+5 lb", "−10 lb", or "Target".

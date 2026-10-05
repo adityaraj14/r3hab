@@ -27,14 +27,13 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         snap(app, "01-record-opens-guided")
 
         app.buttons["prototype-next"].tap()
-        XCTAssertTrue(element(app, "prototype-guided-warmup").waitForExistence(timeout: 4), app.debugDescription)
-        // Add one warm-up set, then mark warm-up done (footer).
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].waitForExistence(timeout: 4), app.debugDescription)
-        app.buttons["prototype-guided-warmup-add"].tap()
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].waitForExistence(timeout: 4), app.debugDescription)
-        app.buttons["prototype-guided-warmup-yes"].tap()
+        // Three warm-up nodes from the template. Next on each.
+        for step in 1...3 {
+            XCTAssertTrue(element(app, "prototype-guided-warmup-step-\(step)").waitForExistence(timeout: 4), app.debugDescription)
+            app.buttons["prototype-next"].tap()
+        }
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
-        app.buttons["prototype-guided-same-as-target"].tap()
+        app.buttons["prototype-next"].tap()
         XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
 
         // Change set 2: drag the load ruler 3 steps up.
@@ -70,11 +69,10 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         XCTAssertEqual(resumed.value as? String, changed)
         snap(app, "04-resume-same-step")
 
-        app.buttons["prototype-next"].tap()
         for _ in 0..<6 {
             if element(app, "prototype-guided-pain").exists { break }
-            let same = app.buttons["prototype-guided-same-as-target"]
-            if same.waitForExistence(timeout: 2) { same.tap() }
+            app.buttons["prototype-next"].tap()
+            _ = element(app, "prototype-guided-pain").waitForExistence(timeout: 1)
         }
         XCTAssertTrue(element(app, "prototype-guided-pain").waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-pain-chip-2"].tap()
@@ -108,7 +106,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         XCTAssertTrue(poster.waitForExistence(timeout: 10), app.debugDescription)
         tapUntil(app, sessionRow(app), shows: "prototype-guided-exercise")
         app.buttons["prototype-next"].tap()
-        XCTAssertTrue(element(app, "prototype-guided-warmup").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-1").waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-guided-warmup-skip"].tap()
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
 
@@ -116,7 +114,13 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         sleep(2)
         app.activate()
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 6), app.debugDescription)
-        app.buttons["prototype-cancel"].tap()
+        // Back to step 1, then Back once more: the sheet closes. The draft stays.
+        let back = app.buttons["prototype-back"]
+        for _ in 0..<8 where !element(app, "prototype-guided-exercise").exists {
+            back.tap()
+            _ = element(app, "prototype-guided-exercise").waitForExistence(timeout: 1)
+        }
+        back.tap()
 
         let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
         XCTAssertTrue(draftRow.waitForExistence(timeout: 6), app.debugDescription)
@@ -288,9 +292,10 @@ final class BackupListRealPathShots: XCTestCase {
     }
 }
 
-/// Warm-up: empty finished list + composer at planned hold; after add; footer choices; autosave.
-final class WarmupRulerFixShots: XCTestCase {
-    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-warmup-shots", isDirectory: true)
+/// One forward motion: one Next per step, Back in the navigation bar, warm-up nodes, tappable done nodes.
+/// Shots land in /tmp/r3hab-forward-shots. Run on a fresh install.
+final class SingleForwardShots: XCTestCase {
+    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-forward-shots", isDirectory: true)
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -298,248 +303,133 @@ final class WarmupRulerFixShots: XCTestCase {
         try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
     }
 
-    func testComposerAdvancesAndFooterStaysVisible() throws {
+    func testOneForwardMotion() throws {
         let app = XCUIApplication()
         app.launch()
-        let skip = app.buttons["Not now"]
-        if skip.waitForExistence(timeout: 8) { skip.tap() }
-        XCTAssertTrue(app.descendants(matching: .any)["today-poster"].waitForExistence(timeout: 10), app.debugDescription)
-
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 8), app.debugDescription)
-        for _ in 0..<4 {
-            if row.exists && row.isHittable { row.tap() }
-            if app.descendants(matching: .any)["prototype-guided-exercise"].waitForExistence(timeout: 3) { break }
-        }
-        app.buttons["prototype-next"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup"].waitForExistence(timeout: 6), app.debugDescription)
-
-        // Empty finished list; Add + Skip in sticky footer.
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].waitForExistence(timeout: 4), app.debugDescription)
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-skip"].exists)
-        XCTAssertFalse(app.buttons["prototype-guided-warmup-yes"].exists)
-        // No finished rows yet (ids are 1-indexed).
-        XCTAssertFalse(app.descendants(matching: .any)["prototype-guided-warmup-step-1"].exists)
-        snap(app, "01-empty-list-composer-at-hold")
-
-        app.buttons["prototype-guided-warmup-add"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup-step-1"].waitForExistence(timeout: 4), app.debugDescription)
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].waitForExistence(timeout: 3))
-        XCTAssertFalse(app.buttons["prototype-guided-warmup-skip"].exists)
-        snap(app, "02-after-first-add")
-
-        app.buttons["prototype-guided-warmup-add"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup-step-2"].waitForExistence(timeout: 4), app.debugDescription)
-        snap(app, "03-after-second-add-next-plan")
-
-        // Footer still shows Add + Done (always visible).
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].isHittable)
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].isHittable)
-        snap(app, "04-footer-add-and-done")
-
-        // Autosave: leave and resume — finished sets remain.
-        XCUIDevice.shared.press(.home)
-        sleep(2)
-        app.activate()
-        // May still be on warm-up, or cancelled to Today with draft.
-        if app.buttons["prototype-cancel"].waitForExistence(timeout: 4) {
-            app.buttons["prototype-cancel"].tap()
-        }
-        let draft = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
-        if draft.waitForExistence(timeout: 6) {
-            draft.tap()
-            // Resume — warm-up steps should still be there if we were past exercise.
-            _ = app.descendants(matching: .any)["prototype-guided-warmup"].waitForExistence(timeout: 4)
-                || app.descendants(matching: .any)["prototype-guided-warmup-step-1"].waitForExistence(timeout: 4)
-            snap(app, "05-autosave-resume")
-        }
-    }
-
-    private func snap(_ app: XCUIApplication, _ name: String) {
-        let png = XCUIScreen.main.screenshot().pngRepresentation
-        try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
-    }
-}
-
-/// The two-button footer on each screen that uses it. Back is the chevron in the navigation bar.
-/// Shots land in /tmp/r3hab-footer-shots. Run on a fresh install so onboarding shows.
-final class FooterShots: XCTestCase {
-    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-footer-shots", isDirectory: true)
-
-    override func setUpWithError() throws {
-        continueAfterFailure = false
-        try? FileManager.default.removeItem(at: shotDir)
-        try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
-    }
-
-    func testFooterOnEachScreen() throws {
-        let app = XCUIApplication()
-        app.launch()
-
-        // Onboarding: Not now on the left, Continue on the right.
         let notNow = app.buttons["Not now"]
-        if notNow.waitForExistence(timeout: 8) {
-            snap(app, "01-onboarding")
-            XCTAssertTrue(app.buttons["Continue"].exists, app.debugDescription)
-            XCTAssertEqual(notNow.frame.height, app.buttons["Continue"].frame.height, accuracy: 1)
-            XCTAssertLessThan(notNow.frame.minX, app.buttons["Continue"].frame.minX)
-            notNow.tap()
-        }
+        if notNow.waitForExistence(timeout: 8) { notNow.tap() }
         let poster = element(app, "today-poster")
         XCTAssertTrue(poster.waitForExistence(timeout: 10), app.debugDescription)
+        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
+        let back = app.buttons["prototype-back"]
+        let next = app.buttons["prototype-next"]
 
-        // Exercise: one Next. No Back on step 1.
-        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 8), app.debugDescription)
-        for _ in 0..<4 {
-            if row.exists && row.isHittable { row.tap() }
-            if element(app, "prototype-guided-exercise").waitForExistence(timeout: 3) { break }
-        }
-        XCTAssertTrue(app.buttons["prototype-cancel"].exists, app.debugDescription)
-        XCTAssertTrue(app.buttons["guided-save-draft"].exists, app.debugDescription)
-        XCTAssertFalse(app.buttons["prototype-back"].isHittable)
-        snap(app, "02-exercise")
-        app.buttons["prototype-next"].tap()
+        // Back on step 1 with nothing entered: the sheet closes and no draft is made.
+        openRecorder(app)
+        XCTAssertFalse(app.buttons["prototype-cancel"].exists, "There is no close (x) button")
+        XCTAssertTrue(app.buttons["guided-save-draft"].exists)
+        back.tap()
+        XCTAssertTrue(element(app, "guided-session-screen").waitForNonExistence(timeout: 4), app.debugDescription)
+        XCTAssertFalse(draftRow.waitForExistence(timeout: 2), "An untouched log must not make a draft")
 
-        // Warm-up, no sets: Add warm-up and Skip.
-        XCTAssertTrue(element(app, "prototype-guided-warmup").waitForExistence(timeout: 4), app.debugDescription)
-        let add = app.buttons["prototype-guided-warmup-add"]
-        XCTAssertTrue(add.waitForExistence(timeout: 4), app.debugDescription)
-        let skip = app.buttons["prototype-guided-warmup-skip"]
-        XCTAssertTrue(skip.exists, app.debugDescription)
-        XCTAssertEqual(skip.label, "Skip")
-        XCTAssertEqual(add.frame.height, skip.frame.height, accuracy: 1)
-        XCTAssertEqual(add.frame.midY, skip.frame.midY, accuracy: 1)
-        XCTAssertLessThan(add.frame.minX, skip.frame.minX)
-        XCTAssertTrue(app.buttons["prototype-back"].isHittable)
-        snap(app, "03-warmup-no-sets")
-
-        // Warm-up, after two adds: Add warm-up and Done.
-        add.tap()
+        // Warm-up 1: hold, from the template.
+        openRecorder(app)
+        next.tap()
         XCTAssertTrue(element(app, "prototype-guided-warmup-step-1").waitForExistence(timeout: 4), app.debugDescription)
-        add.tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-hold-ruler").exists, "Warm-up 1 is a hold")
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-skip"].exists)
+        XCTAssertEqual(app.buttons.matching(identifier: "prototype-next").count, 1, "One button in the footer")
+        snap(app, "01-warmup-1-hold")
+
+        // Warm-up 2: reps, the ramp.
+        next.tap()
         XCTAssertTrue(element(app, "prototype-guided-warmup-step-2").waitForExistence(timeout: 4), app.debugDescription)
-        let done = app.buttons["prototype-guided-warmup-yes"]
-        XCTAssertTrue(done.waitForExistence(timeout: 3), app.debugDescription)
-        XCTAssertEqual(done.label, "Done")
-        XCTAssertFalse(skip.exists)
-        snap(app, "04-warmup-after-adding-sets")
-        done.tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-reps-ruler").exists, "Warm-up 2 is reps, not a hold")
+        XCTAssertTrue((element(app, "prototype-guided-warmup-reps-ruler").value as? String ?? "").hasPrefix("3 reps"))
+        snap(app, "02-warmup-2-reps-ramp")
 
-        // Set 1 at the target: one button.
+        // Warm-up 3: two done nodes on the stepper.
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-3").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue((element(app, "prototype-guided-warmup-reps-ruler").value as? String ?? "").hasPrefix("2 reps"))
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-node-1"].exists, "Done node 1 opens")
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-node-2"].exists, "Done node 2 opens")
+        XCTAssertFalse(app.buttons["prototype-guided-warmup-node-3"].exists, "The current node is not a button")
+        snap(app, "03-warmup-stepper-two-done")
+
+        // "+" from the last step: an extra step, a copy of the last step.
+        app.buttons["prototype-guided-warmup-add"].tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-4").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue((element(app, "prototype-guided-warmup-reps-ruler").value as? String ?? "").hasPrefix("2 reps"))
+        snap(app, "04-plus-extra-step")
+
+        // Tap done node 1: warm-up 1 opens with its values and a Delete control.
+        app.buttons["prototype-guided-warmup-node-1"].tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-1").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(element(app, "prototype-guided-warmup-hold-ruler").exists)
+        let delete = app.buttons["prototype-guided-warmup-remove"]
+        XCTAssertTrue(delete.exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["prototype-guided-warmup-skip"].exists)
+        snap(app, "05-reopened-node-delete")
+
+        // Delete: three nodes stay. The first unfinished step (the extra step) opens.
+        delete.tap()
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-3").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertFalse(element(app, "prototype-guided-warmup-node-4").exists, app.debugDescription)
+        XCTAssertFalse(element(app, "prototype-guided-warmup-hold-ruler").exists, "The hold step is gone")
+        snap(app, "06-after-delete")
+
+        // Set 1 at the target: one Next. No "Same as target".
+        next.tap()
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
-        XCTAssertTrue(app.buttons["prototype-guided-same-as-target"].exists)
-        XCTAssertFalse(app.buttons["prototype-next"].exists)
-        snap(app, "05-set-at-target")
+        XCTAssertFalse(app.buttons["prototype-guided-same-as-target"].exists)
+        XCTAssertEqual(app.buttons.matching(identifier: "prototype-next").count, 1)
+        snap(app, "07-set-at-target")
 
-        // Set 1 changed: Same as target on the left, Next on the right.
+        // Set 1 changed: the delta label shows. Next records the shown values.
         let ruler = element(app, "prototype-guided-set-1-load-ruler")
-        XCTAssertTrue(ruler.waitForExistence(timeout: 4), app.debugDescription)
+        let atTarget = ruler.value as? String ?? ""
         let start = ruler.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
         start.press(forDuration: 0.15, thenDragTo: start.withOffset(CGVector(dx: -45, dy: 0)), withVelocity: .slow, thenHoldForDuration: 0.4)
-        let next = app.buttons["prototype-next"]
-        XCTAssertTrue(next.waitForExistence(timeout: 3), app.debugDescription)
-        let same = app.buttons["prototype-guided-same-as-target"]
-        XCTAssertEqual(same.frame.height, next.frame.height, accuracy: 1)
-        XCTAssertLessThan(same.frame.minX, next.frame.minX)
-        snap(app, "06-set-changed")
+        sleep(1)
+        let changed = ruler.value as? String ?? ""
+        XCTAssertNotEqual(changed, atTarget, "The drag must change the load")
+        snap(app, "08-set-changed")
         next.tap()
         XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
 
-        // Back chevron: set 2 to set 1.
-        app.buttons["prototype-back"].tap()
+        // Tap done set node 1: set 1 opens with the recorded values.
+        app.buttons["prototype-guided-set-node-1"].tap()
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertEqual(element(app, "prototype-guided-set-1-load-ruler").value as? String, changed)
+        snap(app, "09-set-stepper-tapped-done-node")
+        // Next goes back to the first unfinished step: set 2.
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
 
-        // Step dots: a later dot does nothing. A completed dot opens that step.
-        let laterDot = element(app, "prototype-progress-step-5")
-        if laterDot.exists { laterDot.tap() }
-        XCTAssertTrue(element(app, "prototype-guided-set-1").exists, "A later dot must not move forward")
-        element(app, "prototype-progress-step-1").tap()
-        XCTAssertTrue(element(app, "prototype-guided-exercise").waitForExistence(timeout: 4), app.debugDescription)
-        snap(app, "07-dot-jump-to-step-1")
+        // Back from set 2: set 1 with its values kept.
+        back.tap()
+        XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertEqual(element(app, "prototype-guided-set-1-load-ruler").value as? String, changed, "Back does not revert")
+        snap(app, "10-back-from-set-values-kept")
 
-        // Forward to pain.
-        app.buttons["prototype-next"].tap()
-        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].waitForExistence(timeout: 4), app.debugDescription)
-        app.buttons["prototype-guided-warmup-yes"].tap()
-        for _ in 0..<8 {
-            if element(app, "prototype-guided-pain").exists { break }
-            let nextSet = app.buttons["prototype-next"]
-            let sameSet = app.buttons["prototype-guided-same-as-target"]
-            if nextSet.exists { nextSet.tap() } else if sameSet.waitForExistence(timeout: 2) { sameSet.tap() }
-            sleep(1)
+        // Back to step 1, then Back once more: the draft is saved and the sheet closes.
+        for _ in 0..<8 where !element(app, "prototype-guided-exercise").exists {
+            back.tap()
+            _ = element(app, "prototype-guided-exercise").waitForExistence(timeout: 1)
         }
-        XCTAssertTrue(element(app, "prototype-guided-pain").waitForExistence(timeout: 4), app.debugDescription)
-        XCTAssertFalse(app.buttons["prototype-next"].isEnabled, "Next waits for a pain score")
-        snap(app, "08-pain-no-score")
-        app.buttons["prototype-pain-chip-2"].tap()
-        XCTAssertTrue(app.buttons["prototype-next"].isEnabled)
-        snap(app, "09-pain")
-        app.buttons["prototype-next"].tap()
-        XCTAssertTrue(element(app, "prototype-guided-notes").waitForExistence(timeout: 4), app.debugDescription)
-        snap(app, "10-notes")
-        app.buttons["prototype-next"].tap()
-        XCTAssertTrue(element(app, "prototype-guided-review").waitForExistence(timeout: 4), app.debugDescription)
-        snap(app, "11-review")
+        back.tap()
+        XCTAssertTrue(element(app, "guided-session-screen").waitForNonExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(draftRow.waitForExistence(timeout: 6), app.debugDescription)
+        XCTAssertTrue(poster.label.hasPrefix("0 sessions"), poster.label)
+        snap(app, "11-today-draft-after-back")
 
-        // Cancel (x) closes without a save.
-        app.buttons["prototype-cancel"].tap()
-        XCTAssertTrue(poster.waitForExistence(timeout: 8), app.debugDescription)
-
-        // Manual session form from Log: Save, then Save draft next to it after a change.
-        openPastSession(app)
-        let save = app.buttons["Save"].firstMatch
-        XCTAssertTrue(save.waitForExistence(timeout: 6), app.debugDescription)
-        snap(app, "12-session-form")
-        XCTAssertFalse(app.buttons["Save draft"].exists, "Save draft waits for a change")
-        let legPress = app.buttons["Leg press"]
-        XCTAssertTrue(legPress.waitForExistence(timeout: 3), app.debugDescription)
-        legPress.tap()
-        let saveDraft = app.buttons["Save draft"]
-        XCTAssertTrue(saveDraft.waitForExistence(timeout: 3), app.debugDescription)
-        XCTAssertEqual(saveDraft.frame.height, save.frame.height, accuracy: 1)
-        XCTAssertLessThan(saveDraft.frame.minX, save.frame.minX)
-        sleep(1)
-        snap(app, "13-session-form-changed")
-        let cancel = app.buttons["Cancel"].firstMatch
-        if cancel.exists { cancel.tap() }
-        sleep(1)
-
-        // Apple Health explainer from Settings: Not now on the left, Continue on the right.
-        openHealthExplainer(app)
+        // Resume opens at the first unfinished step with the values.
+        draftRow.tap()
+        XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 6), app.debugDescription)
+        app.buttons["prototype-guided-set-node-1"].tap()
+        XCTAssertEqual(element(app, "prototype-guided-set-1-load-ruler").value as? String, changed)
+        XCTAssertFalse(element(app, "prototype-guided-warmup-node-4").exists)
     }
 
-    private func openPastSession(_ app: XCUIApplication) {
-        let logTab = app.tabBars.buttons.element(boundBy: 1)
-        XCTAssertTrue(logTab.waitForExistence(timeout: 4), app.debugDescription)
-        logTab.tap()
-        let addPast = app.buttons["Add a past day"]
-        XCTAssertTrue(addPast.waitForExistence(timeout: 6), app.debugDescription)
-        addPast.tap()
-        let pastSession = app.buttons["Add a past session"]
-        XCTAssertTrue(pastSession.waitForExistence(timeout: 4), app.debugDescription)
-        pastSession.tap()
-        let cont = app.buttons["Continue"]
-        XCTAssertTrue(cont.waitForExistence(timeout: 4), app.debugDescription)
-        cont.tap()
-    }
-
-    private func openHealthExplainer(_ app: XCUIApplication) {
-        app.tabBars.buttons.element(boundBy: 0).tap()
-        let bar = app.navigationBars["Today"]
-        XCTAssertTrue(bar.waitForExistence(timeout: 6), app.debugDescription)
-        bar.buttons.element(boundBy: bar.buttons.count - 1).tap()
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 6), app.debugDescription)
-        let connect = app.buttons["Connect"]
-        for _ in 0..<6 where !connect.exists { app.swipeUp() }
-        guard connect.waitForExistence(timeout: 2) else {
-            snap(app, "14-settings-no-connect")
-            return
+    private func openRecorder(_ app: XCUIApplication) {
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), app.debugDescription)
+        for _ in 0..<4 {
+            if row.exists && row.isHittable { row.tap() }
+            if element(app, "prototype-guided-exercise").waitForExistence(timeout: 3) { return }
         }
-        connect.tap()
-        let explainer = element(app, "appleHealthPermission")
-        XCTAssertTrue(explainer.waitForExistence(timeout: 4), app.debugDescription)
-        snap(app, "14-apple-health-explainer")
+        XCTFail("The recorder did not open. \(app.debugDescription)")
     }
 
     private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {

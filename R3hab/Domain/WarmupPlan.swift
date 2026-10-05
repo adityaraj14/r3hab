@@ -87,14 +87,14 @@ enum WarmupSource: Equatable, Sendable {
     case lastSession
     /// Made from today's working load.
     case template
-    /// No history and no working load. The steps have no load.
+    /// No history and no working load. The template steps have no load.
     case blank
 
     var label: String {
         switch self {
         case .lastSession: return "From last session"
         case .template: return "From today's load"
-        case .blank: return "Add a warm-up set"
+        case .blank: return "Standard warm-up"
         }
     }
 }
@@ -106,23 +106,21 @@ struct WarmupPlan: Equatable, Sendable {
     /// Old warm-up rows can store "2 × 30 s". Do not make more steps than this from one row.
     static let maxHoldsFromOneRow = 4
 
-    /// Finished warm-up sets the user has added. Starts empty.
+    /// One step per node on the warm-up stepper. Prefill copies the plan here.
+    /// Next records the values on screen and goes to the next step.
     var steps: [WarmupStep]
-    /// Planned steps that feed the composer (last session or template). Not finished until Add.
+    /// The plan (last session or template). The target for each step.
+    /// A step past the end of the plan is an extra step (from the "+" node).
     var planned: [WarmupStep]
-    /// Index into `planned` for the next composer values. Past the end, the last plan step repeats.
-    var planIndex: Int
     var source: WarmupSource
 
     init(
         steps: [WarmupStep] = [],
         planned: [WarmupStep] = [],
-        planIndex: Int = 0,
         source: WarmupSource
     ) {
         self.steps = steps
         self.planned = planned
-        self.planIndex = planIndex
         self.source = source
     }
 
@@ -187,37 +185,36 @@ struct WarmupPlan: Equatable, Sendable {
 
     /// 1. The last saved warm-up, if there is one.
     /// 2. Else the template from today's working load.
-    /// 3. Else no plan (composer uses Hold 30 s / Reps 3).
-    /// Finished `steps` always start empty. Prefill feeds `planned` for the composer.
+    /// 3. Else the template with no load: hold, then 3 reps, then 2 reps.
+    /// The steps start as a copy of the plan. There is always at least one step.
     static func prefill(
         sessions: [TrainingSessionSnapshot],
         workingLoad: Double?,
         loadStep: Double
     ) -> WarmupPlan {
+        let plan: [WarmupStep]
+        let source: WarmupSource
         if let last = lastWarmup(from: sessions) {
-            return WarmupPlan(steps: [], planned: last, planIndex: 0, source: .lastSession)
+            plan = last
+            source = .lastSession
+        } else if let workingLoad, workingLoad > 0 {
+            plan = template(workingLoad: workingLoad, loadStep: loadStep)
+            source = .template
+        } else {
+            plan = template(workingLoad: nil, loadStep: loadStep)
+            source = .blank
         }
-        if let workingLoad, workingLoad > 0 {
-            return WarmupPlan(
-                steps: [],
-                planned: template(workingLoad: workingLoad, loadStep: loadStep),
-                planIndex: 0,
-                source: .template
-            )
-        }
-        return WarmupPlan(steps: [], planned: [], planIndex: 0, source: .blank)
+        return WarmupPlan(steps: plan, planned: plan, source: source)
     }
 
-    /// Composer values for the current plan step. Empty plan → Hold 30 s defaults.
-    func composerForPlan() -> WarmupComposer {
-        guard !planned.isEmpty else { return .empty }
-        let step: WarmupStep
-        if planIndex < planned.count {
-            step = planned[planIndex]
-        } else {
-            step = planned[planned.count - 1]
-        }
-        return WarmupComposer(from: step)
+    /// The planned values for step `index`. Nil for an extra step.
+    func target(at index: Int) -> WarmupStep? {
+        planned.indices.contains(index) ? planned[index] : nil
+    }
+
+    /// True for a step that the "+" node added.
+    func isExtra(at index: Int) -> Bool {
+        index >= planned.count
     }
 
     /// Default reps when the kind toggle is Reps.
@@ -245,36 +242,33 @@ struct WarmupPlan: Equatable, Sendable {
 
     // MARK: Edits
 
-    /// Adds a finished warm-up set from the composer. Returns false when the list is full.
+    /// The "+" node. Adds a copy of the last step, or a 30 s hold when there are no steps.
+    /// Returns false when the stepper is full.
     @discardableResult
-    mutating func addCommitted(_ step: WarmupStep) -> Bool {
+    mutating func addStep() -> Bool {
         guard steps.count < Self.maxSteps else { return false }
-        var copy = step
-        copy.fromLastSession = false
-        steps.append(copy)
-        return true
-    }
-
-    /// Commits a finished set and advances the plan index.
-    @discardableResult
-    mutating func addFromComposer(_ step: WarmupStep) -> Bool {
-        guard addCommitted(step) else { return false }
-        planIndex += 1
-        return true
-    }
-
-    /// Adds a copy of the last step, or a 30 s hold when there are no steps.
-    mutating func addStep() {
-        guard steps.count < Self.maxSteps else { return }
         if let last = steps.last {
             steps.append(WarmupStep(kind: last.kind, seconds: last.seconds, reps: last.reps, loadLbs: last.loadLbs))
         } else {
             steps.append(.hold())
         }
+        return true
     }
 
-    mutating func removeStep(id: UUID) {
-        steps.removeAll { $0.id == id }
+    /// Removes the extra steps. A skipped warm-up keeps only the plan.
+    mutating func removeExtraSteps() {
+        if steps.count > planned.count {
+            steps = Array(steps.prefix(planned.count))
+        }
+    }
+
+    /// Delete set. The plan entry goes too, so each later step keeps its own target.
+    mutating func removeStep(at index: Int) {
+        guard steps.indices.contains(index) else { return }
+        steps.remove(at: index)
+        if planned.indices.contains(index) {
+            planned.remove(at: index)
+        }
     }
 
     /// Changes one step. The step is no longer marked as from the last session.
@@ -288,51 +282,5 @@ struct WarmupPlan: Equatable, Sendable {
 
     func resistanceSets() -> [ResistanceSet] {
         steps.map { $0.resistanceSet() }
-    }
-}
-
-struct WarmupComposer: Equatable, Sendable {
-    var kind: WarmupStep.Kind = .hold
-    var seconds: Int = WarmupPlan.holdSeconds
-    var reps: Int = WarmupPlan.defaultReps
-    var loadLbs: Double? = nil
-
-    /// Empty warm-up: Hold at 30 s, no load.
-    static let empty = WarmupComposer()
-
-    /// Prefill a planned step into the rulers and the Hold/Reps toggle.
-    init(from step: WarmupStep) {
-        self.kind = step.kind
-        self.seconds = step.seconds
-        self.reps = step.reps
-        self.loadLbs = step.loadLbs
-    }
-
-    init(
-        kind: WarmupStep.Kind = .hold,
-        seconds: Int = WarmupPlan.holdSeconds,
-        reps: Int = WarmupPlan.defaultReps,
-        loadLbs: Double? = nil
-    ) {
-        self.kind = kind
-        self.seconds = seconds
-        self.reps = reps
-        self.loadLbs = loadLbs
-    }
-
-    mutating func selectKind(_ next: WarmupStep.Kind) {
-        guard next != kind else { return }
-        kind = next
-        seconds = WarmupPlan.holdSeconds
-        reps = WarmupPlan.defaultReps
-    }
-
-    func makeStep() -> WarmupStep {
-        switch kind {
-        case .hold:
-            return WarmupStep.hold(seconds: seconds, loadLbs: loadLbs)
-        case .reps:
-            return WarmupStep.reps(reps, loadLbs: loadLbs)
-        }
     }
 }
