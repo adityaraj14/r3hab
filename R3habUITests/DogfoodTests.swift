@@ -131,6 +131,7 @@ private enum MotivationalQuotesForTest {
         "Believe.",
         "Hakuna matata.",
         "The night is darkest",
-        "The greatest threat to success"
+        "The greatest threat to success",
+        "A moving man will one day meet his luck."
     ]
 }

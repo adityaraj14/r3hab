@@ -272,15 +272,15 @@ final class WorkoutStreakTests: XCTestCase {
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let day1 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 1))!
         let day2 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 2))!
-        let day12 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 12))!
+        let day13 = calendar.date(from: DateComponents(year: 2026, month: 1, day: 13))!
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day1, calendar: calendar), 0)
         XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day2, calendar: calendar), 1)
-        XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day12, calendar: calendar), 0, "wraps after 11")
+        XCTAssertEqual(MotivationalQuotes.dailyIndex(on: day13, calendar: calendar), 0, "wraps after 12")
 
         let first = MotivationalQuotes.quote(on: day1, calendar: calendar)
         XCTAssertEqual(first.text, "Just keep swimming.")
         XCTAssertEqual(first.attribution, "Finding Nemo")
-        XCTAssertEqual(MotivationalQuotes.all.count, 11)
+        XCTAssertEqual(MotivationalQuotes.all.count, 12)
         XCTAssertEqual(MotivationalQuotes.all.map(\.attribution), [
             "Finding Nemo",
             "Rocky",
@@ -292,7 +292,8 @@ final class WorkoutStreakTests: XCTestCase {
             "Ted Lasso",
             "The Lion King",
             "The Dark Knight",
-            "Inspired by Atomic Habits"
+            "Inspired by Atomic Habits",
+            nil
         ])
         XCTAssertTrue(MotivationalQuotes.all.allSatisfy { quote in
             quote.text.count < 160

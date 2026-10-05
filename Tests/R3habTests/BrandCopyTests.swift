@@ -18,12 +18,14 @@ final class BrandCopyTests: XCTestCase {
                 "Believe. — Ted Lasso",
                 "Hakuna matata. — The Lion King",
                 "The night is darkest just before the dawn. — The Dark Knight",
-                "The greatest threat to success is not failure but boredom. Keep going. — Inspired by Atomic Habits"
+                "The greatest threat to success is not failure but boredom. Keep going. — Inspired by Atomic Habits",
+                "A moving man will one day meet his luck. — "
             ]
         )
-        XCTAssertEqual(MotivationalQuotes.all.count, 11)
-        XCTAssertEqual(Set(MotivationalQuotes.all.map(\.text)).count, 11)
-        XCTAssertTrue(MotivationalQuotes.all.allSatisfy { $0.attribution != nil }, "every line is attributed")
+        XCTAssertEqual(MotivationalQuotes.all.count, 12)
+        XCTAssertEqual(Set(MotivationalQuotes.all.map(\.text)).count, 12)
+        XCTAssertTrue(MotivationalQuotes.all.prefix(11).allSatisfy { $0.attribution != nil }, "the first 11 lines are attributed")
+        XCTAssertNil(MotivationalQuotes.all[11].attribution, "the source of Adi's slot 12 line is not known")
     }
 
     func testR3habVoiceProcessLinesAreGone() {
@@ -189,7 +191,13 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(bookLines.count, 1)
     }
 
-    func testQuoteAdvancesOncePerCalendarDayAndWrapsAcrossElevenSlots() {
+    func testAdisMovingManLineIsInSlotTwelve() {
+        let line = MotivationalQuotes.all[11]
+        XCTAssertEqual(line.text, "A moving man will one day meet his luck.")
+        XCTAssertNil(line.attribution)
+    }
+
+    func testQuoteAdvancesOncePerCalendarDayAndWrapsAcrossTwelveSlots() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         func day(_ d: Int) -> Date {
@@ -199,7 +207,8 @@ final class BrandCopyTests: XCTestCase {
         XCTAssertEqual(MotivationalQuotes.quote(on: day(1), calendar: calendar).text, "Just keep swimming.")
         XCTAssertEqual(MotivationalQuotes.quote(on: day(2), calendar: calendar).text, "Get up.")
         XCTAssertEqual(MotivationalQuotes.quote(on: day(11), calendar: calendar).attribution, "Inspired by Atomic Habits")
-        XCTAssertEqual(MotivationalQuotes.quote(on: day(12), calendar: calendar).text, "Just keep swimming.")
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(12), calendar: calendar).text, "A moving man will one day meet his luck.")
+        XCTAssertEqual(MotivationalQuotes.quote(on: day(13), calendar: calendar).text, "Just keep swimming.")
 
         // Same calendar day, any hour → same line. No tap offset exists.
         let morning = calendar.date(byAdding: .hour, value: 7, to: day(5))!

@@ -129,8 +129,9 @@ enum BrandCopy {
 }
 
 /// Adi’s signed-off cycle: the 10 attributed lines from PR 14, wording
-/// unchanged, plus his later Atomic Habits paraphrase as slot 11. One line
-/// per calendar day, no tap-to-cycle. No R3hab-voice process copy.
+/// unchanged, his later Atomic Habits paraphrase as slot 11, and his
+/// unattributed line as slot 12. One line per calendar day, no tap-to-cycle.
+/// No R3hab-voice process copy.
 enum MotivationalQuotes {
     static let all: [MotivationalQuote] = [
         MotivationalQuote(text: "Just keep swimming.", attribution: "Finding Nemo"),
@@ -146,7 +147,9 @@ enum MotivationalQuotes {
         MotivationalQuote(
             text: "The greatest threat to success is not failure but boredom. Keep going.",
             attribution: "Inspired by Atomic Habits"
-        )
+        ),
+        // Adi's line, Oct 2026. The source is not known, so no attribution.
+        MotivationalQuote(text: "A moving man will one day meet his luck.", attribution: nil)
     ]
 
     /// Day-of-year walk through the list. Advances once per calendar day.
