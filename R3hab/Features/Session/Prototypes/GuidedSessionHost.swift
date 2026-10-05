@@ -46,6 +46,8 @@ struct GuidedSessionHost: View {
     /// Values and step at load or at the last draft save.
     @State private var savedDraft: SessionPrototypeDraft?
     @State private var savedStep = 0
+    /// Blocks a second Save tap while the first write runs.
+    @State private var isSaving = false
 
     init(draftId: UUID? = nil, targetDate: Date = Date()) {
         self.draftId = draftId
@@ -168,6 +170,9 @@ struct GuidedSessionHost: View {
     }
 
     private func save() {
+        guard !isSaving else { return }
+        isSaving = true
+        defer { isSaving = false }
         do {
             try GuidedSessionStore.commit(
                 draft: draft,

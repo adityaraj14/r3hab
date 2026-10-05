@@ -3,7 +3,8 @@ import SwiftData
 
 /// History — chronological daily + session feed with backdate.
 /// Saved workout rows open SessionEditor. Guided drafts open the guided form.
-/// A past session uses SessionEditor. Check-in rows still swipe-delete.
+/// A past session uses SessionEditor. Swipe deletes a check-in or a session.
+/// Exact duplicate sessions on one day can be merged from the Sessions tab.
 struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
@@ -18,8 +19,10 @@ struct HistoryView: View {
     @State private var backdateKind: BackdateKind = .daily
     @State private var backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
     @State private var deleteDailyKey: String?
+    @State private var deleteSessionId: UUID?
     @State private var pendingBackdateDaily: Date?
     @State private var pendingBackdateSession: Date?
+    @State private var showMergeDuplicates = false
 
     private var calendar: Calendar { .current }
 
@@ -195,6 +198,38 @@ struct HistoryView: View {
                 }
                 Button("Cancel", role: .cancel) { deleteDailyKey = nil }
             }
+            .confirmationDialog(
+                "Delete this session?",
+                isPresented: Binding(
+                    get: { deleteSessionId != nil },
+                    set: { if !$0 { deleteSessionId = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Delete", role: .destructive) {
+                    if let id = deleteSessionId,
+                       let row = sessions.first(where: { $0.id == id }) {
+                        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
+                        modelContext.delete(row)
+                        try? modelContext.save()
+                        Haptics.warning()
+                    }
+                    deleteSessionId = nil
+                }
+                Button("Cancel", role: .cancel) { deleteSessionId = nil }
+            }
+            .confirmationDialog(
+                "Remove exact duplicate sessions?",
+                isPresented: $showMergeDuplicates,
+                titleVisibility: .visible
+            ) {
+                Button("Remove duplicates", role: .destructive) {
+                    mergeExactDuplicates()
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("R3hab removes only sessions that match on the same day: same exercise, same sets, and same pain scores. Distinct sessions stay.")
+            }
         }
     }
 
@@ -235,13 +270,51 @@ struct HistoryView: View {
         }
     }
 
+    private var duplicatePairs: [SessionDuplicate.Pair] {
+        SessionDuplicate.pairs(in: sessions.map(\.snapshot), calendar: calendar)
+    }
+
+    private func mergeExactDuplicates() {
+        let pairs = duplicatePairs
+        guard !pairs.isEmpty else { return }
+        for pair in pairs {
+            guard let row = sessions.first(where: { $0.id == pair.removeID }) else { continue }
+            NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
+            modelContext.delete(row)
+        }
+        try? modelContext.save()
+        Haptics.warning()
+    }
+
     private var workoutsList: some View {
         List {
+            if !duplicatePairs.isEmpty {
+                Section {
+                    Button {
+                        showMergeDuplicates = true
+                    } label: {
+                        Label(
+                            "Remove \(duplicatePairs.count) exact duplicate\(duplicatePairs.count == 1 ? "" : "s")",
+                            systemImage: "doc.on.doc"
+                        )
+                    }
+                    .accessibilityIdentifier("history-merge-duplicates")
+                } footer: {
+                    Text("R3hab found matching sessions on the same day. This keeps one of each pair.")
+                }
+            }
             ForEach(sessionRows, id: \.id) { session in
                 Button {
                     open(session)
                 } label: {
                     sessionRow(session)
+                }
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        deleteSessionId = session.id
+                    } label: {
+                        Label("Delete", systemImage: "trash")
+                    }
                 }
             }
         }

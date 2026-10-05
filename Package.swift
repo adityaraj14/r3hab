@@ -40,7 +40,8 @@ let package = Package(
                 "Domain/PendingQueue.swift",
                 "Domain/SessionSpacing.swift",
                 "Domain/WorkoutStreak.swift",
-                "Domain/NotificationRoute.swift"
+                "Domain/NotificationRoute.swift",
+                "Domain/SessionUpsert.swift"
             ]
         ),
         .testTarget(
@@ -63,7 +64,8 @@ let package = Package(
                 "TodayResolvePromptTests.swift",
                 "BackupLibraryTests.swift",
                 "BackupRestoreRoundTripTests.swift",
-                "TodayEveningPromptTests.swift"
+                "TodayEveningPromptTests.swift",
+                "SessionUpsertTests.swift"
             ]
         )
     ]

@@ -27,6 +27,7 @@
 		F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGuideCopy.swift; sourceTree = "<group>"; };
 		33852A11DB0D407691655972 /* SessionSpacing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSpacing.swift; sourceTree = "<group>"; };
 		C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStreak.swift; sourceTree = "<group>"; };
+		A11E0001A2B3C4D5E6F70061 /* SessionUpsert.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionUpsert.swift; sourceTree = "<group>"; };
 		A11E0001A2B3C4D5E6F70041 /* NotificationRoute.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationRoute.swift; sourceTree = "<group>"; };
 		B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodayPlanner.swift; sourceTree = "<group>"; };
 		A11E0001A2B3C4D5E6F70001 /* ProgressionEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionEngine.swift; sourceTree = "<group>"; };
@@ -97,6 +98,7 @@
 		15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1B0AF819C7A4F219B5816E9 /* PhaseGuideCopy.swift */; };
 		D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33852A11DB0D407691655972 /* SessionSpacing.swift */; };
 		D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */ = {isa = PBXBuildFile; fileRef = C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */; };
+		A11E0001A2B3C4D5E6F70062 /* SessionUpsert.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E0001A2B3C4D5E6F70061 /* SessionUpsert.swift */; };
 		A11E0001A2B3C4D5E6F70042 /* NotificationRoute.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E0001A2B3C4D5E6F70041 /* NotificationRoute.swift */; };
 		B7D2F8C4E6A35B7C9D1E2F3B /* TodayPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */; };
 		A11E0001A2B3C4D5E6F70002 /* ProgressionEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11E0001A2B3C4D5E6F70001 /* ProgressionEngine.swift */; };
@@ -277,6 +279,7 @@
 				A4B8C0D2E1F34567A89B0C1D /* BrandCopy.swift */,
 				33852A11DB0D407691655972 /* SessionSpacing.swift */,
 				C0D1E2F3A4B5467788990011 /* WorkoutStreak.swift */,
+				A11E0001A2B3C4D5E6F70061 /* SessionUpsert.swift */,
 				A11E0001A2B3C4D5E6F70041 /* NotificationRoute.swift */,
 				B7D2F8C4E6A35B7C9D1E2F3A /* TodayPlanner.swift */,
 				A11E0001A2B3C4D5E6F70001 /* ProgressionEngine.swift */,
@@ -393,6 +396,7 @@
 				15B539274C2F478186255DDC /* PhaseGuideCopy.swift in Sources */,
 				D798B8577F204EA0BB4051E4 /* SessionSpacing.swift in Sources */,
 				D0E1F2A3B4C5467788991122 /* WorkoutStreak.swift in Sources */,
+				A11E0001A2B3C4D5E6F70062 /* SessionUpsert.swift in Sources */,
 				A11E0001A2B3C4D5E6F70042 /* NotificationRoute.swift in Sources */,
 				B7D2F8C4E6A35B7C9D1E2F3B /* TodayPlanner.swift in Sources */,
 				A11E0001A2B3C4D5E6F70002 /* ProgressionEngine.swift in Sources */,
