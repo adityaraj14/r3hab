@@ -894,7 +894,18 @@ struct SessionEditor: View {
 
         let storedDuring = painDuring ?? PainScore.notLogged
         let storedAfter = resolvedPainAfter()
-        let reuseId = existingId ?? draftReuseID(for: persistKind)
+        let target = SessionUpsert.target(
+            preferredId: existingId,
+            sessions: sessions.map(\.snapshot),
+            day: displayDate,
+            preferring: sessionType,
+            calendar: calendar
+        )
+        let reuseId: UUID?
+        switch target {
+        case .update(let id): reuseId = id
+        case .insert: reuseId = nil
+        }
         let existingRow = reuseId.flatMap { id in sessions.first { $0.id == id } }
         if existingId != nil && existingRow == nil {
             presentError("This session is no longer available.")
@@ -947,16 +958,6 @@ struct SessionEditor: View {
         } catch {
             presentError(error.localizedDescription)
         }
-    }
-
-    private func draftReuseID(for kind: PersistKind) -> UUID? {
-        guard kind == .draft else { return nil }
-        return SessionDraft.openDraftID(
-            in: sessions.map(\.snapshot),
-            on: displayDate,
-            preferring: sessionType,
-            calendar: calendar
-        )
     }
 
     private func applyNotifications(

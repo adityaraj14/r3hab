@@ -21,10 +21,22 @@ enum GuidedSessionStore {
         calendar: Calendar = .current
     ) throws -> UUID {
         let checkpoint = GuidedCheckpointing.checkpoint(draft, stepIndex: stepIndex)
+        let snaps = try context.fetch(FetchDescriptor<TrainingSession>()).map(\.snapshot)
+        let target = SessionUpsert.target(
+            preferredId: draftId,
+            sessions: snaps,
+            day: date,
+            preferring: checkpoint.sessionType,
+            calendar: calendar
+        )
         let row: TrainingSession
-        if let existing = try draftRow(id: draftId, context: context) {
+        switch target {
+        case .update(let id):
+            guard let existing = try fetchRow(id: id, context: context) else {
+                throw GuidedSaveError(message: "This draft is no longer available.")
+            }
             row = existing
-        } else {
+        case .insert:
             row = TrainingSession(
                 date: date,
                 phase: checkpoint.phase,
@@ -72,12 +84,28 @@ enum GuidedSessionStore {
         guard let painDuring = draft.painDuring else {
             throw GuidedSaveError(message: SessionSaveIssue.missingPainDuring.message)
         }
+        let snaps = try context.fetch(FetchDescriptor<TrainingSession>()).map(\.snapshot)
+        let target = SessionUpsert.target(
+            preferredId: draftId,
+            sessions: snaps,
+            day: date,
+            preferring: draft.sessionType,
+            calendar: calendar
+        )
         let row: TrainingSession
-        if let existing = try draftRow(id: draftId, context: context) {
+        let isFirstFinalize: Bool
+        switch target {
+        case .update(let id):
+            guard let existing = try fetchRow(id: id, context: context) else {
+                throw GuidedSaveError(message: "This draft is no longer available.")
+            }
             row = existing
-            // The session is complete now. The pain-after reminder counts from this save.
-            row.createdAt = Date()
-        } else {
+            isFirstFinalize = existing.isDraft
+            if isFirstFinalize {
+                // The session is complete now. The pain-after reminder counts from this save.
+                row.createdAt = Date()
+            }
+        case .insert:
             row = TrainingSession(
                 date: date,
                 phase: draft.phase,
@@ -87,12 +115,15 @@ enum GuidedSessionStore {
                 calendar: calendar
             )
             context.insert(row)
+            isFirstFinalize = true
         }
         row.phase = draft.phase
         row.sessionType = draft.sessionType
         row.whatIDid = text
         row.painDuring = painDuring
-        row.painAfter = PainScore.notLogged
+        if isFirstFinalize {
+            row.painAfter = PainScore.notLogged
+        }
         row.notes = draft.notes
         row.setResistanceSets(sets)
         row.isDraft = false
@@ -103,16 +134,15 @@ enum GuidedSessionStore {
         } catch {
             throw GuidedSaveError(message: error.localizedDescription)
         }
-        schedule(row, settings: settings)
+        if isFirstFinalize {
+            schedule(row, settings: settings)
+        }
     }
 
-    /// Only an open draft can be reused. A finalized row is never overwritten here.
-    private static func draftRow(id: UUID?, context: ModelContext) throws -> TrainingSession? {
-        guard let id else { return nil }
+    private static func fetchRow(id: UUID, context: ModelContext) throws -> TrainingSession? {
         var descriptor = FetchDescriptor<TrainingSession>(predicate: #Predicate { $0.id == id })
         descriptor.fetchLimit = 1
-        guard let row = try context.fetch(descriptor).first, row.isDraft else { return nil }
-        return row
+        return try context.fetch(descriptor).first
     }
 
     private static func apply(_ checkpoint: GuidedCheckpoint, to row: TrainingSession) {
