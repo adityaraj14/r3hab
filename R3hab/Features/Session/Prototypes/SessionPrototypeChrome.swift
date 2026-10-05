@@ -21,21 +21,49 @@ extension View {
     }
 }
 
+/// Step dots in the navigation bar. Tap a completed dot to go back to that step.
+/// The current step and later steps do not respond.
 struct PrototypeProgressDots: View {
     var count: Int
     var index: Int
+    var onSelect: (Int) -> Void = { _ in }
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 0) {
             ForEach(0..<count, id: \.self) { step in
-                Capsule()
-                    .fill(fill(for: step))
-                    .frame(width: step == index ? 18 : 6, height: 6)
+                dot(step)
             }
         }
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier(SessionPrototypeAccessibility.progress)
         .accessibilityLabel("Step \(index + 1) of \(count)")
+    }
+
+    @ViewBuilder
+    private func dot(_ step: Int) -> some View {
+        if let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index) {
+            Button { onSelect(target) } label: { capsule(step) }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(SessionPrototypeAccessibility.progressStep(step))
+                .accessibilityLabel("Step \(step + 1)")
+                .accessibilityHint("Go back to this step.")
+        } else {
+            capsule(step)
+                .accessibilityElement()
+                .accessibilityIdentifier(SessionPrototypeAccessibility.progressStep(step))
+                .accessibilityLabel("Step \(step + 1)")
+                .accessibilityAddTraits(step == index ? .isSelected : [])
+        }
+    }
+
+    private func capsule(_ step: Int) -> some View {
+        Capsule()
+            .fill(fill(for: step))
+            .frame(width: step == index ? 18 : 6, height: 6)
+            // A larger tap area than the dot.
+            .padding(.horizontal, 4)
+            .frame(height: 44)
+            .contentShape(Rectangle())
     }
 
     private func fill(for step: Int) -> Color {

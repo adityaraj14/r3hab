@@ -188,4 +188,17 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: nil, setCount: 3), 3)
     }
 
+    func testStepDotsJumpBackOnly() {
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 0, current: 3), 0)
+        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 2, current: 3), 2)
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 3, current: 3), "The current step is not a jump")
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 4, current: 3), "A later step does not open")
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: -1, current: 3))
+        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 0, current: 0))
+    }
+
+    func testWarmupPrimaryIsSkipUntilASetIsAdded() {
+        XCTAssertEqual(SessionPrototypePlan.warmupPrimaryTitle(hasWarmupSets: false), "Skip")
+        XCTAssertEqual(SessionPrototypePlan.warmupPrimaryTitle(hasWarmupSets: true), "Done")
+    }
 }

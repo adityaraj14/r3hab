@@ -18,7 +18,7 @@ extension View {
             }
             .tint(AppTheme.gold)
             .preferredColorScheme(.dark)
-            // A drag on a ruler must not close the sheet. Use Cancel to close.
+            // A drag on a ruler must not close the sheet. Use the close (x) button.
             .interactiveDismissDisabled()
         }
     }
@@ -79,14 +79,17 @@ struct GuidedSessionHost: View {
         .navigationTitle(rowId == nil ? "Record session" : "Continue the draft")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Cancel") { dismiss() }
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.cancel)
-            }
-            ToolbarItem(placement: .primaryAction) {
+            // The step view puts Back and the step dots on the leading side and in the center.
+            ToolbarItemGroup(placement: .topBarTrailing) {
                 Button("Save draft") { saveDraft(closeAfter: true) }
                     .disabled(!didLoad)
                     .accessibilityIdentifier(SessionPrototypeAccessibility.saveDraft)
+                Button { dismiss() } label: {
+                    Image(systemName: "xmark")
+                        .font(.body.weight(.semibold))
+                }
+                .accessibilityLabel("Cancel")
+                .accessibilityIdentifier(SessionPrototypeAccessibility.cancel)
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) {

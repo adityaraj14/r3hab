@@ -36,27 +36,8 @@ struct OnboardingView: View {
             .animation(.easeInOut(duration: 0.25), value: page)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            VStack(spacing: 12) {
-                Button {
-                    if page < pageCount - 1 {
-                        withAnimation { page += 1 }
-                    } else {
-                        Task {
-                            await finish(
-                                phase: phase,
-                                enableNotifications: wantNotifications,
-                                injuryID: selectedInjuryID,
-                                primaryLoadID: selectedPrimaryLoadID
-                            )
-                        }
-                    }
-                } label: {
-                    Text(primaryCTATitle)
-                }
-                .buttonStyle(.primaryAction)
-                .disabled(isBusy)
-
-                Button("Not now") {
+            ActionFooter(
+                secondary: FooterAction("Not now", isEnabled: !isBusy) {
                     Task {
                         let skipped = OnboardingCompletion.result(
                             skipped: true,
@@ -72,11 +53,22 @@ struct OnboardingView: View {
                             primaryLoadID: skipped.primaryLoadID
                         )
                     }
+                },
+                primary: FooterAction(primaryCTATitle, isEnabled: !isBusy) {
+                    if page < pageCount - 1 {
+                        withAnimation { page += 1 }
+                    } else {
+                        Task {
+                            await finish(
+                                phase: phase,
+                                enableNotifications: wantNotifications,
+                                injuryID: selectedInjuryID,
+                                primaryLoadID: selectedPrimaryLoadID
+                            )
+                        }
+                    }
                 }
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .disabled(isBusy)
-            }
+            )
             .padding(.horizontal, 24)
             .padding(.bottom, 20)
             .padding(.top, 8)

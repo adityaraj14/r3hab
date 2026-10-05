@@ -47,20 +47,12 @@ struct AppleHealthPermissionView: View {
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
             Spacer()
-            Button {
-                Task { await connect() }
-            } label: {
-                if isRequesting {
-                    ProgressView()
-                } else {
-                    Text("Continue")
+            ActionFooter(
+                secondary: FooterAction("Not now", isEnabled: !isRequesting) { dismiss() },
+                primary: FooterAction("Continue", isEnabled: !isRequesting) {
+                    Task { await connect() }
                 }
-            }
-            .buttonStyle(.primaryAction)
-            .disabled(isRequesting)
-            Button("Not now") { dismiss() }
-                .buttonStyle(.quietAction)
-                .disabled(isRequesting)
+            )
         }
         .padding(24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)

@@ -41,6 +41,11 @@ enum SessionPrototypeAccessibility {
     static func painChip(_ score: Int) -> String {
         "prototype-pain-chip-\(score)"
     }
+
+    /// A step dot in the navigation bar. `index` is 0-based. The id is 1-based.
+    static func progressStep(_ index: Int) -> String {
+        "prototype-progress-step-\(index + 1)"
+    }
 }
 
 enum GuidedPrompt: Equatable, Sendable {
@@ -219,6 +224,18 @@ enum SessionPrototypePlan {
         steps.append(contentsOf: (0..<setCount).map { .set($0) })
         steps.append(contentsOf: [.pain, .notes, .review])
         return steps
+    }
+
+    /// A tap on a step dot. Only a completed step (before the current step) opens.
+    /// Returns nil for the current step or a later step.
+    static func jumpTarget(tapped: Int, current: Int) -> Int? {
+        guard tapped >= 0, tapped < current else { return nil }
+        return tapped
+    }
+
+    /// The warm-up primary. "Skip" until a warm-up set is added. Then "Done".
+    static func warmupPrimaryTitle(hasWarmupSets: Bool) -> String {
+        hasWarmupSets ? "Done" : "Skip"
     }
 
     /// After the finger lifts, a flick adds at most this many steps.

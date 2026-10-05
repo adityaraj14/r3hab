@@ -11,7 +11,7 @@ struct GuidedSessionLogView: View {
     var onCheckpointSave: () -> Void = {}
 
     @FocusState private var notesFocused: Bool
-    /// Rulers for the next warm-up set. Not stored until "Add warm-up set".
+    /// Rulers for the next warm-up set. Not stored until "Add warm-up".
     @State private var warmupComposer = WarmupComposer.empty
     @State private var warmupComposerSeeded = false
 
@@ -33,8 +33,6 @@ struct GuidedSessionLogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PrototypeProgressDots(count: max(prompts.count, 1), index: min(index, max(prompts.count - 1, 0)))
-                .padding(.top, 12)
             Group {
                 if prompt == .review || prompt == .notes || prompt == .pain || prompt == .warmup {
                     ScrollView {
@@ -71,6 +69,28 @@ struct GuidedSessionLogView: View {
         // The set screen rulers use drags, so the step swipe is off there.
         .simultaneousGesture(swipe, including: isSetPrompt ? .subviews : .all)
         .toolbar {
+            // Back sits at the leading edge. Cancel is the close (x) button on the trailing side.
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: back) {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 44)
+                        .contentShape(Rectangle())
+                }
+                // Hidden on step 1. The space stays, so the dots do not move.
+                .opacity(index > 0 ? 1 : 0)
+                .disabled(index == 0)
+                .accessibilityHidden(index == 0)
+                .accessibilityLabel("Back")
+                .accessibilityIdentifier(SessionPrototypeAccessibility.back)
+            }
+            ToolbarItem(placement: .principal) {
+                PrototypeProgressDots(
+                    count: max(prompts.count, 1),
+                    index: min(index, max(prompts.count - 1, 0)),
+                    onSelect: jump(to:)
+                )
+            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") { notesFocused = false }
@@ -156,8 +176,8 @@ struct GuidedSessionLogView: View {
                     .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSource)
             }
             Text(draft.warmup.steps.isEmpty
-                 ? "Set the rulers. Then add the warm-up set."
-                 : "Add another warm-up, or select Warm-up done.")
+                 ? "Set the rulers. Then select Add warm-up."
+                 : "Add another warm-up, or select Done.")
                 .font(.subheadline)
                 .foregroundStyle(AppTheme.quiet)
 
@@ -462,91 +482,71 @@ struct GuidedSessionLogView: View {
         .font(.subheadline.weight(.semibold))
     }
 
-    @ViewBuilder
+    /// One `ActionFooter` per step. Back is in the navigation bar.
     private var bottomBar: some View {
-        VStack(spacing: 10) {
-            switch prompt {
-            case .exercise:
-                Button("Next") { advance() }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-            case .warmup:
-                if draft.warmup.steps.count < WarmupPlan.maxSteps {
-                    Button {
-                        addWarmupSet()
-                    } label: {
-                        Label(
-                            draft.warmup.steps.isEmpty ? "Add warm-up set" : "Add another warm-up",
-                            systemImage: "plus"
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupAdd)
-                }
-                if draft.warmup.steps.isEmpty {
-                    Button("Skip warm-up") {
-                        draft.includeWarmup = false
-                        onCheckpointSave()
-                        advance()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSkip)
-                } else {
-                    Button("Warm-up done") {
-                        draft.includeWarmup = true
-                        onCheckpointSave()
-                        advance()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.ivory)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupYes)
-                }
-            case .set(let setIndex):
-                setActions(setIndex)
-            case .pain:
-                if draft.painDuring != nil {
-                    Button("Next") { advance() }
-                        .buttonStyle(.primaryAction)
-                        .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-                }
-            case .notes:
-                Button(notesAreEmpty ? "Skip" : "Next") { advance() }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-            case .review:
-                Button("Save") { onSave() }
-                    .buttonStyle(.primaryAction)
-                    .disabled(draft.painDuring == nil)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.save)
-            }
-            if index > 0 {
-                Button("Back", action: back)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.back)
-            }
+        switch prompt {
+        case .exercise:
+            return ActionFooter(primary: nextAction())
+        case .warmup:
+            return warmupFooter
+        case .set(let setIndex):
+            return setFooter(setIndex)
+        case .pain:
+            return ActionFooter(primary: nextAction(isEnabled: draft.painDuring != nil))
+        case .notes:
+            return ActionFooter(primary: nextAction(title: notesAreEmpty ? "Skip" : "Next"))
+        case .review:
+            return ActionFooter(primary: FooterAction(
+                "Save",
+                identifier: SessionPrototypeAccessibility.save,
+                isEnabled: draft.painDuring != nil,
+                action: onSave
+            ))
         }
     }
 
-    @ViewBuilder
-    private func setActions(_ setIndex: Int) -> some View {
+    private func nextAction(title: String = "Next", isEnabled: Bool = true) -> FooterAction {
+        FooterAction(title, identifier: SessionPrototypeAccessibility.next, isEnabled: isEnabled) { advance() }
+    }
+
+    /// Add on the left. Skip (no sets yet) or Done on the right.
+    private var warmupFooter: ActionFooter {
+        let hasSets = !draft.warmup.steps.isEmpty
+        let add = draft.warmup.steps.count < WarmupPlan.maxSteps
+            ? FooterAction(
+                "Add warm-up",
+                systemImage: "plus",
+                identifier: SessionPrototypeAccessibility.guidedWarmupAdd,
+                action: addWarmupSet
+            )
+            : nil
+        let finish = FooterAction(
+            SessionPrototypePlan.warmupPrimaryTitle(hasWarmupSets: hasSets),
+            identifier: hasSets ? SessionPrototypeAccessibility.guidedWarmupYes : SessionPrototypeAccessibility.guidedWarmupSkip
+        ) {
+            draft.includeWarmup = hasSets
+            onCheckpointSave()
+            advance()
+        }
+        return ActionFooter(secondary: add, primary: finish)
+    }
+
+    /// The set matches the target: one button. The set is changed: "Same as target" on the left, Next on the right.
+    private func setFooter(_ setIndex: Int) -> ActionFooter {
         let matches = draft.sets.indices.contains(setIndex)
             && draft.sets[setIndex].matchesTarget(draft.target)
-        if matches {
-            Button("Same as target") { confirmTarget(setIndex) }
-                .buttonStyle(.primaryAction)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedSame)
-        } else {
-            Button("Same as target") { confirmTarget(setIndex) }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedSame)
-            Button("Next") { recordWorkingSetAndAdvance() }
-                .buttonStyle(.primaryAction)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.next)
+        let same = FooterAction("Same as target", identifier: SessionPrototypeAccessibility.guidedSame) {
+            confirmTarget(setIndex)
         }
+        if matches {
+            return ActionFooter(primary: same)
+        }
+        return ActionFooter(
+            secondary: same,
+            primary: FooterAction("Next", identifier: SessionPrototypeAccessibility.next) {
+                recordWorkingSetAndAdvance()
+            }
+        )
     }
 
     private func recordWorkingSetAndAdvance() {
@@ -592,5 +592,13 @@ struct GuidedSessionLogView: View {
         notesFocused = false
         guard index > 0 else { return }
         index -= 1
+    }
+
+    /// A step dot tap. Only a completed step opens.
+    private func jump(to step: Int) {
+        guard let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index) else { return }
+        notesFocused = false
+        index = target
+        Haptics.light()
     }
 }

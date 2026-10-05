@@ -10,6 +10,7 @@
 		99066D8CD9C34E9081E6E951 /* PhaseChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseChip.swift; sourceTree = "<group>"; };
 		B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparklineView.swift; sourceTree = "<group>"; };
 		E7A1C3D5B9F24A6E8C0D11A1 /* ProgressChartPrototypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressChartPrototypes.swift; sourceTree = "<group>"; };
+		F00DE5A1B2C3D4E5F6A7B8C9 /* ActionFooter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ActionFooter.swift; sourceTree = "<group>"; };
 		A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTheme.swift; sourceTree = "<group>"; };
 		C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlowLayout.swift; sourceTree = "<group>"; };
 		47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBootstrap.swift; sourceTree = "<group>"; };
@@ -82,6 +83,7 @@
 		79E27029191247DC802802AF /* PhaseChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99066D8CD9C34E9081E6E951 /* PhaseChip.swift */; };
 		1C18B27EEE924E13AC286DE3 /* SparklineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */; };
 		E7A1C3D5B9F24A6E8C0D11A2 /* ProgressChartPrototypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7A1C3D5B9F24A6E8C0D11A1 /* ProgressChartPrototypes.swift */; };
+		F00DE5A1B2C3D4E5F6A7B8CA /* ActionFooter.swift in Sources */ = {isa = PBXBuildFile; fileRef = F00DE5A1B2C3D4E5F6A7B8C9 /* ActionFooter.swift */; };
 		A9C1E7B3D5F24A6B8C0D1E30 /* AppTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */; };
 		C3D5E7F9A1B24C6D8E0F1A2C /* FlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */; };
 		FDA3629C61C34CC3BD1D6245 /* AppBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 47BB8B5BD9DC42688F8565F5 /* AppBootstrap.swift */; };
@@ -248,6 +250,7 @@
 				99066D8CD9C34E9081E6E951 /* PhaseChip.swift */,
 				B81CF2C5AE5A42B3B8314242 /* SparklineView.swift */,
 				E7A1C3D5B9F24A6E8C0D11A1 /* ProgressChartPrototypes.swift */,
+				F00DE5A1B2C3D4E5F6A7B8C9 /* ActionFooter.swift */,
 				A9C1E7B3D5F24A6B8C0D1E2F /* AppTheme.swift */,
 				C3D5E7F9A1B24C6D8E0F1A2B /* FlowLayout.swift */,
 			);
@@ -409,6 +412,7 @@
 				D3B5C7E9F1023456B8C0D2E4 /* SessionEditorChrome.swift in Sources */,
 				D4E6F8A0B2C35D7E9F1A2B3D /* DailyCheckInValues.swift in Sources */,
 				E5F7A9B1C3D46E8FA0B2C3D5 /* DailyCheckInStore.swift in Sources */,
+				F00DE5A1B2C3D4E5F6A7B8CA /* ActionFooter.swift in Sources */,
 				A9C1E7B3D5F24A6B8C0D1E30 /* AppTheme.swift in Sources */,
 				C3D5E7F9A1B24C6D8E0F1A2C /* FlowLayout.swift in Sources */,
 				61E4D877AD7E4703858A2A8F /* DailyCheckInEditor.swift in Sources */,
