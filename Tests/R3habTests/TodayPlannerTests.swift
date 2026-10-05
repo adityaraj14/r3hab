@@ -122,13 +122,13 @@ final class TodayPlannerTests: XCTestCase {
         XCTAssertEqual(TodayPlanner.nextAction(input(morning: true, restDay: false)), .logSession)
     }
 
-    func testIsEveningUsesReminderTime() {
+    func testIsEveningStartsAtFivePMOrEarlierReminder() {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = TimeZone(identifier: "UTC")!
-        let at1829 = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 18, minute: 29))!
-        let at1830 = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 18, minute: 30))!
-        XCTAssertFalse(TodayPlanner.isEvening(now: at1829, pmReminderHour: 18, pmReminderMinute: 30, calendar: cal))
-        XCTAssertTrue(TodayPlanner.isEvening(now: at1830, pmReminderHour: 18, pmReminderMinute: 30, calendar: cal))
+        let at1659 = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 16, minute: 59))!
+        let at1700 = cal.date(from: DateComponents(year: 2026, month: 9, day: 12, hour: 17, minute: 0))!
+        XCTAssertFalse(TodayPlanner.isEvening(now: at1659, pmReminderHour: 18, pmReminderMinute: 30, calendar: cal))
+        XCTAssertTrue(TodayPlanner.isEvening(now: at1700, pmReminderHour: 18, pmReminderMinute: 30, calendar: cal))
     }
 
     func testRecentMissingAfterPainDropsStaleSessionsAndSortsNewestFirst() {

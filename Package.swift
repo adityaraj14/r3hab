@@ -62,7 +62,8 @@ let package = Package(
                 "NotificationRouteTests.swift",
                 "TodayResolvePromptTests.swift",
                 "BackupLibraryTests.swift",
-                "BackupRestoreRoundTripTests.swift"
+                "BackupRestoreRoundTripTests.swift",
+                "TodayEveningPromptTests.swift"
             ]
         )
     ]
