@@ -136,3 +136,16 @@ final class BackupLibraryTests: XCTestCase {
         XCTAssertEqual(BackupCopy.restoredMessage(sessions: 1, checkIns: 2), "R3hab restored 1 session and 2 check-ins.")
     }
 }
+
+    /// Before a restore replaces data, the current backup is added to the list first.
+    func testSafetyBackupKeepsCurrentDataInList() throws {
+        let library = try BackupLibrary(directory: dir)
+        let current = backup(exportedAt: "2026-10-05T12:00:00Z", sessionDays: ["2026-10-05"])
+        let older = backup(exportedAt: "2026-10-03T12:00:00Z", sessionDays: ["2026-10-01"])
+        let restoreTarget = try library.add(older)
+        // Safety step: keep the current data, then the restore source is still there.
+        let safety = try library.add(current)
+        XCTAssertEqual(library.entries().count, 2)
+        XCTAssertEqual(safety.summary.sessionCount, 1)
+        XCTAssertEqual(try library.data(for: restoreTarget), older)
+    }

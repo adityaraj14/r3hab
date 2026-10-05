@@ -84,10 +84,15 @@ struct BackupListView: View {
     private func restore(_ entry: BackupLibrary.Entry) {
         do {
             guard let library else { throw ExportImportError.decodeFailed }
+            // Keep the current data in the list before replace. You can restore it if this was a mistake.
+            if let safety = try? ExportImportService.exportBackup(context: modelContext) {
+                _ = try? library.add(safety)
+            }
             let data = try library.data(for: entry)
             let result = try BackupRestore.restore(data, mode: .replace, context: modelContext)
             router.requestNotificationSync()
             Haptics.light()
+            reload()
             present("Restore complete", BackupCopy.restoredMessage(sessions: result.sessions, checkIns: result.checkIns))
         } catch {
             present("Restore failed", error.localizedDescription)
