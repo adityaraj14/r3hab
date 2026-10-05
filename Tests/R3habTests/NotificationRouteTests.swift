@@ -37,6 +37,20 @@ final class NotificationRouteTests: XCTestCase {
         )
     }
 
+    func testIncompleteRecordsOpensToday() {
+        XCTAssertEqual(
+            NotificationRoute.parse(
+                identifier: IncompleteRecords.notificationId,
+                userInfo: ["kind": "incomplete"]
+            ),
+            NotificationOpen(sessionId: nil, kind: .incomplete)
+        )
+        XCTAssertEqual(
+            NotificationRoute.parse(identifier: IncompleteRecords.notificationId, userInfo: [:]),
+            NotificationOpen(sessionId: nil, kind: .incomplete)
+        )
+    }
+
     func testOverdueAndDailyRemindersOpenToday() {
         XCTAssertEqual(
             NotificationRoute.parse(identifier: "hard-session-overdue", userInfo: ["kind": "hardOverdue"]),

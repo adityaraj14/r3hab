@@ -8,6 +8,7 @@ enum NotificationScheduler {
     static let pmReminderId = "pm-reminder"
     static let leftoverStretchIds = (0..<3).map { "stretch-\($0)" }
     static let hardOverdueId = NotificationRoute.hardOverdueId
+    static let incompleteId = NotificationRoute.incompleteId
 
     /// Remind after the session has settled — not mid-cooldown, not next morning
     /// (that's the 24h resolve). 30 minutes is enough to shower and still remember.
@@ -116,6 +117,7 @@ enum NotificationScheduler {
         pendingSessions: [(id: UUID, date: Date, snoozedUntil: Date?)],
         painAfterSessions: [(id: UUID, createdAt: Date)] = [],
         lastHardDate: Date? = nil,
+        incompleteBody: String? = nil,
         now: Date = Date(),
         calendar: Calendar = .current
     ) async {
@@ -128,7 +130,7 @@ enum NotificationScheduler {
             await center.removePendingNotificationRequests(withIdentifiers: dailyIds)
             let pending = await center.pendingNotificationRequests()
             let ids = pending.map(\.identifier).filter {
-                $0.hasPrefix("pending-") || $0.hasPrefix("pain-after-") || $0 == hardOverdueId
+                $0.hasPrefix("pending-") || $0.hasPrefix("pain-after-") || $0 == hardOverdueId || $0 == incompleteId
             }
             if !ids.isEmpty {
                 await center.removePendingNotificationRequests(withIdentifiers: ids)
@@ -155,6 +157,14 @@ enum NotificationScheduler {
             minute: pmMinute,
             title: "Evening check-in",
             body: "Record the daily pain and the steps for today.",
+            calendar: calendar
+        )
+
+        await reconcileIncompleteRecords(
+            body: incompleteBody,
+            amHour: amHour,
+            amMinute: amMinute,
+            now: now,
             calendar: calendar
         )
 
@@ -416,6 +426,35 @@ enum NotificationScheduler {
         let ids = [pendingId(for: sessionId), painAfterId(for: sessionId)]
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: ids)
         UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ids)
+    }
+
+
+    /// One morning reminder for earlier-day incomplete records. Cancelled when the list is empty.
+    static func reconcileIncompleteRecords(
+        body: String?,
+        amHour: Int,
+        amMinute: Int,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) async {
+        let center = UNUserNotificationCenter.current()
+        await center.removePendingNotificationRequests(withIdentifiers: [incompleteId])
+        guard let body, !body.isEmpty else { return }
+        let fire = IncompleteRecords.notificationFireDate(
+            now: now,
+            amHour: amHour,
+            amMinute: amMinute,
+            calendar: calendar
+        )
+        let content = UNMutableNotificationContent()
+        content.title = IncompleteRecords.Copy.notificationTitle
+        content.body = body
+        content.sound = .default
+        content.userInfo = ["kind": NotificationOpenKind.incomplete.rawValue]
+        let comps = pendingTriggerComponents(fire: fire, calendar: calendar)
+        let trigger = UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+        let request = UNNotificationRequest(identifier: incompleteId, content: content, trigger: trigger)
+        await add(request)
     }
 
     static func cancelAllPendingAndReminders() {
