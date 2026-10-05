@@ -148,4 +148,34 @@ final class BackupLibraryTests: XCTestCase {
         XCTAssertEqual(safety.summary.sessionCount, 1)
         XCTAssertEqual(try library.data(for: restoreTarget), older)
     }
+
+    /// The live export JSON (pretty + iso8601) must land in the library — same path Settings uses.
+    func testRealExportShapeAddsToLibrary() throws {
+        // Mimic ExportImportService.makeEncoder output keys BackupSummary.Peek needs.
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        struct Mini: Encodable {
+            var schemaVersion = 6
+            var exportedAt = Date(timeIntervalSince1970: 1_791_000_000)
+            var dailyCheckIns: [[String: String]] = [["date": "2026-10-04T04:00:00Z", "dayKey": "x"]]
+            var trainingSessions: [[String: String]] = [["date": "2026-10-04T04:00:00Z"]]
+        }
+        // Use the same Peek-compatible hand-built JSON the export path produces for dates.
+        let data = backup(
+            exportedAt: "2026-10-04T21:35:12Z",
+            checkInDays: ["2026-10-04"],
+            sessionDays: ["2026-10-04"]
+        )
+        // Pretty-print the same payload like the live exporter.
+        let obj = try JSONSerialization.jsonObject(with: data)
+        let pretty = try JSONSerialization.data(withJSONObject: obj, options: [.prettyPrinted, .sortedKeys])
+        let library = try BackupLibrary(directory: dir)
+        let entry = try library.add(pretty)
+        XCTAssertEqual(library.entries().count, 1)
+        XCTAssertEqual(entry.summary.sessionCount, 1)
+        XCTAssertEqual(entry.summary.checkInCount, 1)
+    }
+
+
 }

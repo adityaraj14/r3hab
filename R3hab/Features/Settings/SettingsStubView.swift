@@ -137,6 +137,7 @@ struct SettingsStubView: View {
                 } label: {
                     Label("Export a JSON backup", systemImage: "square.and.arrow.up")
                 }
+                .accessibilityIdentifier("settings-export-backup")
                 .disabled(isBusy)
 
                 Button {
@@ -418,7 +419,11 @@ struct SettingsStubView: View {
         do {
             let data = try ExportImportService.exportBackup(context: modelContext)
             // Keep a copy for Settings → Backups. The share sheet still opens if this fails.
-            _ = try? BackupLibrary.app().add(data)
+            do {
+                _ = try BackupLibrary.app().add(data)
+            } catch {
+                assertionFailure("Backup library add failed: \(error)")
+            }
             let name = "R3hab-backup-\(Date().formatted(.iso8601.year().month().day())).json"
             let url = FileManager.default.temporaryDirectory.appendingPathComponent(name)
             try data.write(to: url, options: .atomic)
