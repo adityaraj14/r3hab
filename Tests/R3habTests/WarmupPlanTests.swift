@@ -98,8 +98,56 @@ final class WarmupPlanTests: XCTestCase {
     func testPrefillWithNoHistoryAndNoLoadIsBlank() {
         let plan = WarmupPlan.prefill(sessions: [], workingLoad: nil, loadStep: 5)
         XCTAssertEqual(plan.source, .blank)
-        XCTAssertEqual(plan.steps.count, 3)
-        XCTAssertTrue(plan.steps.allSatisfy { $0.loadLbs == nil })
+        // Empty list so the screen shows Hold at 30 s ready to add.
+        XCTAssertTrue(plan.steps.isEmpty)
+    }
+
+    func testComposerDefaultsHoldAt30AndRepsAt3() {
+        let empty = WarmupComposer.empty
+        XCTAssertEqual(empty.kind, .hold)
+        XCTAssertEqual(empty.seconds, 30)
+        XCTAssertEqual(empty.reps, 3)
+        XCTAssertNil(empty.loadLbs)
+
+        var composer = WarmupComposer.empty
+        composer.selectKind(.reps)
+        XCTAssertEqual(composer.kind, .reps)
+        XCTAssertEqual(composer.reps, 3)
+        XCTAssertEqual(composer.seconds, 30) // kept for a later toggle back
+
+        composer.selectKind(.hold)
+        XCTAssertEqual(composer.seconds, 30)
+
+        let step = WarmupComposer(kind: .hold, seconds: 30, loadLbs: 10).makeStep()
+        XCTAssertEqual(step.kind, .hold)
+        XCTAssertEqual(step.seconds, 30)
+        XCTAssertEqual(step.loadLbs, 10)
+    }
+
+    func testHoldRulerMapsThirtySeconds() {
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: WarmupPlan.holdSecondsIndex(30)), 30)
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: 0), 5)
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: WarmupPlan.holdSecondsIndexCount - 1), 120)
+    }
+
+    func testAddCommittedAppendsAndCapsAtMax() {
+        var plan = WarmupPlan(steps: [], source: .blank)
+        XCTAssertTrue(plan.addCommitted(.hold(seconds: 30, loadLbs: nil)))
+        XCTAssertEqual(plan.steps.count, 1)
+        XCTAssertEqual(plan.steps[0].seconds, 30)
+        for _ in 0..<WarmupPlan.maxSteps {
+            _ = plan.addCommitted(.reps(3, loadLbs: 20))
+        }
+        XCTAssertEqual(plan.steps.count, WarmupPlan.maxSteps)
+        XCTAssertFalse(plan.addCommitted(.hold()))
+    }
+
+    func testComposerAfterAddingKeepsKindAndLoad() {
+        let step = WarmupStep.reps(5, loadLbs: 25)
+        let next = WarmupComposer.afterAdding(step)
+        XCTAssertEqual(next.kind, .reps)
+        XCTAssertEqual(next.reps, 3)
+        XCTAssertEqual(next.loadLbs, 25)
     }
 
     func testPrefillWithNoLoadStillPrefersTheLastWarmup() {

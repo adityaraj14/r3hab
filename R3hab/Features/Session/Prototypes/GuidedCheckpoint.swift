@@ -116,6 +116,11 @@ enum GuidedCheckpointing {
         leavingForeground && changedSinceSave
     }
 
+    /// Save right after a warm-up set is added or removed, or a working set is recorded.
+    static func shouldAutosaveOnRecord(changedSinceSave: Bool) -> Bool {
+        changedSinceSave
+    }
+
     private static func sameWarmup(_ a: [WarmupStep], _ b: [WarmupStep]) -> Bool {
         guard a.count == b.count else { return false }
         return zip(a, b).allSatisfy { lhs, rhs in

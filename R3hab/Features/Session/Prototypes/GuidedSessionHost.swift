@@ -64,7 +64,8 @@ struct GuidedSessionHost: View {
                     draft: $draft,
                     index: $stepIndex,
                     spacingWarning: spacingWarning,
-                    onSave: save
+                    onSave: save,
+                    onCheckpointSave: { saveDraft(closeAfter: false) }
                 )
             } else {
                 AppTheme.canvas

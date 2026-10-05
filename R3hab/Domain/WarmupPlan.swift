@@ -94,7 +94,7 @@ enum WarmupSource: Equatable, Sendable {
         switch self {
         case .lastSession: return "From last session"
         case .template: return "From today's load"
-        case .blank: return "Set the load"
+        case .blank: return "Add a warm-up set"
         }
     }
 }
@@ -182,10 +182,44 @@ struct WarmupPlan: Equatable, Sendable {
         if let workingLoad, workingLoad > 0 {
             return WarmupPlan(steps: template(workingLoad: workingLoad, loadStep: loadStep), source: .template)
         }
-        return WarmupPlan(steps: template(workingLoad: nil, loadStep: loadStep), source: .blank)
+        // Empty list: the warm-up screen shows Hold at 30 s and Load, ready to add.
+        return WarmupPlan(steps: [], source: .blank)
+    }
+
+    /// Default reps when the kind toggle is Reps.
+    static let defaultReps = 3
+    static let minHoldSeconds = 5
+    static let maxHoldSeconds = 120
+    static let minReps = 1
+    static let maxReps = 20
+
+    /// Hold ruler: 5, 10, … 120 seconds.
+    static var holdSecondsIndexCount: Int {
+        ((maxHoldSeconds - minHoldSeconds) / holdSecondsStep) + 1
+    }
+
+    static func holdSecondsIndex(_ seconds: Int) -> Int {
+        let clamped = min(max(seconds, minHoldSeconds), maxHoldSeconds)
+        let stepped = ((clamped - minHoldSeconds + holdSecondsStep / 2) / holdSecondsStep) * holdSecondsStep + minHoldSeconds
+        return min(max((stepped - minHoldSeconds) / holdSecondsStep, 0), holdSecondsIndexCount - 1)
+    }
+
+    static func holdSeconds(atIndex index: Int) -> Int {
+        let i = min(max(index, 0), holdSecondsIndexCount - 1)
+        return minHoldSeconds + i * holdSecondsStep
     }
 
     // MARK: Edits
+
+    /// Adds a finished warm-up set from the composer. Returns false when the list is full.
+    @discardableResult
+    mutating func addCommitted(_ step: WarmupStep) -> Bool {
+        guard steps.count < Self.maxSteps else { return false }
+        var copy = step
+        copy.fromLastSession = false
+        steps.append(copy)
+        return true
+    }
 
     /// Adds a copy of the last step, or a 30 s hold when there are no steps.
     mutating func addStep() {
@@ -212,5 +246,43 @@ struct WarmupPlan: Equatable, Sendable {
 
     func resistanceSets() -> [ResistanceSet] {
         steps.map { $0.resistanceSet() }
+    }
+}
+
+/// Values on the warm-up rulers before "Add warm-up set".
+/// Hold starts at 30 seconds. Reps starts at 3. Load starts empty.
+struct WarmupComposer: Equatable, Sendable {
+    var kind: WarmupStep.Kind = .hold
+    var seconds: Int = WarmupPlan.holdSeconds
+    var reps: Int = WarmupPlan.defaultReps
+    var loadLbs: Double? = nil
+
+    /// Empty warm-up: Hold at 30 s, no load.
+    static let empty = WarmupComposer()
+
+    /// After a set is added, keep the kind and load; reset the amount to the default for that kind.
+    static func afterAdding(_ step: WarmupStep) -> WarmupComposer {
+        WarmupComposer(
+            kind: step.kind,
+            seconds: WarmupPlan.holdSeconds,
+            reps: WarmupPlan.defaultReps,
+            loadLbs: step.loadLbs
+        )
+    }
+
+    mutating func selectKind(_ next: WarmupStep.Kind) {
+        guard next != kind else { return }
+        kind = next
+        seconds = WarmupPlan.holdSeconds
+        reps = WarmupPlan.defaultReps
+    }
+
+    func makeStep() -> WarmupStep {
+        switch kind {
+        case .hold:
+            return WarmupStep.hold(seconds: seconds, loadLbs: loadLbs)
+        case .reps:
+            return WarmupStep.reps(reps, loadLbs: loadLbs)
+        }
     }
 }
