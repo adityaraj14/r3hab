@@ -319,8 +319,14 @@ struct GuidedSessionLogView: View {
 
     private func setStep(_ setIndex: Int) -> some View {
         let set = draft.sets.indices.contains(setIndex) ? draft.sets[setIndex] : nil
+        let recommended = max(draft.target.workingSets, draft.sets.count, 1)
         return VStack(spacing: 14) {
-            Text("Set \(setIndex + 1) of \(max(draft.sets.count, 1))")
+            PrototypeSetStepper(
+                total: recommended,
+                filled: SessionPrototypePlan.setStepperFilled(currentSetIndex: setIndex, setCount: recommended),
+                current: setIndex
+            )
+            Text("Set \(setIndex + 1) of \(recommended)")
                 .font(.caption.weight(.bold))
                 .tracking(1.2)
                 .foregroundStyle(AppTheme.gold)

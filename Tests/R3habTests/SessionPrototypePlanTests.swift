@@ -177,4 +177,11 @@ final class SessionPrototypePlanTests: XCTestCase {
             resistanceSets: rows
         )
     }
+    func testSetStepperFillsAsEachSetIsLogged() {
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 0, setCount: 3), 0)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 1, setCount: 3), 1)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 2, setCount: 3), 2)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: nil, setCount: 3), 3)
+    }
+
 }

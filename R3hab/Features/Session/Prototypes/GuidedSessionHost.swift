@@ -65,7 +65,10 @@ struct GuidedSessionHost: View {
                     index: $stepIndex,
                     spacingWarning: spacingWarning,
                     onSave: save,
-                    onCheckpointSave: { saveDraft(closeAfter: false) }
+                    onCheckpointSave: {
+                        guard GuidedCheckpointing.shouldAutosaveOnRecord(changedSinceSave: changedSinceSave) else { return }
+                        saveDraft(closeAfter: false)
+                    }
                 )
             } else {
                 AppTheme.canvas
