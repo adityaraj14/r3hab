@@ -68,7 +68,7 @@ final class BackupLibraryTests: XCTestCase {
         XCTAssertEqual(entry.url.lastPathComponent, "R3hab-backup-20261004T213512Z.json")
         XCTAssertEqual(entry.fileSize, data.count)
         XCTAssertEqual(try Data(contentsOf: entry.url), data)
-        XCTAssertEqual(library.entries(), [entry])
+        XCTAssertEqual(library.entries().map(\.id), [entry.id])
         XCTAssertEqual(try library.data(for: entry), data)
     }
 
@@ -89,7 +89,7 @@ final class BackupLibraryTests: XCTestCase {
         let gone = try library.add(backup(exportedAt: "2026-10-03T10:00:00Z"))
         try library.delete(gone)
         XCTAssertFalse(FileManager.default.fileExists(atPath: gone.url.path))
-        XCTAssertEqual(library.entries(), [keep])
+        XCTAssertEqual(library.entries().map(\.id), [keep.id])
     }
 
     /// A file from the file picker goes in the list. The same file again does not make a second row.
@@ -135,7 +135,6 @@ final class BackupLibraryTests: XCTestCase {
         XCTAssertEqual(BackupCopy.plural(1, "session"), "1 session")
         XCTAssertEqual(BackupCopy.restoredMessage(sessions: 1, checkIns: 2), "R3hab restored 1 session and 2 check-ins.")
     }
-}
 
     /// Before a restore replaces data, the current backup is added to the list first.
     func testSafetyBackupKeepsCurrentDataInList() throws {
@@ -149,3 +148,4 @@ final class BackupLibraryTests: XCTestCase {
         XCTAssertEqual(safety.summary.sessionCount, 1)
         XCTAssertEqual(try library.data(for: restoreTarget), older)
     }
+}

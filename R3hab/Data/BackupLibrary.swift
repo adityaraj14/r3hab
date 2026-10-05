@@ -44,6 +44,11 @@ struct BackupLibrary {
         var summary: BackupSummary
         var fileSize: Int
         var id: String { url.lastPathComponent }
+
+        /// Paths may be `/var/...` or `/private/var/...` (same folder on macOS).
+        static func == (lhs: Entry, rhs: Entry) -> Bool {
+            lhs.id == rhs.id && lhs.summary == rhs.summary && lhs.fileSize == rhs.fileSize
+        }
     }
 
     let directory: URL
