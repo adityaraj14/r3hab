@@ -4,6 +4,8 @@ enum NotificationOpenKind: String, Sendable {
     case pending
     case painAfter
     case hardOverdue
+    /// Earlier-day incomplete records. Opens Today to the pending card.
+    case incomplete
     /// Morning and evening reminders, and any other tap: open Today.
     case today
 }
@@ -18,6 +20,7 @@ enum NotificationRoute {
     static let pendingPrefix = "pending-"
     static let painAfterPrefix = "pain-after-"
     static let hardOverdueId = "hard-session-overdue"
+    static let incompleteId = IncompleteRecords.notificationId
 
     static func sessionId(fromPendingId identifier: String) -> UUID? {
         guard identifier.hasPrefix(pendingPrefix) else { return nil }
@@ -42,6 +45,8 @@ enum NotificationRoute {
             kind = parsed
         } else if identifier == hardOverdueId {
             kind = .hardOverdue
+        } else if identifier == incompleteId {
+            kind = .incomplete
         } else if identifier.hasPrefix(painAfterPrefix) {
             kind = .painAfter
         } else if identifier.hasPrefix(pendingPrefix) {
@@ -54,7 +59,7 @@ enum NotificationRoute {
         case .pending, .painAfter:
             guard let sessionId else { return NotificationOpen(sessionId: nil, kind: .today) }
             return NotificationOpen(sessionId: sessionId, kind: kind)
-        case .hardOverdue, .today:
+        case .hardOverdue, .incomplete, .today:
             return NotificationOpen(sessionId: nil, kind: kind)
         }
     }

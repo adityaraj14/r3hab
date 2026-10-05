@@ -60,6 +60,7 @@ private struct RootTabContent: View {
     @Environment(AppRouter.self) private var router
     @Query private var settingsList: [AppSettings]
     @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
+    @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     /// Same predicate as Today. The badge tracks who is still pending, not the
     /// full session list, so a resolve drops the count immediately.
     @Query(
@@ -172,7 +173,7 @@ private struct RootTabContent: View {
         } else {
             return
         }
-        let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: sessions)
+        let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: sessions, checkIns: checkIns)
         guard generation == syncGeneration else { return }
         await LogStore.reconcileNotifications(snapshot)
     }

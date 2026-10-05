@@ -24,6 +24,10 @@ struct HomeView: View {
     @State private var showSession = false
     /// Seated-extension ladder: the guided recorder, new or resumed.
     @State private var guidedSession: GuidedSessionRequest?
+    @State private var pastCheckInDate: Date?
+    @State private var pastCheckInFocus: DailyCheckInFocus = .full
+    @State private var pastSessionId: UUID?
+    @State private var discardDraftId: UUID?
     @State private var resolveTargetId: UUID?
     /// Answers saved in the resolve sheet before the pending query republishes.
     @State private var locallyResolved: [UUID: Response24h] = [:]
@@ -203,6 +207,9 @@ struct HomeView: View {
                     streakCard
                     header
                     nextUpCard(action)
+                    if !earlierIncomplete.isEmpty {
+                        incompleteRecordsCard(earlierIncomplete, promotes: IncompleteRecords.becomesMainCard(todayAction: action))
+                    }
                     if let phaseAStatus {
                         phaseALine(phaseAStatus)
                     }
@@ -234,6 +241,28 @@ struct HomeView: View {
                 NavigationStack { DailyCheckInEditor(targetDate: today, focus: .evening) }
                     .preferredColorScheme(.dark)
             }
+            .sheet(isPresented: Binding(
+                get: { pastCheckInDate != nil },
+                set: { if !$0 { pastCheckInDate = nil } }
+            )) {
+                if let date = pastCheckInDate {
+                    NavigationStack {
+                        DailyCheckInEditor(targetDate: date, focus: pastCheckInFocus)
+                    }
+                    .preferredColorScheme(.dark)
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { pastSessionId != nil },
+                set: { if !$0 { pastSessionId = nil } }
+            )) {
+                if let id = pastSessionId {
+                    NavigationStack {
+                        SessionEditor(existingId: id)
+                    }
+                    .preferredColorScheme(.dark)
+                }
+            }
             .sheet(isPresented: $showSession) {
                 NavigationStack {
                     SessionEditor(
@@ -264,6 +293,29 @@ struct HomeView: View {
                 if let id = afterPainTargetId {
                     AfterPainSheet(sessionId: id)
                 }
+            }
+            .confirmationDialog(
+                IncompleteRecords.Copy.discardTitle,
+                isPresented: Binding(
+                    get: { discardDraftId != nil },
+                    set: { if !$0 { discardDraftId = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button(IncompleteRecords.Copy.discardDraft, role: .destructive) {
+                    if let id = discardDraftId,
+                       let row = sessions.first(where: { $0.id == id && $0.isDraft }) {
+                        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
+                        modelContext.delete(row)
+                        try? modelContext.save()
+                        Haptics.warning()
+                        router.requestNotificationSync()
+                    }
+                    discardDraftId = nil
+                }
+                Button("Cancel", role: .cancel) { discardDraftId = nil }
+            } message: {
+                Text(IncompleteRecords.Copy.discardMessage)
             }
             .confirmationDialog(
                 "Record this session as rest?",
@@ -311,6 +363,90 @@ struct HomeView: View {
             Text(today.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    private var earlierIncomplete: [IncompleteItem] {
+        IncompleteRecords.items(
+            sessions: sessionSnaps,
+            checkIns: checkIns.map {
+                IncompleteDayCheckIn(
+                    date: $0.date,
+                    hasMorningPain: $0.restingPainAM != nil,
+                    hasEveningPain: $0.dailyPainPM != nil
+                )
+            },
+            now: Date(),
+            calendar: calendar
+        )
+    }
+
+    private func incompleteRecordsCard(_ items: [IncompleteItem], promotes: Bool) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text((promotes ? IncompleteRecords.Copy.cardTitle : IncompleteRecords.Copy.cardEyebrow).uppercased())
+                .font(.caption.weight(.semibold))
+                .tracking(1.1)
+                .foregroundStyle(AppTheme.quiet)
+            if promotes {
+                Text(IncompleteRecords.Copy.cardTitle)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+            }
+            ForEach(items) { item in
+                incompleteRow(item, emphasized: promotes)
+            }
+        }
+        .padding(promotes ? 16 : 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 16, style: .continuous)
+                .fill(promotes ? AppTheme.gold.opacity(0.16) : AppTheme.quietFill)
+        )
+        .accessibilityIdentifier("incomplete-records-card")
+    }
+
+    private func incompleteRow(_ item: IncompleteItem, emphasized: Bool) -> some View {
+        HStack(alignment: .center, spacing: 8) {
+            Button {
+                openIncomplete(item)
+            } label: {
+                Text(IncompleteRecords.Copy.line(item, now: Date(), calendar: calendar))
+                    .font(.subheadline.weight(emphasized ? .semibold : .regular))
+                    .foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .multilineTextAlignment(.leading)
+            }
+            .buttonStyle(.plain)
+            if case .unfinishedDraft(let id) = item.kind {
+                Button(IncompleteRecords.Copy.discardDraft) {
+                    discardDraftId = id
+                }
+                .buttonStyle(.quietCompact)
+            }
+        }
+    }
+
+    private func openIncomplete(_ item: IncompleteItem) {
+        switch item.kind {
+        case .unfinishedDraft(let id):
+            if let row = sessions.first(where: { $0.id == id }) {
+                if GuidedCheckpointing.resumesInGuidedForm(
+                    sessionType: row.sessionType,
+                    stepIndex: row.guidedStepIndex
+                ) {
+                    guidedSession = GuidedSessionRequest(draftId: id, targetDate: row.date)
+                } else {
+                    pastSessionId = id
+                }
+            }
+        case .missingMorningPain:
+            pastCheckInFocus = .morning
+            pastCheckInDate = item.day
+        case .missingEveningPain:
+            pastCheckInFocus = .evening
+            pastCheckInDate = item.day
+        case .due24hResponse(let id):
+            resolveTargetId = id
         }
     }
 

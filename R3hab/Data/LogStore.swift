@@ -17,6 +17,8 @@ enum LogStore {
         /// Calendar day of the most recent hard session (drives the miss cue).
         var lastHardDate: Date?
         var overdueCount: Int
+        /// STE body for the earlier-day incomplete reminder. Nil cancels it.
+        var incompleteBody: String? = nil
     }
 
     /// Deletes every daily check-in and training session. Keeps AppSettings.
@@ -54,9 +56,27 @@ enum LogStore {
     static func notificationSnapshot(
         settings: AppSettings,
         sessions: [TrainingSession],
-        now: Date = Date()
+        checkIns: [DailyCheckIn] = [],
+        now: Date = Date(),
+        calendar: Calendar = .current
     ) -> NotificationSnapshot {
-        NotificationSnapshot(
+        let sessionSnaps = sessions.map(\.snapshot)
+        let incomplete = IncompleteRecords.items(
+            sessions: sessionSnaps,
+            checkIns: checkIns.map {
+                IncompleteDayCheckIn(
+                    date: $0.date,
+                    hasMorningPain: $0.restingPainAM != nil,
+                    hasEveningPain: $0.dailyPainPM != nil
+                )
+            },
+            now: now,
+            calendar: calendar
+        )
+        let body: String? = IncompleteRecords.shouldScheduleNotification(items: incomplete)
+            ? IncompleteRecords.Copy.notificationBody(incomplete, now: now, calendar: calendar)
+            : nil
+        return NotificationSnapshot(
             notificationsEnabled: settings.notificationsEnabled,
             amHour: settings.amReminderHour,
             amMinute: settings.amReminderMinute,
@@ -65,7 +85,8 @@ enum LogStore {
             pendingSessions: pendingSessionTuples(from: sessions),
             painAfterSessions: painAfterSessionTuples(from: sessions),
             lastHardDate: lastHardDate(from: sessions),
-            overdueCount: PendingQueue.overdue(sessions: sessions.map(\.snapshot), now: now).count
+            overdueCount: PendingQueue.overdue(sessions: sessionSnaps, now: now).count,
+            incompleteBody: body
         )
     }
 
@@ -91,7 +112,8 @@ enum LogStore {
             pmMinute: snapshot.pmMinute,
             pendingSessions: snapshot.pendingSessions,
             painAfterSessions: snapshot.painAfterSessions,
-            lastHardDate: snapshot.lastHardDate
+            lastHardDate: snapshot.lastHardDate,
+            incompleteBody: snapshot.incompleteBody
         )
         NotificationScheduler.updateBadge(count: snapshot.overdueCount)
     }

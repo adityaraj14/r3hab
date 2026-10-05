@@ -41,7 +41,8 @@ let package = Package(
                 "Domain/SessionSpacing.swift",
                 "Domain/WorkoutStreak.swift",
                 "Domain/NotificationRoute.swift",
-                "Domain/SessionUpsert.swift"
+                "Domain/SessionUpsert.swift",
+                "Domain/IncompleteRecords.swift"
             ]
         ),
         .testTarget(
@@ -65,7 +66,8 @@ let package = Package(
                 "BackupLibraryTests.swift",
                 "BackupRestoreRoundTripTests.swift",
                 "TodayEveningPromptTests.swift",
-                "SessionUpsertTests.swift"
+                "SessionUpsertTests.swift",
+                "IncompleteRecordsTests.swift"
             ]
         )
     ]

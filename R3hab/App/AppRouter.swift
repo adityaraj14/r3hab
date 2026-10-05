@@ -34,7 +34,7 @@ final class AppRouter {
             if let id = open.sessionId { openAfterPain(sessionId: id) } else { openToday() }
         case .pending:
             if let id = open.sessionId { openResolve(sessionId: id) } else { openToday() }
-        case .hardOverdue, .today:
+        case .hardOverdue, .incomplete, .today:
             openToday()
         }
     }
