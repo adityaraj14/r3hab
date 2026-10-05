@@ -206,6 +206,14 @@ enum SessionPrototypePlan {
         ProgressionEngine.applySessionPain(draft.painDuring, to: draft.resistanceSets())
     }
 
+    /// How many working-set nodes are filled on the set stepper.
+    /// Sets before the current set index are logged. Past the last set, all are logged.
+    static func setStepperFilled(currentSetIndex: Int?, setCount: Int) -> Int {
+        let total = max(setCount, 0)
+        guard let currentSetIndex else { return total }
+        return min(max(currentSetIndex, 0), total)
+    }
+
     static func guidedPrompts(setCount: Int) -> [GuidedPrompt] {
         var steps: [GuidedPrompt] = [.exercise, .warmup]
         steps.append(contentsOf: (0..<setCount).map { .set($0) })

@@ -45,6 +45,69 @@ struct PrototypeProgressDots: View {
     }
 }
 
+/// Horizontal working-set progress. One node per recommended set. Filled nodes are logged.
+struct PrototypeSetStepper: View {
+    /// Recommended working sets (N).
+    var total: Int
+    /// How many sets are already logged (0...total).
+    var filled: Int
+    /// The set on screen now, if any.
+    var current: Int?
+
+    var body: some View {
+        let count = max(total, 1)
+        HStack(spacing: 10) {
+            ForEach(0..<count, id: \.self) { i in
+                node(i)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .ignore)
+        .accessibilityIdentifier("prototype-guided-set-stepper")
+        .accessibilityLabel(label)
+    }
+
+    private var label: String {
+        if let current {
+            return "Set \(current + 1) of \(max(total, 1)). \(min(filled, total)) logged."
+        }
+        return "\(min(filled, total)) of \(max(total, 1)) sets logged."
+    }
+
+    private func node(_ i: Int) -> some View {
+        let isCurrent = current == i
+        let isFilled = i < filled
+        return ZStack {
+            Circle()
+                .strokeBorder(isCurrent ? AppTheme.gold : AppTheme.quietStroke, lineWidth: isCurrent ? 2.5 : 1.5)
+                .background(Circle().fill(fill(isFilled: isFilled, isCurrent: isCurrent)))
+            if isFilled && !isCurrent {
+                Image(systemName: "checkmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(AppTheme.ink)
+            } else {
+                Text("\(i + 1)")
+                    .font(.caption.weight(.bold).monospacedDigit())
+                    .foregroundStyle(isCurrent || isFilled ? AppTheme.ink : AppTheme.quiet)
+            }
+        }
+        .frame(width: 28, height: 28)
+        .accessibilityLabel(nodeLabel(i, isFilled: isFilled, isCurrent: isCurrent))
+    }
+
+    private func fill(isFilled: Bool, isCurrent: Bool) -> Color {
+        if isCurrent { return AppTheme.gold }
+        if isFilled { return AppTheme.gold.opacity(0.85) }
+        return AppTheme.quietFill
+    }
+
+    private func nodeLabel(_ i: Int, isFilled: Bool, isCurrent: Bool) -> String {
+        if isCurrent { return "Set \(i + 1), current" }
+        if isFilled { return "Set \(i + 1), logged" }
+        return "Set \(i + 1), not logged"
+    }
+}
+
 struct PrototypePainReadout: View {
     var value: Int?
 

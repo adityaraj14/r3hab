@@ -64,13 +64,18 @@ final class WarmupPlanTests: XCTestCase {
         ])
         let plan = WarmupPlan.prefill(sessions: [older, newer], workingLoad: 60, loadStep: 5)
         XCTAssertEqual(plan.source, .lastSession)
-        XCTAssertEqual(plan.steps.count, 2)
-        XCTAssertEqual(plan.steps[0].kind, .hold)
-        XCTAssertEqual(plan.steps[0].seconds, 40)
-        XCTAssertEqual(plan.steps[1].kind, .reps)
-        XCTAssertEqual(plan.steps[1].reps, 4)
-        XCTAssertEqual(plan.steps[1].loadLbs, 30)
-        XCTAssertTrue(plan.steps.allSatisfy(\.fromLastSession))
+        XCTAssertTrue(plan.steps.isEmpty, "Finished list starts empty")
+        XCTAssertEqual(plan.planned.count, 2)
+        XCTAssertEqual(plan.planIndex, 0)
+        XCTAssertEqual(plan.planned[0].kind, .hold)
+        XCTAssertEqual(plan.planned[0].seconds, 40)
+        XCTAssertEqual(plan.planned[1].kind, .reps)
+        XCTAssertEqual(plan.planned[1].reps, 4)
+        XCTAssertEqual(plan.planned[1].loadLbs, 30)
+        XCTAssertTrue(plan.planned.allSatisfy(\.fromLastSession))
+        let composer = plan.composerForPlan()
+        XCTAssertEqual(composer.kind, .hold)
+        XCTAssertEqual(composer.seconds, 40)
     }
 
     func testPrefillSkipsSessionsWithoutWarmupAndDrafts() {
@@ -84,22 +89,104 @@ final class WarmupPlanTests: XCTestCase {
         draft.isDraft = true
         let plan = WarmupPlan.prefill(sessions: [noWarmup, draft, withWarmup], workingLoad: 60, loadStep: 5)
         XCTAssertEqual(plan.source, .lastSession)
-        XCTAssertEqual(plan.steps.map(\.reps), [3])
-        XCTAssertEqual(plan.steps.first?.loadLbs, 20)
+        XCTAssertTrue(plan.steps.isEmpty)
+        XCTAssertEqual(plan.planned.map(\.reps), [3])
+        XCTAssertEqual(plan.planned.first?.loadLbs, 20)
     }
 
     func testPrefillUsesTemplateWhenThereIsNoPastWarmup() {
         let plan = WarmupPlan.prefill(sessions: [session(daysAgo: 2, warmup: [])], workingLoad: 60, loadStep: 5)
         XCTAssertEqual(plan.source, .template)
-        XCTAssertEqual(plan.steps.map(\.loadLbs), [nil, 30, 45])
-        XCTAssertFalse(plan.steps.contains(where: \.fromLastSession))
+        XCTAssertTrue(plan.steps.isEmpty)
+        XCTAssertEqual(plan.planned.map(\.loadLbs), [nil, 30, 45])
+        XCTAssertFalse(plan.planned.contains(where: \.fromLastSession))
+        let composer = plan.composerForPlan()
+        XCTAssertEqual(composer.kind, .hold)
+        XCTAssertEqual(composer.seconds, 30)
     }
 
     func testPrefillWithNoHistoryAndNoLoadIsBlank() {
         let plan = WarmupPlan.prefill(sessions: [], workingLoad: nil, loadStep: 5)
         XCTAssertEqual(plan.source, .blank)
-        XCTAssertEqual(plan.steps.count, 3)
-        XCTAssertTrue(plan.steps.allSatisfy { $0.loadLbs == nil })
+        XCTAssertTrue(plan.steps.isEmpty)
+        XCTAssertTrue(plan.planned.isEmpty)
+        let composer = plan.composerForPlan()
+        XCTAssertEqual(composer.kind, .hold)
+        XCTAssertEqual(composer.seconds, 30)
+        XCTAssertEqual(composer.reps, 3)
+    }
+
+    func testComposerDefaultsHoldAt30AndRepsAt3() {
+        let empty = WarmupComposer.empty
+        XCTAssertEqual(empty.kind, .hold)
+        XCTAssertEqual(empty.seconds, 30)
+        XCTAssertEqual(empty.reps, 3)
+        XCTAssertNil(empty.loadLbs)
+
+        var composer = WarmupComposer.empty
+        composer.selectKind(.reps)
+        XCTAssertEqual(composer.kind, .reps)
+        XCTAssertEqual(composer.reps, 3)
+        XCTAssertEqual(composer.seconds, 30)
+
+        composer.selectKind(.hold)
+        XCTAssertEqual(composer.seconds, 30)
+
+        let step = WarmupComposer(kind: .hold, seconds: 30, loadLbs: 10).makeStep()
+        XCTAssertEqual(step.kind, .hold)
+        XCTAssertEqual(step.seconds, 30)
+        XCTAssertEqual(step.loadLbs, 10)
+    }
+
+    func testHoldRulerMapsThirtySeconds() {
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: WarmupPlan.holdSecondsIndex(30)), 30)
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: 0), 5)
+        XCTAssertEqual(WarmupPlan.holdSeconds(atIndex: WarmupPlan.holdSecondsIndexCount - 1), 120)
+    }
+
+    func testAddCommittedAppendsAndCapsAtMax() {
+        var plan = WarmupPlan(steps: [], source: .blank)
+        XCTAssertTrue(plan.addCommitted(.hold(seconds: 30, loadLbs: nil)))
+        XCTAssertEqual(plan.steps.count, 1)
+        XCTAssertEqual(plan.steps[0].seconds, 30)
+        for _ in 0..<WarmupPlan.maxSteps {
+            _ = plan.addCommitted(.reps(3, loadLbs: 20))
+        }
+        XCTAssertEqual(plan.steps.count, WarmupPlan.maxSteps)
+        XCTAssertFalse(plan.addCommitted(.hold()))
+    }
+
+    func testAddFromComposerAdvancesThroughPlannedStepsThenRepeatsLast() {
+        var plan = WarmupPlan(
+            steps: [],
+            planned: [
+                .hold(seconds: 40, loadLbs: nil),
+                .reps(3, loadLbs: 30),
+                .reps(2, loadLbs: 45)
+            ],
+            planIndex: 0,
+            source: .template
+        )
+        XCTAssertEqual(plan.composerForPlan().kind, .hold)
+        XCTAssertEqual(plan.composerForPlan().seconds, 40)
+
+        XCTAssertTrue(plan.addFromComposer(plan.composerForPlan().makeStep()))
+        XCTAssertEqual(plan.steps.count, 1)
+        XCTAssertEqual(plan.planIndex, 1)
+        XCTAssertEqual(plan.composerForPlan().kind, .reps)
+        XCTAssertEqual(plan.composerForPlan().reps, 3)
+        XCTAssertEqual(plan.composerForPlan().loadLbs, 30)
+
+        XCTAssertTrue(plan.addFromComposer(plan.composerForPlan().makeStep()))
+        XCTAssertEqual(plan.planIndex, 2)
+        XCTAssertEqual(plan.composerForPlan().reps, 2)
+        XCTAssertEqual(plan.composerForPlan().loadLbs, 45)
+
+        XCTAssertTrue(plan.addFromComposer(plan.composerForPlan().makeStep()))
+        XCTAssertEqual(plan.planIndex, 3)
+        // Past the plan: repeat the last planned step.
+        XCTAssertEqual(plan.composerForPlan().reps, 2)
+        XCTAssertEqual(plan.composerForPlan().loadLbs, 45)
     }
 
     func testPrefillWithNoLoadStillPrefersTheLastWarmup() {
@@ -108,7 +195,8 @@ final class WarmupPlanTests: XCTestCase {
         ])
         let plan = WarmupPlan.prefill(sessions: [past], workingLoad: nil, loadStep: 5)
         XCTAssertEqual(plan.source, .lastSession)
-        XCTAssertEqual(plan.steps.first?.loadLbs, 15)
+        XCTAssertTrue(plan.steps.isEmpty)
+        XCTAssertEqual(plan.planned.first?.loadLbs, 15)
     }
 
     // MARK: Old rows and save shape

@@ -28,6 +28,10 @@ final class GuidedSessionScreenshotTests: XCTestCase {
 
         app.buttons["prototype-next"].tap()
         XCTAssertTrue(element(app, "prototype-guided-warmup").waitForExistence(timeout: 4), app.debugDescription)
+        // Add one warm-up set, then mark warm-up done (footer).
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].waitForExistence(timeout: 4), app.debugDescription)
+        app.buttons["prototype-guided-warmup-add"].tap()
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-guided-warmup-yes"].tap()
         XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-guided-same-as-target"].tap()
@@ -139,7 +143,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         app.descendants(matching: .any)[identifier]
     }
 
-    private func snap(_ app: XCUIApplication, _ name: String) {
+private func snap(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name
         attachment.lifetime = .keepAlways
@@ -275,6 +279,89 @@ final class BackupListRealPathShots: XCTestCase {
         for _ in 0..<maxSwipes {
             app.swipeUp()
             if element.waitForExistence(timeout: 0.6) { return }
+        }
+    }
+
+    private func snap(_ app: XCUIApplication, _ name: String) {
+        let png = XCUIScreen.main.screenshot().pngRepresentation
+        try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
+    }
+}
+
+private func snap(_ app: XCUIApplication, _ name: String) {
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
+        let url = shotDir.appendingPathComponent("\(name).png")
+        try? app.screenshot().pngRepresentation.write(to: url)
+    }
+}
+
+/// Warm-up: empty finished list + composer at planned hold; after add; footer choices; autosave.
+final class WarmupRulerFixShots: XCTestCase {
+    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-warmup-shots", isDirectory: true)
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        try? FileManager.default.removeItem(at: shotDir)
+        try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
+    }
+
+    func testComposerAdvancesAndFooterStaysVisible() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let skip = app.buttons["Not now"]
+        if skip.waitForExistence(timeout: 8) { skip.tap() }
+        XCTAssertTrue(app.descendants(matching: .any)["today-poster"].waitForExistence(timeout: 10), app.debugDescription)
+
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), app.debugDescription)
+        for _ in 0..<4 {
+            if row.exists && row.isHittable { row.tap() }
+            if app.descendants(matching: .any)["prototype-guided-exercise"].waitForExistence(timeout: 3) { break }
+        }
+        app.buttons["prototype-next"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup"].waitForExistence(timeout: 6), app.debugDescription)
+
+        // Empty finished list; Add + Skip in sticky footer.
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-skip"].exists)
+        XCTAssertFalse(app.buttons["prototype-guided-warmup-yes"].exists)
+        // No finished rows yet (ids are 1-indexed).
+        XCTAssertFalse(app.descendants(matching: .any)["prototype-guided-warmup-step-1"].exists)
+        snap(app, "01-empty-list-composer-at-hold")
+
+        app.buttons["prototype-guided-warmup-add"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup-step-1"].waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.buttons["prototype-guided-warmup-skip"].exists)
+        snap(app, "02-after-first-add")
+
+        app.buttons["prototype-guided-warmup-add"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["prototype-guided-warmup-step-2"].waitForExistence(timeout: 4), app.debugDescription)
+        snap(app, "03-after-second-add-next-plan")
+
+        // Footer still shows Add + Warm-up done (always visible).
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].isHittable)
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-yes"].isHittable)
+        snap(app, "04-footer-add-and-done")
+
+        // Autosave: leave and resume — finished sets remain.
+        XCUIDevice.shared.press(.home)
+        sleep(2)
+        app.activate()
+        // May still be on warm-up, or cancelled to Today with draft.
+        if app.buttons["prototype-cancel"].waitForExistence(timeout: 4) {
+            app.buttons["prototype-cancel"].tap()
+        }
+        let draft = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
+        if draft.waitForExistence(timeout: 6) {
+            draft.tap()
+            // Resume — warm-up steps should still be there if we were past exercise.
+            _ = app.descendants(matching: .any)["prototype-guided-warmup"].waitForExistence(timeout: 4)
+                || app.descendants(matching: .any)["prototype-guided-warmup-step-1"].waitForExistence(timeout: 4)
+            snap(app, "05-autosave-resume")
         }
     }
 

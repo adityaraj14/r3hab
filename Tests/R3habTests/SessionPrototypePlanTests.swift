@@ -74,6 +74,10 @@ final class SessionPrototypePlanTests: XCTestCase {
             calendar: calendar
         )
         draft.includeWarmup = true
+        // Prefill is planned only; commit the template so Save includes warm-up rows.
+        for step in draft.warmup.planned {
+            XCTAssertTrue(draft.warmup.addFromComposer(step))
+        }
         draft.painDuring = 2
         let saved = SessionPrototypePlan.setsForSave(draft)
         let warmup = saved.filter(\.isWarmup)
@@ -177,4 +181,11 @@ final class SessionPrototypePlanTests: XCTestCase {
             resistanceSets: rows
         )
     }
+    func testSetStepperFillsAsEachSetIsLogged() {
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 0, setCount: 3), 0)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 1, setCount: 3), 1)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: 2, setCount: 3), 2)
+        XCTAssertEqual(SessionPrototypePlan.setStepperFilled(currentSetIndex: nil, setCount: 3), 3)
+    }
+
 }

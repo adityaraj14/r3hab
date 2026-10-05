@@ -29,7 +29,17 @@ final class GuidedCheckpointTests: XCTestCase {
     /// A draft with values on each kind of step: warm-up edit, two changed sets, pain, notes.
     private func filled() -> SessionPrototypeDraft {
         var draft = plan()
-        draft.warmup.update(id: draft.warmup.steps[1].id) { $0.reps = 5 }
+        // Prefill feeds the composer; commit finished sets like the Add button.
+        let planned = draft.warmup.planned
+        if planned.count >= 2 {
+            _ = draft.warmup.addFromComposer(planned[0])
+            var second = planned[1]
+            second.reps = 5
+            _ = draft.warmup.addFromComposer(second)
+        } else {
+            _ = draft.warmup.addFromComposer(.hold())
+            _ = draft.warmup.addFromComposer(.reps(5, loadLbs: 20))
+        }
         draft.includeWarmup = true
         draft.sets[0].reps = 10
         draft.sets[0].loadLbs = 50
@@ -82,8 +92,8 @@ final class GuidedCheckpointTests: XCTestCase {
         let restored = GuidedCheckpointing.restore(saved, onto: plan())
         XCTAssertFalse(restored.draft.includeWarmup)
         XCTAssertEqual(restored.stepIndex, 3)
-        // The plan warm-up is still there if the user goes back.
-        XCTAssertEqual(restored.draft.warmup.resistanceSets().map(\.loadLbs), plan().warmup.resistanceSets().map(\.loadLbs))
+        // The planned warm-up is still there if the user goes back.
+        XCTAssertEqual(restored.draft.warmup.planned.map(\.loadLbs), plan().warmup.planned.map(\.loadLbs))
         XCTAssertEqual(restored.draft.warmup.source, plan().warmup.source)
     }
 
@@ -95,11 +105,17 @@ final class GuidedCheckpointTests: XCTestCase {
         )
         let base = plan(history: history)
         XCTAssertEqual(base.warmup.source, .lastSession)
+        XCTAssertTrue(base.warmup.steps.isEmpty)
+        XCTAssertEqual(base.warmup.planned.map(\.reps), [4])
         var draft = base
+        // Add the planned set so Warm-up done can be true (finished list was empty).
+        XCTAssertTrue(draft.warmup.addFromComposer(draft.warmup.composerForPlan().makeStep()))
         draft.includeWarmup = true
         let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: 2)
         let restored = GuidedCheckpointing.restore(saved, onto: base)
-        XCTAssertEqual(restored.draft.warmup, base.warmup)
+        XCTAssertEqual(restored.draft.warmup.source, .lastSession)
+        XCTAssertEqual(restored.draft.warmup.planned.map(\.reps), base.warmup.planned.map(\.reps))
+        XCTAssertEqual(restored.draft.warmup.steps.map(\.reps), [4])
         XCTAssertTrue(restored.draft.includeWarmup)
     }
 
@@ -177,6 +193,8 @@ final class GuidedCheckpointTests: XCTestCase {
 
     func testAutosaveOnlyWhenLeavingWithChanges() {
         XCTAssertTrue(GuidedCheckpointing.shouldAutosave(leavingForeground: true, changedSinceSave: true))
+        XCTAssertTrue(GuidedCheckpointing.shouldAutosaveOnRecord(changedSinceSave: true))
+        XCTAssertFalse(GuidedCheckpointing.shouldAutosaveOnRecord(changedSinceSave: false))
         // An untouched new log does not make an empty draft.
         XCTAssertFalse(GuidedCheckpointing.shouldAutosave(leavingForeground: true, changedSinceSave: false))
         XCTAssertFalse(GuidedCheckpointing.shouldAutosave(leavingForeground: false, changedSinceSave: true))
@@ -189,6 +207,20 @@ final class GuidedCheckpointTests: XCTestCase {
         let row = snapshot(of: saved, isDraft: true)
         XCTAssertFalse(row.isFinalized)
         XCTAssertTrue(TodayPlanner.recentMissingAfterPain(sessions: [row], now: day0.addingTimeInterval(120)).isEmpty)
+    }
+
+
+    func testAutosaveOnAddWarmupKeepsTheNewStep() {
+        var draft = plan()
+        draft.includeWarmup = true
+        draft.warmup = WarmupPlan(steps: [], source: .blank)
+        XCTAssertTrue(draft.warmup.addCommitted(.hold(seconds: 30, loadLbs: 10)))
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: GuidedCheckpointing.warmupIndex)
+        XCTAssertEqual(saved.resistanceSets.filter(\.isWarmup).count, 1)
+        let restored = GuidedCheckpointing.restore(saved, onto: plan())
+        XCTAssertEqual(restored.draft.warmup.steps.count, 1)
+        XCTAssertEqual(restored.draft.warmup.steps[0].seconds, 30)
+        XCTAssertEqual(restored.draft.warmup.steps[0].loadLbs, 10)
     }
 
     // MARK: Helpers

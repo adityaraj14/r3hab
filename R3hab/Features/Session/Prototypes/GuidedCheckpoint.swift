@@ -70,6 +70,8 @@ enum GuidedCheckpointing {
             if !sameAsPlan {
                 draft.warmup = WarmupPlan(
                     steps: restoredSteps.map { var step = $0; step.fromLastSession = false; return step },
+                    planned: base.warmup.planned,
+                    planIndex: restoredSteps.count,
                     source: base.warmup.source
                 )
             }
@@ -114,6 +116,11 @@ enum GuidedCheckpointing {
     /// So an untouched new log does not make an empty draft.
     static func shouldAutosave(leavingForeground: Bool, changedSinceSave: Bool) -> Bool {
         leavingForeground && changedSinceSave
+    }
+
+    /// Save right after a warm-up set is added or removed, or a working set is recorded.
+    static func shouldAutosaveOnRecord(changedSinceSave: Bool) -> Bool {
+        changedSinceSave
     }
 
     private static func sameWarmup(_ a: [WarmupStep], _ b: [WarmupStep]) -> Bool {
