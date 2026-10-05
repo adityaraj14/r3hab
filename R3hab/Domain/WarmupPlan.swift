@@ -106,8 +106,25 @@ struct WarmupPlan: Equatable, Sendable {
     /// Old warm-up rows can store "2 × 30 s". Do not make more steps than this from one row.
     static let maxHoldsFromOneRow = 4
 
+    /// Finished warm-up sets the user has added. Starts empty.
     var steps: [WarmupStep]
+    /// Planned steps that feed the composer (last session or template). Not finished until Add.
+    var planned: [WarmupStep]
+    /// Index into `planned` for the next composer values. Past the end, the last plan step repeats.
+    var planIndex: Int
     var source: WarmupSource
+
+    init(
+        steps: [WarmupStep] = [],
+        planned: [WarmupStep] = [],
+        planIndex: Int = 0,
+        source: WarmupSource
+    ) {
+        self.steps = steps
+        self.planned = planned
+        self.planIndex = planIndex
+        self.source = source
+    }
 
     var line: String {
         steps.isEmpty ? "No steps" : steps.map(\.line).joined(separator: " · ")
@@ -170,20 +187,37 @@ struct WarmupPlan: Equatable, Sendable {
 
     /// 1. The last saved warm-up, if there is one.
     /// 2. Else the template from today's working load.
-    /// 3. Else the template with no load.
+    /// 3. Else no plan (composer uses Hold 30 s / Reps 3).
+    /// Finished `steps` always start empty. Prefill feeds `planned` for the composer.
     static func prefill(
         sessions: [TrainingSessionSnapshot],
         workingLoad: Double?,
         loadStep: Double
     ) -> WarmupPlan {
         if let last = lastWarmup(from: sessions) {
-            return WarmupPlan(steps: last, source: .lastSession)
+            return WarmupPlan(steps: [], planned: last, planIndex: 0, source: .lastSession)
         }
         if let workingLoad, workingLoad > 0 {
-            return WarmupPlan(steps: template(workingLoad: workingLoad, loadStep: loadStep), source: .template)
+            return WarmupPlan(
+                steps: [],
+                planned: template(workingLoad: workingLoad, loadStep: loadStep),
+                planIndex: 0,
+                source: .template
+            )
         }
-        // Empty list: the warm-up screen shows Hold at 30 s and Load, ready to add.
-        return WarmupPlan(steps: [], source: .blank)
+        return WarmupPlan(steps: [], planned: [], planIndex: 0, source: .blank)
+    }
+
+    /// Composer values for the current plan step. Empty plan → Hold 30 s defaults.
+    func composerForPlan() -> WarmupComposer {
+        guard !planned.isEmpty else { return .empty }
+        let step: WarmupStep
+        if planIndex < planned.count {
+            step = planned[planIndex]
+        } else {
+            step = planned[planned.count - 1]
+        }
+        return WarmupComposer(from: step)
     }
 
     /// Default reps when the kind toggle is Reps.
@@ -221,6 +255,14 @@ struct WarmupPlan: Equatable, Sendable {
         return true
     }
 
+    /// Commits a finished set and advances the plan index.
+    @discardableResult
+    mutating func addFromComposer(_ step: WarmupStep) -> Bool {
+        guard addCommitted(step) else { return false }
+        planIndex += 1
+        return true
+    }
+
     /// Adds a copy of the last step, or a 30 s hold when there are no steps.
     mutating func addStep() {
         guard steps.count < Self.maxSteps else { return }
@@ -249,8 +291,6 @@ struct WarmupPlan: Equatable, Sendable {
     }
 }
 
-/// Values on the warm-up rulers before "Add warm-up set".
-/// Hold starts at 30 seconds. Reps starts at 3. Load starts empty.
 struct WarmupComposer: Equatable, Sendable {
     var kind: WarmupStep.Kind = .hold
     var seconds: Int = WarmupPlan.holdSeconds
@@ -260,14 +300,24 @@ struct WarmupComposer: Equatable, Sendable {
     /// Empty warm-up: Hold at 30 s, no load.
     static let empty = WarmupComposer()
 
-    /// After a set is added, keep the kind and load; reset the amount to the default for that kind.
-    static func afterAdding(_ step: WarmupStep) -> WarmupComposer {
-        WarmupComposer(
-            kind: step.kind,
-            seconds: WarmupPlan.holdSeconds,
-            reps: WarmupPlan.defaultReps,
-            loadLbs: step.loadLbs
-        )
+    /// Prefill a planned step into the rulers and the Hold/Reps toggle.
+    init(from step: WarmupStep) {
+        self.kind = step.kind
+        self.seconds = step.seconds
+        self.reps = step.reps
+        self.loadLbs = step.loadLbs
+    }
+
+    init(
+        kind: WarmupStep.Kind = .hold,
+        seconds: Int = WarmupPlan.holdSeconds,
+        reps: Int = WarmupPlan.defaultReps,
+        loadLbs: Double? = nil
+    ) {
+        self.kind = kind
+        self.seconds = seconds
+        self.reps = reps
+        self.loadLbs = loadLbs
     }
 
     mutating func selectKind(_ next: WarmupStep.Kind) {

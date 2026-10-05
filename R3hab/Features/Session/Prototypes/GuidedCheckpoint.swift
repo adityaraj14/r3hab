@@ -70,6 +70,8 @@ enum GuidedCheckpointing {
             if !sameAsPlan {
                 draft.warmup = WarmupPlan(
                     steps: restoredSteps.map { var step = $0; step.fromLastSession = false; return step },
+                    planned: base.warmup.planned,
+                    planIndex: restoredSteps.count,
                     source: base.warmup.source
                 )
             }

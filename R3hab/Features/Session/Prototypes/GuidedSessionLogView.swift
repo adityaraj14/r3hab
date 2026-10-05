@@ -13,6 +13,7 @@ struct GuidedSessionLogView: View {
     @FocusState private var notesFocused: Bool
     /// Rulers for the next warm-up set. Not stored until "Add warm-up set".
     @State private var warmupComposer = WarmupComposer.empty
+    @State private var warmupComposerSeeded = false
 
     private var isSetPrompt: Bool {
         if case .set = prompt { return true }
@@ -75,6 +76,8 @@ struct GuidedSessionLogView: View {
                 Button("Done") { notesFocused = false }
             }
         }
+        .onAppear { seedWarmupComposerIfNeeded() }
+        .onChange(of: index) { _, _ in seedWarmupComposerIfNeeded() }
     }
 
     private var swipe: some Gesture {
@@ -140,16 +143,18 @@ struct GuidedSessionLogView: View {
                 .font(.largeTitle.weight(.bold))
                 .foregroundStyle(AppTheme.ivory)
                 .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmup)
-            Text(draft.warmup.source.label)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(draft.warmup.source == .lastSession ? AppTheme.ink : AppTheme.ivory)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 4)
-                .background(
-                    draft.warmup.source == .lastSession ? AppTheme.gold : AppTheme.quietFill,
-                    in: Capsule()
-                )
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSource)
+            if draft.warmup.source != .blank {
+                Text(draft.warmup.source.label)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(draft.warmup.source == .lastSession ? AppTheme.ink : AppTheme.ivory)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(
+                        draft.warmup.source == .lastSession ? AppTheme.gold : AppTheme.quietFill,
+                        in: Capsule()
+                    )
+                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSource)
+            }
             Text(draft.warmup.steps.isEmpty
                  ? "Set the rulers. Then add the warm-up set."
                  : "Add another warm-up, or select Warm-up done.")
@@ -162,20 +167,10 @@ struct GuidedSessionLogView: View {
 
             if draft.warmup.steps.count < WarmupPlan.maxSteps {
                 warmupComposerCard
-                Button {
-                    addWarmupSet()
-                } label: {
-                    Label(
-                        draft.warmup.steps.isEmpty ? "Add warm-up set" : "Add another warm-up",
-                        systemImage: "plus"
-                    )
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(.primaryAction)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupAdd)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.bottom, 8)
     }
 
     private func finishedWarmupRow(_ offset: Int, _ step: WarmupStep) -> some View {
@@ -303,10 +298,17 @@ struct GuidedSessionLogView: View {
         )
     }
 
+    private func seedWarmupComposerIfNeeded() {
+        guard case .warmup = prompt else { return }
+        guard !warmupComposerSeeded else { return }
+        warmupComposer = draft.warmup.composerForPlan()
+        warmupComposerSeeded = true
+    }
+
     private func addWarmupSet() {
         let step = warmupComposer.makeStep()
-        guard draft.warmup.addCommitted(step) else { return }
-        warmupComposer = WarmupComposer.afterAdding(step)
+        guard draft.warmup.addFromComposer(step) else { return }
+        warmupComposer = draft.warmup.composerForPlan()
         Haptics.light()
         onCheckpointSave()
     }
@@ -469,22 +471,38 @@ struct GuidedSessionLogView: View {
                     .buttonStyle(.primaryAction)
                     .accessibilityIdentifier(SessionPrototypeAccessibility.next)
             case .warmup:
-                Button("Warm-up done") {
-                    draft.includeWarmup = true
-                    onCheckpointSave()
-                    advance()
+                if draft.warmup.steps.count < WarmupPlan.maxSteps {
+                    Button {
+                        addWarmupSet()
+                    } label: {
+                        Label(
+                            draft.warmup.steps.isEmpty ? "Add warm-up set" : "Add another warm-up",
+                            systemImage: "plus"
+                        )
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.primaryAction)
+                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupAdd)
                 }
-                .buttonStyle(.primaryAction)
-                .disabled(draft.warmup.steps.isEmpty)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupYes)
-                Button("Skip warm-up") {
-                    draft.includeWarmup = false
-                    onCheckpointSave()
-                    advance()
+                if draft.warmup.steps.isEmpty {
+                    Button("Skip warm-up") {
+                        draft.includeWarmup = false
+                        onCheckpointSave()
+                        advance()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.quiet)
+                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSkip)
+                } else {
+                    Button("Warm-up done") {
+                        draft.includeWarmup = true
+                        onCheckpointSave()
+                        advance()
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.ivory)
+                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupYes)
                 }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSkip)
             case .set(let setIndex):
                 setActions(setIndex)
             case .pain:

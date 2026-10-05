@@ -74,6 +74,10 @@ final class SessionPrototypePlanTests: XCTestCase {
             calendar: calendar
         )
         draft.includeWarmup = true
+        // Prefill is planned only; commit the template so Save includes warm-up rows.
+        for step in draft.warmup.planned {
+            XCTAssertTrue(draft.warmup.addFromComposer(step))
+        }
         draft.painDuring = 2
         let saved = SessionPrototypePlan.setsForSave(draft)
         let warmup = saved.filter(\.isWarmup)
