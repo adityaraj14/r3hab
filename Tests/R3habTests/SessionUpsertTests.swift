@@ -49,7 +49,7 @@ final class SessionUpsertTests: XCTestCase {
 
     func testDoubleSaveOfSameDraftUpdatesNotInserts() {
         let draftId = UUID()
-        let draft = snap(id: draftId, isDraft: true, painDuring: PainScore.notLogged, sets: [])
+        let draft = snap(id: draftId, painDuring: PainScore.notLogged, isDraft: true, sets: [])
         // First save would finalize; second Save still holds the same id, now finalized.
         let finalized = snap(id: draftId, createdAt: day.addingTimeInterval(10), isDraft: false)
         let second = SessionUpsert.target(
@@ -59,12 +59,12 @@ final class SessionUpsertTests: XCTestCase {
             preferring: .hsrStrength,
             calendar: calendar
         )
-        XCTAssertEqual(second, .update(draftId))
+        XCTAssertEqual(second, SessionUpsert.Target.update(draftId))
     }
 
     func testSaveWithoutIdReusesOpenDraftForTheDay() {
         let draftId = UUID()
-        let draft = snap(id: draftId, type: .hsrStrength, isDraft: true, painDuring: PainScore.notLogged, sets: [])
+        let draft = snap(id: draftId, type: .hsrStrength, painDuring: PainScore.notLogged, isDraft: true, sets: [])
         let target = SessionUpsert.target(
             preferredId: nil,
             sessions: [draft],
@@ -72,13 +72,13 @@ final class SessionUpsertTests: XCTestCase {
             preferring: .hsrStrength,
             calendar: calendar
         )
-        XCTAssertEqual(target, .update(draftId))
+        XCTAssertEqual(target, SessionUpsert.Target.update(draftId))
     }
 
     func testOldEditorDraftIsReusedByGuidedSave() {
         // TF42 draft was isometrics with no guidedStepIndex; TF43 guided save must not insert.
         let draftId = UUID()
-        let oldDraft = snap(id: draftId, type: .isometrics, isDraft: true, painDuring: PainScore.notLogged, sets: [])
+        let oldDraft = snap(id: draftId, type: .isometrics, painDuring: PainScore.notLogged, isDraft: true, sets: [])
         let target = SessionUpsert.target(
             preferredId: nil,
             sessions: [oldDraft],
@@ -86,7 +86,7 @@ final class SessionUpsertTests: XCTestCase {
             preferring: .hsrStrength,
             calendar: calendar
         )
-        XCTAssertEqual(target, .update(draftId))
+        XCTAssertEqual(target, SessionUpsert.Target.update(draftId))
     }
 
     func testInsertWhenNoDraftExists() {
@@ -99,7 +99,7 @@ final class SessionUpsertTests: XCTestCase {
                 preferring: .hsrStrength,
                 calendar: calendar
             ),
-            .insert
+            SessionUpsert.Target.insert
         )
     }
 
@@ -133,7 +133,7 @@ final class SessionUpsertTests: XCTestCase {
     }
 
     func testDraftsAreNeverExactDuplicates() {
-        let a = snap(isDraft: true, painDuring: PainScore.notLogged)
+        let a = snap(painDuring: PainScore.notLogged, isDraft: true)
         let b = snap(isDraft: false)
         XCTAssertTrue(SessionDuplicate.pairs(in: [a, b], calendar: calendar).isEmpty)
     }
