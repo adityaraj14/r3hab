@@ -25,8 +25,9 @@ extension View {
 }
 
 /// Records a session one step at a time. Each Next and each Back writes the
-/// values and the step to the day's draft row. "Save draft" writes and closes.
-/// Back on step 1 writes and closes. The final Save makes that row a complete session.
+/// values and the step to the day's draft row (Today shows it as "In progress").
+/// "Save" writes and closes. Back on step 1 writes and closes.
+/// Only "Finish session" makes that row a complete session and starts the reminders.
 struct GuidedSessionHost: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -80,12 +81,12 @@ struct GuidedSessionHost: View {
                 AppTheme.canvas
             }
         }
-        .navigationTitle(rowId == nil ? "Record session" : "Continue the draft")
+        .navigationTitle("Record session")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            // The step view puts Back and the step dots on the leading side and in the center.
+            // The step view puts Back on the leading side. Save keeps the progress and closes.
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Save draft") { saveDraft(closeAfter: true) }
+                Button("Save") { saveDraft(closeAfter: true) }
                     .disabled(!didLoad)
                     .accessibilityIdentifier(SessionPrototypeAccessibility.saveDraft)
             }

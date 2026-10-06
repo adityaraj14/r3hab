@@ -72,7 +72,7 @@ struct GuidedSessionLogView: View {
         // The rulers use drags, so the step swipe is off on the warm-up and set steps.
         .simultaneousGesture(swipe, including: hasRulers ? .subviews : .all)
         .toolbar {
-            // Back at the leading edge. On step 1 it saves the draft and closes the sheet.
+            // Back at the leading edge. On step 1 it saves the progress and closes the sheet.
             ToolbarItem(placement: .topBarLeading) {
                 Button(action: back) {
                     Image(systemName: "chevron.left")
@@ -82,14 +82,6 @@ struct GuidedSessionLogView: View {
                 }
                 .accessibilityLabel("Back")
                 .accessibilityIdentifier(SessionPrototypeAccessibility.back)
-            }
-            ToolbarItem(placement: .principal) {
-                PrototypeProgressDots(
-                    count: max(prompts.count, 1),
-                    index: min(index, max(prompts.count - 1, 0)),
-                    furthest: furthest,
-                    onSelect: open(_:)
-                )
             }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -535,7 +527,7 @@ struct GuidedSessionLogView: View {
     private var bottomBar: some View {
         if prompt == .review {
             return ActionFooter(primary: FooterAction(
-                "Save",
+                "Finish session",
                 identifier: SessionPrototypeAccessibility.save,
                 isEnabled: draft.painDuring != nil,
                 action: onSave
@@ -590,9 +582,9 @@ struct GuidedSessionLogView: View {
         onCheckpointSave()
     }
 
-    /// A tap on a done step dot or a done stepper node.
+    /// A tap on a done stepper node.
     private func open(_ step: Int) {
-        guard let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index, furthest: furthest) else { return }
+        guard let target = SessionPrototypePlan.nodeTarget(tapped: step, current: index, furthest: furthest) else { return }
         notesFocused = false
         index = target
         Haptics.light()

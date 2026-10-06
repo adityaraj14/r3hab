@@ -88,7 +88,7 @@ final class TodayPlannerTests: XCTestCase {
 
     func testLogSessionEyebrowSignalsASavedDraft() {
         XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession), "Next")
-        XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession, hasSessionDraft: true), "Draft saved")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession, hasSessionDraft: true), "Session in progress")
     }
 
     func testDraftDoesNotRewriteOtherNextUpEyebrows() {

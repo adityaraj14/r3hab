@@ -75,7 +75,7 @@ enum SessionCompletion {
 }
 
 enum SessionDraft {
-    static let emptyMessage = "To save a draft, add a load, a note, or the pain during the session."
+    static let emptyMessage = "To save, add a load, a note, or the pain during the session."
 
     static func finalized(_ sessions: [TrainingSessionSnapshot]) -> [TrainingSessionSnapshot] {
         sessions.filter(\.isFinalized)

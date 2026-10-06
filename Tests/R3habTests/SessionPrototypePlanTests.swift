@@ -203,16 +203,15 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertFalse(SessionPrototypePlan.isStepDone(-1, furthest: 3))
     }
 
-    func testNodeAndDotTapsOpenOnlyDoneSteps() {
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 0, current: 3, furthest: 3), 0)
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 2, current: 3, furthest: 3), 2)
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 3, current: 3, furthest: 3), "The current step is not a jump")
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 4, current: 3, furthest: 3), "A later step does not open")
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: -1, current: 3, furthest: 3))
-        // From a reopened step, a later done step and the first unfinished step open.
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 4, current: 1, furthest: 5), 4)
-        XCTAssertEqual(SessionPrototypePlan.jumpTarget(tapped: 5, current: 1, furthest: 5), 5)
-        XCTAssertNil(SessionPrototypePlan.jumpTarget(tapped: 6, current: 1, furthest: 5))
+    func testNodeTapOpensOnlyDoneSteps() {
+        XCTAssertEqual(SessionPrototypePlan.nodeTarget(tapped: 0, current: 3, furthest: 3), 0)
+        XCTAssertEqual(SessionPrototypePlan.nodeTarget(tapped: 2, current: 3, furthest: 3), 2)
+        XCTAssertNil(SessionPrototypePlan.nodeTarget(tapped: 3, current: 3, furthest: 3), "The current node does not open")
+        XCTAssertNil(SessionPrototypePlan.nodeTarget(tapped: 4, current: 3, furthest: 3), "A later node does not open")
+        XCTAssertNil(SessionPrototypePlan.nodeTarget(tapped: -1, current: 3, furthest: 3))
+        // From a reopened step, a later done node opens. The first unfinished node does not: Next goes there.
+        XCTAssertEqual(SessionPrototypePlan.nodeTarget(tapped: 4, current: 1, furthest: 5), 4)
+        XCTAssertNil(SessionPrototypePlan.nodeTarget(tapped: 5, current: 1, furthest: 5))
     }
 
     func testDeleteGoesToTheFirstUnfinishedStep() {

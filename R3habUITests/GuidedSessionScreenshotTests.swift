@@ -1,7 +1,7 @@
 import XCTest
 
-/// The guided recorder from Today: record, save a draft on a set step, resume
-/// on the same step, review, and the final save.
+/// The guided recorder from Today: record, Save on a set step, resume
+/// on the same step, review, and Finish session.
 /// Shots land in /tmp/r3hab-guided-shots.
 final class GuidedSessionScreenshotTests: XCTestCase {
     private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-guided-shots", isDirectory: true)
@@ -47,7 +47,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         let changed = ruler.value as? String ?? ""
         XCTAssertNotEqual(before, changed, "The drag must change the load")
 
-        // 2. Save draft on a set step.
+        // 2. Save (top bar) on a set step: keeps the progress and closes.
         let saveDraft = app.buttons["guided-save-draft"]
         XCTAssertTrue(saveDraft.exists, app.debugDescription)
         snap(app, "02-save-draft-on-set-step")
@@ -55,7 +55,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
 
         // 3. Today shows the draft, not a complete session.
         XCTAssertTrue(poster.waitForExistence(timeout: 8), app.debugDescription)
-        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
+        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "In progress")).firstMatch
         XCTAssertTrue(draftRow.waitForExistence(timeout: 6), app.debugDescription)
         XCTAssertTrue(poster.label.hasPrefix("0 sessions"), poster.label)
         XCTAssertFalse(app.buttons["Record the 24-hour response"].exists, "A draft must not ask for the 24-hour response")
@@ -122,7 +122,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         }
         back.tap()
 
-        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
+        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "In progress")).firstMatch
         XCTAssertTrue(draftRow.waitForExistence(timeout: 6), app.debugDescription)
         XCTAssertTrue(poster.label.hasPrefix("0 sessions"), poster.label)
         tapUntil(app, draftRow, shows: "prototype-guided-set-1")
@@ -310,7 +310,7 @@ final class SingleForwardShots: XCTestCase {
         if notNow.waitForExistence(timeout: 8) { notNow.tap() }
         let poster = element(app, "today-poster")
         XCTAssertTrue(poster.waitForExistence(timeout: 10), app.debugDescription)
-        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Continue the draft")).firstMatch
+        let draftRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "In progress")).firstMatch
         let back = app.buttons["prototype-back"]
         let next = app.buttons["prototype-next"]
 
@@ -430,6 +430,112 @@ final class SingleForwardShots: XCTestCase {
             if element(app, "prototype-guided-exercise").waitForExistence(timeout: 3) { return }
         }
         XCTFail("The recorder did not open. \(app.debugDescription)")
+    }
+
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    private func snap(_ app: XCUIApplication, _ name: String) {
+        let png = XCUIScreen.main.screenshot().pngRepresentation
+        try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
+    }
+}
+
+/// Save keeps the progress and closes. Today shows "In progress". Only Finish session completes.
+/// Shots land in /tmp/r3hab-save-shots. Run on a fresh install.
+final class SaveAndFinishShots: XCTestCase {
+    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-save-shots", isDirectory: true)
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        try? FileManager.default.removeItem(at: shotDir)
+        try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
+    }
+
+    func testSaveThenFinishSession() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let notNow = app.buttons["Not now"]
+        if notNow.waitForExistence(timeout: 8) { notNow.tap() }
+        let poster = element(app, "today-poster")
+        XCTAssertTrue(poster.waitForExistence(timeout: 10), app.debugDescription)
+        let next = app.buttons["prototype-next"]
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
+
+        // Top bar: Back, the title, Save. No step dots.
+        tapUntil(app, row, shows: "prototype-guided-exercise")
+        let save = app.navigationBars.buttons["Save"]
+        XCTAssertTrue(save.exists, app.debugDescription)
+        XCTAssertFalse(app.buttons["Save draft"].exists)
+        XCTAssertTrue(app.navigationBars.staticTexts["Record session"].exists, app.debugDescription)
+        XCTAssertFalse(element(app, "prototype-progress").exists, "The step dots are gone")
+
+        // Warm-up 3: two done nodes, the current node, then "+" with no line before it.
+        next.tap()
+        for step in 1...2 {
+            XCTAssertTrue(element(app, "prototype-guided-warmup-step-\(step)").waitForExistence(timeout: 4), app.debugDescription)
+            next.tap()
+        }
+        XCTAssertTrue(element(app, "prototype-guided-warmup-step-3").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(app.buttons["prototype-guided-warmup-add"].exists)
+        snap(app, "01-warmup-stepper-no-stub")
+
+        // Set 1, then set 2. Save on set 2.
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-set-1").waitForExistence(timeout: 4), app.debugDescription)
+        snap(app, "02-top-bar-save")
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
+        save.tap()
+        XCTAssertTrue(element(app, "guided-session-screen").waitForNonExistence(timeout: 6), app.debugDescription)
+
+        // Today: the session is in progress, not complete. No reminders yet.
+        let inProgress = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "In progress")).firstMatch
+        XCTAssertTrue(inProgress.waitForExistence(timeout: 6), app.debugDescription)
+        XCTAssertTrue(poster.label.hasPrefix("0 sessions"), poster.label)
+        XCTAssertFalse(app.buttons["Record the 24-hour response"].exists)
+        XCTAssertFalse(app.buttons["Record pain after"].exists)
+        XCTAssertFalse(app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "draft")).firstMatch.exists,
+                       "Today does not say draft")
+        snap(app, "03-today-in-progress")
+
+        // Resume at the first unfinished step: set 2. Set 1 is done.
+        tapUntil(app, inProgress, shows: "prototype-guided-set-2")
+        XCTAssertTrue(app.buttons["prototype-guided-set-node-1"].exists, app.debugDescription)
+        snap(app, "04-resumed-session")
+
+        // Go on to Review. Only Finish session completes the session.
+        for _ in 0..<6 where !element(app, "prototype-guided-pain").exists {
+            next.tap()
+            _ = element(app, "prototype-guided-pain").waitForExistence(timeout: 1)
+        }
+        XCTAssertTrue(element(app, "prototype-guided-pain").waitForExistence(timeout: 4), app.debugDescription)
+        app.buttons["prototype-pain-chip-2"].tap()
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-notes").waitForExistence(timeout: 4), app.debugDescription)
+        next.tap()
+        XCTAssertTrue(element(app, "prototype-guided-review").waitForExistence(timeout: 4), app.debugDescription)
+        let finish = app.buttons["prototype-save"]
+        XCTAssertEqual(finish.label, "Finish session")
+        snap(app, "05-review-finish-session")
+        finish.tap()
+        XCTAssertTrue(element(app, "guided-session-screen").waitForNonExistence(timeout: 6), app.debugDescription)
+        let deadline = Date().addingTimeInterval(6)
+        while !poster.label.hasPrefix("1 session") && Date() < deadline { usleep(250_000) }
+        XCTAssertTrue(poster.label.hasPrefix("1 session"), poster.label)
+        XCTAssertFalse(inProgress.exists, "A finished session is not in progress")
+        snap(app, "06-today-after-finish")
+    }
+
+    /// The first tap after launch can be lost. Tap again until the step shows.
+    private func tapUntil(_ app: XCUIApplication, _ button: XCUIElement, shows identifier: String) {
+        XCTAssertTrue(button.waitForExistence(timeout: 8), app.debugDescription)
+        for _ in 0..<4 {
+            if button.exists && button.isHittable { button.tap() }
+            if element(app, identifier).waitForExistence(timeout: 3) { return }
+        }
+        XCTFail("\(identifier) did not show. \(app.debugDescription)")
     }
 
     private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {

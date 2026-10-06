@@ -21,63 +21,9 @@ extension View {
     }
 }
 
-/// Step dots in the navigation bar. Tap a done dot to open that step.
-/// Steps after the first unfinished step do not respond.
-struct PrototypeProgressDots: View {
-    var count: Int
-    var index: Int
-    /// The first unfinished step.
-    var furthest: Int
-    var onSelect: (Int) -> Void = { _ in }
-
-    var body: some View {
-        HStack(spacing: 0) {
-            ForEach(0..<count, id: \.self) { step in
-                dot(step)
-            }
-        }
-        .accessibilityElement(children: .contain)
-        .accessibilityIdentifier(SessionPrototypeAccessibility.progress)
-        .accessibilityLabel("Step \(index + 1) of \(count)")
-    }
-
-    @ViewBuilder
-    private func dot(_ step: Int) -> some View {
-        if let target = SessionPrototypePlan.jumpTarget(tapped: step, current: index, furthest: furthest) {
-            Button { onSelect(target) } label: { capsule(step) }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.progressStep(step))
-                .accessibilityLabel("Step \(step + 1)")
-                .accessibilityHint("Open this step.")
-        } else {
-            capsule(step)
-                .accessibilityElement()
-                .accessibilityIdentifier(SessionPrototypeAccessibility.progressStep(step))
-                .accessibilityLabel("Step \(step + 1)")
-                .accessibilityAddTraits(step == index ? .isSelected : [])
-        }
-    }
-
-    private func capsule(_ step: Int) -> some View {
-        Capsule()
-            .fill(fill(for: step))
-            .frame(width: step == index ? 18 : 6, height: 6)
-            // A larger tap area than the dot.
-            .padding(.horizontal, 4)
-            .frame(height: 44)
-            .contentShape(Rectangle())
-    }
-
-    private func fill(for step: Int) -> Color {
-        if step == index { return AppTheme.gold }
-        if SessionPrototypePlan.isStepDone(step, furthest: furthest) { return Color.white.opacity(0.85) }
-        return AppTheme.quietFill
-    }
-}
-
 /// Horizontal step progress for the warm-up steps and the working sets.
 /// Numbered nodes joined by a line. A done node shows a check and opens its step.
-/// An optional small "+" node at the end adds a step.
+/// The line stops at the last node. An optional small "+" node follows it with a gap and no line.
 struct PrototypeSetStepper: View {
     var count: Int
     /// The node on screen now, if any.
@@ -99,7 +45,6 @@ struct PrototypeSetStepper: View {
                 node(i)
             }
             if let onAdd {
-                connector(done: false)
                 Button(action: onAdd) {
                     Image(systemName: "plus")
                         .font(.caption2.weight(.bold))
@@ -110,6 +55,7 @@ struct PrototypeSetStepper: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .padding(.leading, 4)
                 .accessibilityLabel("Add a \(noun.lowercased()) step")
                 .accessibilityIdentifier(addIdentifier ?? "\(identifierPrefix)-add")
             }

@@ -54,7 +54,7 @@ enum TodayPlanner {
         case .allDone:
             return "Today"
         case .logSession where hasSessionDraft:
-            return "Draft saved"
+            return "Session in progress"
         case .logMorning, .logAfterPain, .logEvening, .logSession:
             return "Next"
         }

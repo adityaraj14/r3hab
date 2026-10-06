@@ -256,11 +256,11 @@ struct SessionEditor: View {
         case finalize
     }
 
-    /// Save is the lime primary on the right. Save draft is the secondary on
+    /// Save is the lime primary on the right. Save for later is the secondary on
     /// the left, only while the form differs from baseline.
     private var logActionBar: some View {
         ActionFooter(
-            secondary: showsSaveDraft ? FooterAction("Save draft") { persist(as: .draft) } : nil,
+            secondary: showsSaveDraft ? FooterAction("Save for later") { persist(as: .draft) } : nil,
             primary: FooterAction("Save") { persist(as: .finalize) }
         )
         .padding(.horizontal, 16)

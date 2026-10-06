@@ -33,7 +33,7 @@ enum GuidedSessionStore {
         switch target {
         case .update(let id):
             guard let existing = try fetchRow(id: id, context: context) else {
-                throw GuidedSaveError(message: "This draft is no longer available.")
+                throw GuidedSaveError(message: "This session is no longer available.")
             }
             row = existing
         case .insert:
@@ -97,7 +97,7 @@ enum GuidedSessionStore {
         switch target {
         case .update(let id):
             guard let existing = try fetchRow(id: id, context: context) else {
-                throw GuidedSaveError(message: "This draft is no longer available.")
+                throw GuidedSaveError(message: "This session is no longer available.")
             }
             row = existing
             isFirstFinalize = existing.isDraft

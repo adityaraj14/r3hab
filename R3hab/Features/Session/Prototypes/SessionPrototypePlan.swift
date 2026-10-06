@@ -4,7 +4,6 @@ import Foundation
 enum SessionPrototypeAccessibility {
     static let screen = "guided-session-screen"
     static let saveDraft = "guided-save-draft"
-    static let progress = "prototype-progress"
     static let next = "prototype-next"
     static let back = "prototype-back"
     static let save = "prototype-save"
@@ -39,11 +38,6 @@ enum SessionPrototypeAccessibility {
 
     static func painChip(_ score: Int) -> String {
         "prototype-pain-chip-\(score)"
-    }
-
-    /// A step dot in the navigation bar. `index` is 0-based. The id is 1-based.
-    static func progressStep(_ index: Int) -> String {
-        "prototype-progress-step-\(index + 1)"
     }
 }
 
@@ -232,10 +226,10 @@ enum SessionPrototypePlan {
         return min(max(current + 1, furthest), count - 1)
     }
 
-    /// A tap on a step dot or a stepper node. A done step opens, and so does the
-    /// first unfinished step. A later step does not open. Nil when nothing changes.
-    static func jumpTarget(tapped: Int, current: Int, furthest: Int) -> Int? {
-        guard tapped >= 0, tapped <= furthest, tapped != current else { return nil }
+    /// A tap on a stepper node. Only a done node opens its step.
+    /// The current node and later nodes do not respond. Nil when nothing changes.
+    static func nodeTarget(tapped: Int, current: Int, furthest: Int) -> Int? {
+        guard isStepDone(tapped, furthest: furthest), tapped != current else { return nil }
         return tapped
     }
 

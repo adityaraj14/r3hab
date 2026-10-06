@@ -5,7 +5,7 @@ import XCTest
 @testable import R3habDomain
 #endif
 
-/// Save draft on each guided step, resume, older drafts, and background autosave.
+/// Save (top bar) on each guided step, resume, older drafts, and background autosave.
 final class GuidedCheckpointTests: XCTestCase {
     private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
