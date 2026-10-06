@@ -547,3 +547,136 @@ final class SaveAndFinishShots: XCTestCase {
         try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
     }
 }
+
+/// Morning pain uses the swipe ruler: Today, the prefill from yesterday, and History edit.
+/// Shots land in /tmp/r3hab-morning-shots. Run on a fresh install.
+final class MorningRulerShots: XCTestCase {
+    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-morning-shots", isDirectory: true)
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        try? FileManager.default.removeItem(at: shotDir)
+        try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
+    }
+
+    func testMorningPainRuler() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let notNow = app.buttons["Not now"]
+        if notNow.waitForExistence(timeout: 8) { notNow.tap() }
+        XCTAssertTrue(element(app, "today-poster").waitForExistence(timeout: 10), app.debugDescription)
+        let ruler = element(app, "morning-pain-ruler")
+
+        // 1. No yesterday value: the ruler opens at 0. The old 0-10 buttons are gone.
+        let record = app.buttons["Record morning pain"]
+        XCTAssertTrue(record.waitForExistence(timeout: 6), app.debugDescription)
+        record.tap()
+        XCTAssertTrue(ruler.waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(value(ruler).hasPrefix("0 of 10"), value(ruler))
+        XCTAssertFalse(app.buttons["Knee resting pain 1"].exists, "The 0-10 buttons are replaced")
+        snap(app, "01-today-morning-ruler-at-0")
+
+        // 2. Swipe to change the value.
+        drag(ruler, ticks: 3)
+        XCTAssertFalse(value(ruler).hasPrefix("0 of 10"), "The swipe changes the value: \(value(ruler))")
+        let recorded = String(value(ruler).prefix(while: { $0 != " " }))
+        snap(app, "02-today-morning-ruler-swiped")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(ruler.waitForNonExistence(timeout: 6), app.debugDescription)
+        let dismissNudge = app.buttons["OK"]
+        if dismissNudge.waitForExistence(timeout: 1) { dismissNudge.tap() }
+        let morningRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Morning pain")).firstMatch
+        XCTAssertTrue(morningRow.waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(morningRow.label.contains(recorded), morningRow.label)
+
+        // 3. A past day: the ruler opens at the morning value of the day before it (today's value is not used).
+        //    History: add a check-in for 2 days ago after one for 3 days ago.
+        app.tabBars.buttons["History"].tap()
+        addPastCheckIn(app, daysAgo: 3, ticks: 2)
+        let threeDaysAgo = lastSavedMorning
+        openPastCheckIn(app, daysAgo: 2)
+        XCTAssertTrue(ruler.waitForExistence(timeout: 4), app.debugDescription)
+        // A full check-in does not record a morning value until the user moves the ruler.
+        XCTAssertTrue(value(ruler).contains("Not recorded"), value(ruler))
+        snap(app, "03-history-new-day-not-recorded")
+        ruler.tap()
+        XCTAssertTrue(value(ruler).hasPrefix("\(threeDaysAgo) of 10"), "Prefill from the day before: \(value(ruler))")
+        XCTAssertTrue(value(ruler).contains("Same as the day before"), value(ruler))
+        snap(app, "04-history-prefill-from-day-before")
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(ruler.waitForNonExistence(timeout: 6), app.debugDescription)
+        if dismissNudge.waitForExistence(timeout: 1) { dismissNudge.tap() }
+
+        // 4. History edit of today's check-in: the ruler shows the saved value.
+        let todayRow = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Morning pain \(recorded)")).firstMatch
+        XCTAssertTrue(todayRow.waitForExistence(timeout: 6), app.debugDescription)
+        todayRow.tap()
+        XCTAssertTrue(ruler.waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(value(ruler).hasPrefix("\(recorded) of 10"), value(ruler))
+        snap(app, "05-history-edit-ruler")
+    }
+
+    private var lastSavedMorning = ""
+
+    private func addPastCheckIn(_ app: XCUIApplication, daysAgo: Int, ticks: Int) {
+        openPastCheckIn(app, daysAgo: daysAgo)
+        let ruler = element(app, "morning-pain-ruler")
+        XCTAssertTrue(ruler.waitForExistence(timeout: 4), app.debugDescription)
+        drag(ruler, ticks: ticks)
+        lastSavedMorning = String(value(ruler).prefix(while: { $0 != " " }))
+        XCTAssertNotEqual(lastSavedMorning, "\u{2014}", value(ruler))
+        app.navigationBars.buttons["Save"].tap()
+        XCTAssertTrue(ruler.waitForNonExistence(timeout: 6), app.debugDescription)
+        let ok = app.buttons["OK"]
+        if ok.waitForExistence(timeout: 1) { ok.tap() }
+    }
+
+    /// History: + → Add a past check-in → pick the date → Continue.
+    private func openPastCheckIn(_ app: XCUIApplication, daysAgo: Int) {
+        let add = app.buttons["Add a past day"]
+        XCTAssertTrue(add.waitForExistence(timeout: 6), app.debugDescription)
+        add.tap()
+        let checkIn = app.buttons["Add a past check-in"]
+        if checkIn.waitForExistence(timeout: 2) { checkIn.tap() }
+        let target = Calendar.current.date(byAdding: .day, value: -daysAgo, to: Date())!
+        let picker = app.datePickers.firstMatch
+        XCTAssertTrue(picker.waitForExistence(timeout: 4), app.debugDescription)
+        picker.tap()
+        let dayNumber = Calendar.current.component(.day, from: target)
+        let monthDiffers = Calendar.current.component(.month, from: target) != Calendar.current.component(.month, from: Date())
+        if monthDiffers {
+            app.buttons["Previous Month"].tap()
+        }
+        let cell = app.buttons.matching(NSPredicate(format: "label ENDSWITH %@", " \(dayNumber)")).firstMatch
+        XCTAssertTrue(cell.waitForExistence(timeout: 4), app.debugDescription)
+        cell.tap()
+        // Close the calendar popover.
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        app.navigationBars.buttons["Continue"].tap()
+        // The full check-in can open the Apple Health explainer first.
+        let notNow = app.buttons["Not now"]
+        if notNow.waitForExistence(timeout: 3) { notNow.tap() }
+        _ = element(app, "morning-pain-ruler").waitForExistence(timeout: 4)
+        sleep(1)
+    }
+
+    private func drag(_ ruler: XCUIElement, ticks: Int) {
+        let start = ruler.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+        let end = start.withOffset(CGVector(dx: -28 * CGFloat(ticks), dy: 0))
+        start.press(forDuration: 0.15, thenDragTo: end, withVelocity: .slow, thenHoldForDuration: 0.4)
+        sleep(1)
+    }
+
+    private func value(_ element: XCUIElement) -> String {
+        element.value as? String ?? ""
+    }
+
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    private func snap(_ app: XCUIApplication, _ name: String) {
+        let png = XCUIScreen.main.screenshot().pngRepresentation
+        try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
+    }
+}

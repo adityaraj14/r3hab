@@ -17,9 +17,10 @@ struct PrototypeRulerWheel: View {
     var isMajor: (Int) -> Bool
     var label: (Int) -> String
     var identifier: String
+    /// Space between ticks. A short scale (pain 0 to 10) uses wider ticks to fill the card.
+    var tickWidth: CGFloat = 14
     var onSelect: (Int) -> Void
 
-    private let tickWidth: CGFloat = 14
     private let rulerHeight: CGFloat = 62
 
     /// Ruler position when the drag started. Nil when no drag.

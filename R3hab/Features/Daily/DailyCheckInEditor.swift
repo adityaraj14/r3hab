@@ -57,7 +57,14 @@ struct DailyCheckInEditor: View {
 
             if showsMorning {
                 Section {
-                    PainScoreControl(title: "Knee resting pain", value: $restingPainAM)
+                    morningPainRuler
+                        .listRowInsets(EdgeInsets())
+                        .listRowBackground(Color.clear)
+                    if focus == .full, restingPainAM != nil {
+                        Button("Clear") { restingPainAM = nil }
+                            .font(.footnote)
+                            .accessibilityIdentifier("morning-pain-clear")
+                    }
                 } header: {
                     Text("Morning")
                 } footer: {
@@ -163,6 +170,40 @@ struct DailyCheckInEditor: View {
         }
     }
 
+    /// The day before `targetDate`, for the prefill and the comparison text.
+    private var yesterdayMorningPain: Int? {
+        MorningPain.yesterday(before: targetDate, checkIns: checkIns.map(\.snapshot), calendar: calendar)
+    }
+
+    /// The same swipe ruler as the working sets. A value that is not recorded
+    /// (full check-in only) shows "—" until the first move or tap.
+    private var morningPainRuler: some View {
+        let yesterday = yesterdayMorningPain
+        let shown = restingPainAM ?? MorningPain.prefill(yesterday: yesterday)
+        return PrototypeRulerWheel(
+            title: "Knee resting pain",
+            valueText: restingPainAM.map(String.init) ?? "\u{2014}",
+            unit: "of 10",
+            deltaText: MorningPain.comparison(
+                restingPainAM,
+                yesterday: yesterday,
+                isToday: calendar.isDateInToday(targetDate)
+            ),
+            onTarget: restingPainAM == nil || yesterday == nil || restingPainAM == yesterday,
+            count: MorningPain.range.count,
+            index: shown,
+            targetIndex: yesterday ?? -1,
+            isMajor: { _ in true },
+            label: { "\($0)" },
+            identifier: "morning-pain-ruler",
+            tickWidth: 28,
+            onSelect: { restingPainAM = $0 }
+        )
+        .onTapGesture {
+            if restingPainAM == nil { restingPainAM = shown }
+        }
+    }
+
     private var navigationTitleText: String {
         switch focus {
         case .morning:
@@ -195,6 +236,7 @@ struct DailyCheckInEditor: View {
         }
 
         guard let values = try? DailyCheckInStore.values(forDay: targetDate, context: modelContext, calendar: calendar) else {
+            prefillMorningPainIfFocused()
             return
         }
         hadRowOnLoad = true
@@ -210,6 +252,14 @@ struct DailyCheckInEditor: View {
         if values.steps != nil {
             stepsSourceNote = "Saved value — tap Apple Health to refresh."
         }
+        prefillMorningPainIfFocused()
+    }
+
+    /// The morning editor opens with a value on the ruler: yesterday's morning pain, or 0.
+    /// The full check-in does not, so an edit of other fields does not record a morning value.
+    private func prefillMorningPainIfFocused() {
+        guard focus == .morning, restingPainAM == nil else { return }
+        restingPainAM = MorningPain.prefill(yesterday: yesterdayMorningPain)
     }
 
     /// Health button: explain first if the system prompt has not been shown yet.

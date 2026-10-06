@@ -67,7 +67,8 @@ let package = Package(
                 "BackupRestoreRoundTripTests.swift",
                 "TodayEveningPromptTests.swift",
                 "SessionUpsertTests.swift",
-                "IncompleteRecordsTests.swift"
+                "IncompleteRecordsTests.swift",
+                "MorningPainTests.swift"
             ]
         )
     ]

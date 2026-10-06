@@ -29,9 +29,9 @@ final class DogfoodTests: XCTestCase {
 
         if app.buttons["Record morning pain"].waitForExistence(timeout: 3) {
             app.buttons["Record morning pain"].tap()
-            let morning = app.buttons["Knee resting pain 1"]
+            let morning = app.descendants(matching: .any)["morning-pain-ruler"]
             XCTAssertTrue(morning.waitForExistence(timeout: 4), app.debugDescription)
-            morning.tap()
+            XCTAssertTrue((morning.value as? String ?? "").hasPrefix("0 of 10"), "No yesterday value: the ruler opens at 0")
             snap(app, "05-morning")
             app.navigationBars.buttons["Save"].tap()
         }

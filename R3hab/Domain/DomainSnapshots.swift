@@ -135,3 +135,39 @@ enum CalendarDay {
         return String(format: "%04d-%02d-%02d", c.year ?? 0, c.month ?? 0, c.day ?? 0)
     }
 }
+
+/// The morning pain ruler: 0 to 10 in steps of 1 (the model stores whole numbers).
+enum MorningPain {
+    static let range = PainScore.validRange
+
+    /// The morning pain on the day before `day`. Nil when that day has no morning value.
+    static func yesterday(
+        before day: Date,
+        checkIns: [DailyCheckInSnapshot],
+        calendar: Calendar = .current
+    ) -> Int? {
+        let start = calendar.startOfDay(for: day)
+        guard let previous = calendar.date(byAdding: .day, value: -1, to: start) else { return nil }
+        return checkIns
+            .first { calendar.isDate($0.date, inSameDayAs: previous) && $0.restingPainAM != nil }?
+            .restingPainAM
+    }
+
+    /// The ruler opens at yesterday's morning value, or at 0.
+    static func prefill(yesterday: Int?) -> Int {
+        guard let yesterday else { return 0 }
+        return min(max(yesterday, range.lowerBound), range.upperBound)
+    }
+
+    /// The text to the right of the ruler title. Today compares with "yesterday".
+    /// An earlier day compares with "the day before".
+    static func comparison(_ value: Int?, yesterday: Int?, isToday: Bool = true) -> String {
+        guard let value else { return "Not recorded" }
+        guard let yesterday else { return "" }
+        let previous = isToday ? "yesterday" : "the day before"
+        let delta = value - yesterday
+        if delta == 0 { return "Same as \(previous)" }
+        let sign = delta > 0 ? "+" : "\u{2212}"
+        return "\(sign)\(abs(delta)) from \(previous)"
+    }
+}
