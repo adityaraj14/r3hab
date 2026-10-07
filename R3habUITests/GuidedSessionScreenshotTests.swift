@@ -680,3 +680,90 @@ final class MorningRulerShots: XCTestCase {
         try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
     }
 }
+
+/// Move back and forth between the done steps and the furthest step.
+/// Edge swipes change the step. A drag on a ruler moves only the ruler.
+/// Shots land in /tmp/r3hab-step-nav-shots. Run on a fresh install.
+final class StepNavShots: XCTestCase {
+    private let shotDir = URL(fileURLWithPath: "/tmp/r3hab-step-nav-shots", isDirectory: true)
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        try? FileManager.default.removeItem(at: shotDir)
+        try FileManager.default.createDirectory(at: shotDir, withIntermediateDirectories: true)
+    }
+
+    func testSwipeBetweenDoneStepsAndTheFurthestStep() throws {
+        let app = XCUIApplication()
+        app.launch()
+        let notNow = app.buttons["Not now"]
+        if notNow.waitForExistence(timeout: 8) { notNow.tap() }
+        XCTAssertTrue(element(app, "today-poster").waitForExistence(timeout: 10), app.debugDescription)
+        let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")).firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 8), app.debugDescription)
+        for _ in 0..<4 where !element(app, "prototype-guided-exercise").exists {
+            if row.isHittable { row.tap() }
+            _ = element(app, "prototype-guided-exercise").waitForExistence(timeout: 3)
+        }
+        let next = app.buttons["prototype-next"]
+        // Exercise, three warm-up steps, set 1, set 2: the furthest step is set 3.
+        for _ in 0..<6 { next.tap(); usleep(400_000) }
+        XCTAssertTrue(element(app, "prototype-guided-set-3").waitForExistence(timeout: 4), app.debugDescription)
+
+        // Edge swipe back: set 2.
+        edgeSwipe(app, back: true)
+        XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
+        snap(app, "01-swipe-back-to-set-2")
+
+        // A drag on the ruler moves the ruler. The step does not change.
+        let ruler = element(app, "prototype-guided-set-2-load-ruler")
+        let before = ruler.value as? String ?? ""
+        let start = ruler.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.75))
+        start.press(forDuration: 0.15, thenDragTo: start.withOffset(CGVector(dx: -90, dy: 0)), withVelocity: .fast, thenHoldForDuration: 0.2)
+        sleep(1)
+        let changed = ruler.value as? String ?? ""
+        XCTAssertNotEqual(before, changed, "The drag moves the ruler")
+        XCTAssertTrue(element(app, "prototype-guided-set-2").exists, "A drag on a ruler does not change the step")
+        snap(app, "02-ruler-drag-keeps-step")
+
+        // Edge swipe forward twice: set 3, then no skip ahead past the furthest step.
+        edgeSwipe(app, back: false)
+        XCTAssertTrue(element(app, "prototype-guided-set-3").waitForExistence(timeout: 4), app.debugDescription)
+        edgeSwipe(app, back: false)
+        sleep(1)
+        XCTAssertTrue(element(app, "prototype-guided-set-3").exists, "A swipe does not go past the furthest step")
+        XCTAssertFalse(element(app, "prototype-guided-pain").exists)
+        snap(app, "03-forward-stops-at-furthest")
+
+        // Save and resume: the furthest step opens, and the change on set 2 stays.
+        app.buttons["guided-save-draft"].tap()
+        let inProgress = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "In progress")).firstMatch
+        XCTAssertTrue(inProgress.waitForExistence(timeout: 6), app.debugDescription)
+        for _ in 0..<4 where !element(app, "prototype-guided-set-3").exists {
+            if inProgress.isHittable { inProgress.tap() }
+            _ = element(app, "prototype-guided-set-3").waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(element(app, "prototype-guided-set-3").exists, app.debugDescription)
+        edgeSwipe(app, back: true)
+        XCTAssertTrue(element(app, "prototype-guided-set-2").waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertEqual(element(app, "prototype-guided-set-2-load-ruler").value as? String, changed, "The edit does not revert")
+        snap(app, "04-resume-keeps-edit")
+    }
+
+    /// A swipe that starts at the screen edge, outside the rulers.
+    private func edgeSwipe(_ app: XCUIApplication, back: Bool) {
+        let from = app.coordinate(withNormalizedOffset: CGVector(dx: back ? 0.02 : 0.98, dy: 0.55))
+        let to = app.coordinate(withNormalizedOffset: CGVector(dx: back ? 0.6 : 0.4, dy: 0.55))
+        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .fast, thenHoldForDuration: 0)
+        usleep(500_000)
+    }
+
+    private func element(_ app: XCUIApplication, _ identifier: String) -> XCUIElement {
+        app.descendants(matching: .any)[identifier]
+    }
+
+    private func snap(_ app: XCUIApplication, _ name: String) {
+        let png = XCUIScreen.main.screenshot().pngRepresentation
+        try? png.write(to: shotDir.appendingPathComponent("\(name).png"))
+    }
+}

@@ -214,6 +214,53 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertNil(SessionPrototypePlan.nodeTarget(tapped: 5, current: 1, furthest: 5))
     }
 
+    func testSwipeBackStopsAtStepOne() {
+        XCTAssertEqual(SessionPrototypePlan.swipeTarget(.back, current: 3, furthest: 5, count: 10), 2)
+        XCTAssertEqual(SessionPrototypePlan.swipeTarget(.back, current: 1, furthest: 5, count: 10), 0)
+        XCTAssertNil(SessionPrototypePlan.swipeTarget(.back, current: 0, furthest: 5, count: 10), "A swipe on step 1 does not close")
+    }
+
+    func testSwipeForwardStopsAtTheFurthestStep() {
+        // Behind the furthest step: one step forward each swipe, up to the furthest step.
+        XCTAssertEqual(SessionPrototypePlan.swipeTarget(.forward, current: 2, furthest: 5, count: 10), 3)
+        XCTAssertEqual(SessionPrototypePlan.swipeTarget(.forward, current: 4, furthest: 5, count: 10), 5)
+        // At the furthest step: no skip ahead. Only Next records and goes on.
+        XCTAssertNil(SessionPrototypePlan.swipeTarget(.forward, current: 5, furthest: 5, count: 10))
+        // The furthest step cannot be past the last step.
+        XCTAssertNil(SessionPrototypePlan.swipeTarget(.forward, current: 9, furthest: 12, count: 10))
+        XCTAssertNil(SessionPrototypePlan.swipeTarget(.forward, current: 0, furthest: 0, count: 0))
+    }
+
+    func testBackThenForwardReturnsToTheFurthestStep() {
+        var current = 6
+        let furthest = 6
+        for _ in 0..<3 { current = SessionPrototypePlan.swipeTarget(.back, current: current, furthest: furthest, count: 10)! }
+        XCTAssertEqual(current, 3)
+        while let next = SessionPrototypePlan.swipeTarget(.forward, current: current, furthest: furthest, count: 10) {
+            current = next
+        }
+        XCTAssertEqual(current, furthest, "Forward swipes stop at the furthest step")
+        // From an earlier step, Next also goes to the furthest step.
+        XCTAssertEqual(SessionPrototypePlan.nextIndex(current: 3, furthest: furthest, count: 10), furthest)
+    }
+
+    func testStepSwipeDirectionAndRulerEdges() {
+        // Not a step swipe: too short or mostly vertical.
+        XCTAssertNil(SessionPrototypePlan.stepSwipe(startX: 200, width: 390, dx: -30, dy: 0, hasRulers: false))
+        XCTAssertNil(SessionPrototypePlan.stepSwipe(startX: 200, width: 390, dx: -60, dy: 90, hasRulers: false))
+        // A step without rulers: a swipe from any point.
+        XCTAssertEqual(SessionPrototypePlan.stepSwipe(startX: 200, width: 390, dx: -60, dy: 5, hasRulers: false), .forward)
+        XCTAssertEqual(SessionPrototypePlan.stepSwipe(startX: 200, width: 390, dx: 60, dy: 5, hasRulers: false), .back)
+        // A step with rulers: a drag that starts on the ruler area only moves the ruler.
+        XCTAssertNil(SessionPrototypePlan.stepSwipe(startX: 200, width: 390, dx: -60, dy: 0, hasRulers: true))
+        XCTAssertNil(SessionPrototypePlan.stepSwipe(startX: 40, width: 390, dx: 60, dy: 0, hasRulers: true))
+        // A swipe from a screen edge changes the step.
+        XCTAssertEqual(SessionPrototypePlan.stepSwipe(startX: 10, width: 390, dx: 80, dy: 4, hasRulers: true), .back)
+        XCTAssertEqual(SessionPrototypePlan.stepSwipe(startX: 380, width: 390, dx: -80, dy: 4, hasRulers: true), .forward)
+        // The rulers start 20 pt + the card padding from the edge, so they are outside the edge area.
+        XCTAssertLessThan(SessionPrototypePlan.stepSwipeEdge, 34)
+    }
+
     func testDeleteGoesToTheFirstUnfinishedStep() {
         // Delete warm-up 1 (index 1) while set 1 (index 4) is unfinished: set 1 is now index 3.
         let after = SessionPrototypePlan.afterDelete(deleted: 1, furthest: 4, count: 9)

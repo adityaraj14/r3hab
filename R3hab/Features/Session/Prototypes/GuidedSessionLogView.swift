@@ -17,6 +17,8 @@ struct GuidedSessionLogView: View {
     var onClose: () -> Void = {}
 
     @FocusState private var notesFocused: Bool
+    /// Screen width for the edge test of the step swipe.
+    @State private var screenWidth: CGFloat = 390
 
     private var hasRulers: Bool {
         switch prompt {
@@ -69,8 +71,16 @@ struct GuidedSessionLogView: View {
                         .opacity(prompt == .review ? 1 : 0)
                 }
         }
-        // The rulers use drags, so the step swipe is off on the warm-up and set steps.
-        .simultaneousGesture(swipe, including: hasRulers ? .subviews : .all)
+        // Swipe between the done steps and the first unfinished step.
+        // On the warm-up and set steps the swipe must start at a screen edge, so a drag on a ruler moves only the ruler.
+        .simultaneousGesture(swipe)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { screenWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, width in screenWidth = width }
+            }
+        }
         .toolbar {
             // Back at the leading edge. On step 1 it saves the progress and closes the sheet.
             ToolbarItem(placement: .topBarLeading) {
@@ -91,16 +101,17 @@ struct GuidedSessionLogView: View {
     }
 
     private var swipe: some Gesture {
-        DragGesture(minimumDistance: 48).onEnded { value in
-            let horizontal = value.translation.width
-            let vertical = value.translation.height
-            guard abs(horizontal) > abs(vertical) else { return }
-            if horizontal <= -48 {
-                next()
-            } else if horizontal >= 48, index > 0 {
-                back()
+        DragGesture(minimumDistance: SessionPrototypePlan.stepSwipeMinDistance, coordinateSpace: .global)
+            .onEnded { value in
+                guard let direction = SessionPrototypePlan.stepSwipe(
+                    startX: value.startLocation.x,
+                    width: screenWidth,
+                    dx: value.translation.width,
+                    dy: value.translation.height,
+                    hasRulers: hasRulers
+                ) else { return }
+                move(direction)
             }
-        }
     }
 
     @ViewBuilder
@@ -579,6 +590,21 @@ struct GuidedSessionLogView: View {
             return
         }
         index -= 1
+        onCheckpointSave()
+    }
+
+    /// A step swipe. It keeps all values and saves the draft. It does not record a step:
+    /// forward stops at the first unfinished step, and back stops at step 1 (it does not close).
+    private func move(_ direction: SessionPrototypePlan.StepSwipe) {
+        guard let target = SessionPrototypePlan.swipeTarget(
+            direction,
+            current: index,
+            furthest: furthest,
+            count: prompts.count
+        ) else { return }
+        notesFocused = false
+        index = target
+        Haptics.light()
         onCheckpointSave()
     }
 

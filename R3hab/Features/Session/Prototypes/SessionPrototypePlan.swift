@@ -233,6 +233,42 @@ enum SessionPrototypePlan {
         return tapped
     }
 
+    enum StepSwipe: Equatable, Sendable {
+        case back
+        case forward
+    }
+
+    /// A step swipe must move this far, mostly sideways.
+    static let stepSwipeMinDistance: Double = 48
+    /// On the warm-up and set steps, a step swipe must start this close to a screen edge.
+    /// The rulers start inside this edge, so a drag on a ruler only moves the ruler.
+    static let stepSwipeEdge: Double = 24
+
+    /// The direction of a step swipe, or nil when the drag is not a step swipe.
+    /// A swipe to the left goes forward. A swipe to the right goes back.
+    static func stepSwipe(startX: Double, width: Double, dx: Double, dy: Double, hasRulers: Bool) -> StepSwipe? {
+        guard abs(dx) >= stepSwipeMinDistance, abs(dx) > abs(dy) else { return nil }
+        if hasRulers {
+            let nearEdge = startX <= stepSwipeEdge || startX >= width - stepSwipeEdge
+            guard nearEdge else { return nil }
+        }
+        return dx < 0 ? .forward : .back
+    }
+
+    /// Where a step swipe goes. Back: one step back, not before step 1.
+    /// Forward: one step, not past the first unfinished step (`furthest`).
+    /// A swipe does not record a step. Only Next moves past `furthest`. Nil when nothing changes.
+    static func swipeTarget(_ swipe: StepSwipe, current: Int, furthest: Int, count: Int) -> Int? {
+        guard count > 0 else { return nil }
+        switch swipe {
+        case .back:
+            return current > 0 ? current - 1 : nil
+        case .forward:
+            let limit = min(max(furthest, 0), count - 1)
+            return current < limit ? current + 1 : nil
+        }
+    }
+
     /// After the delete of the step at `deleted`, go to the first unfinished step.
     static func afterDelete(deleted: Int, furthest: Int, count: Int) -> (current: Int, furthest: Int) {
         let shifted = deleted < furthest ? furthest - 1 : furthest

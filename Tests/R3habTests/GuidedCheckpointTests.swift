@@ -268,6 +268,24 @@ final class GuidedCheckpointTests: XCTestCase {
 
     // MARK: Helpers
 
+    /// The user goes back to set 1 and changes it, then saves. The resume opens at the
+    /// furthest step (set 3), and the change on set 1 stays.
+    func testSaveFromAnEarlierStepKeepsTheFurthestStepAndTheEdit() {
+        var draft = filled()
+        let prompts = draft.prompts
+        let set1 = prompts.firstIndex(of: .set(0))!
+        let set3 = prompts.firstIndex(of: .set(2))!
+        draft.painDuring = nil
+        draft.notes = ""
+        draft.sets[0].reps = draft.sets[0].reps + 2
+        // The host saves the furthest step, not the step on screen.
+        let saved = GuidedCheckpointing.checkpoint(draft, stepIndex: set3)
+        let restored = GuidedCheckpointing.restore(saved, onto: plan())
+        XCTAssertEqual(restored.stepIndex, set3)
+        XCTAssertNotEqual(restored.stepIndex, set1)
+        XCTAssertEqual(restored.draft.sets[0].reps, draft.sets[0].reps, "The edit on the earlier step does not revert")
+    }
+
     private func snapshot(of checkpoint: GuidedCheckpoint, isDraft: Bool) -> TrainingSessionSnapshot {
         TrainingSessionSnapshot(
             date: day0,
