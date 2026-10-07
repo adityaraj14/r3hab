@@ -142,7 +142,7 @@ struct SessionPrototypeDraft: Equatable, Sendable {
 }
 
 enum SessionPrototypePlan {
-    static let loadStep = 5.0
+    static let loadStep = ProgressionEngine.loadIncrementLbs
     /// Same sentence the session form already shows under pain.
     static let painDuringNote = "Record the pain during the session. Use 0 to 10. R3hab sends a reminder in about 30 minutes. Then record the pain after the session."
     static let under48hWarning = "Your last hard session was less than 48 hours ago. You can save. This is only a warning."

@@ -51,6 +51,55 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertTrue(work.allSatisfy { $0.loadLbs == 45 && $0.reps == 8 })
     }
 
+    /// TestFlight 45 bug: on an increase day, set 2 showed "Target 8 × 50 lb" (the last load).
+    /// The Today card, the target, the ruler start, and the delta now use one recommended load.
+    func testIncreaseDayUsesTheRecommendedLoadEverywhere() throws {
+        let history = [
+            session(dayOffset: -5, reps: 8, load: 50),
+            session(dayOffset: -3, reps: 8, load: 50)
+        ]
+        let engine = ProgressionEngine.today(sessions: history, asOf: day0, calendar: calendar)
+        let draft = SessionPrototypePlan.make(sessions: history, phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
+        let recommended = 50 + ProgressionEngine.loadIncrementLbs
+        XCTAssertEqual(draft.stanceLabel, "Increase the load")
+        // Today card.
+        XCTAssertEqual(engine.cardReason, "Increase the load. Try 55 lb.")
+        XCTAssertEqual(engine.suggestedChangeLoadLbs, recommended)
+        // Target line on each set step.
+        XCTAssertEqual(draft.target.loadLbs, recommended)
+        XCTAssertTrue(draft.perSetTargetLine.contains("55 lb"), draft.perSetTargetLine)
+        XCTAssertFalse(draft.perSetTargetLine.contains("50 lb"), draft.perSetTargetLine)
+        // Ruler start: every set opens at the recommended load, and the delta reads "Target".
+        XCTAssertTrue(draft.sets.allSatisfy { $0.loadLbs == recommended })
+        XCTAssertEqual(SessionPrototypePlan.loadDelta(draft.sets[1].loadLbs, target: draft.target.loadLbs), "Target")
+        // Back at the last load: the delta shows the step down from the recommended load.
+        XCTAssertEqual(SessionPrototypePlan.loadDelta(50, target: draft.target.loadLbs), "\u{2212}5 lb")
+        // The warm-up template uses the same working load.
+        let working = try XCTUnwrap(draft.target.loadLbs)
+        XCTAssertEqual(draft.warmup.steps.last?.loadLbs, WarmupPlan.roundLoad(working * 0.75, step: 5))
+    }
+
+    /// A hold day keeps the last load everywhere, and the Today card names no new weight.
+    func testHoldDayKeepsTheLastLoad() {
+        let history = [session(dayOffset: -3, reps: 8, load: 50)]
+        let engine = ProgressionEngine.today(sessions: history, asOf: day0, calendar: calendar)
+        let draft = SessionPrototypePlan.make(sessions: history, phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
+        XCTAssertEqual(draft.stanceLabel, "Hold the load")
+        XCTAssertNil(engine.suggestedChangeLoadLbs)
+        XCTAssertFalse(engine.cardReason.contains("Try"))
+        XCTAssertEqual(draft.target.loadLbs, 50)
+        XCTAssertTrue(draft.perSetTargetLine.contains("50 lb"), draft.perSetTargetLine)
+        XCTAssertTrue(draft.sets.allSatisfy { $0.loadLbs == 50 })
+        XCTAssertEqual(SessionPrototypePlan.loadDelta(draft.sets[1].loadLbs, target: draft.target.loadLbs), "Target")
+    }
+
+    func testIncreaseWithNoLoggedLoadNamesNoWeight() {
+        let noLoad = LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil)
+        XCTAssertNil(ProgressionEngine.increased(noLoad).loadLbs)
+        XCTAssertEqual(ProgressionEngine.increased(LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50)).loadLbs, 55)
+        XCTAssertEqual(SessionPrototypePlan.loadStep, ProgressionEngine.loadIncrementLbs, "One increment for the engine and the ruler")
+    }
+
     func testSetRulersOpenAtTheTargetAndNextKeepsTheShownValues() {
         var draft = SessionPrototypePlan.make(
             sessions: [session(dayOffset: -3, reps: 8, load: 45)],
