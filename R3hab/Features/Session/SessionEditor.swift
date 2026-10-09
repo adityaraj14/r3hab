@@ -256,19 +256,13 @@ struct SessionEditor: View {
         case finalize
     }
 
-    /// Save stays the lime primary. Save draft is the outlined secondary and
-    /// sits above it, full width, only while the form differs from baseline.
+    /// Save is the lime primary on the right. Save for later is the secondary on
+    /// the left, only while the form differs from baseline.
     private var logActionBar: some View {
-        VStack(spacing: 8) {
-            if showsSaveDraft {
-                Button("Save draft") { persist(as: .draft) }
-                    .buttonStyle(QuietActionButtonStyle(expands: true))
-                    .accessibilityLabel("Save draft")
-            }
-            Button("Save") { persist(as: .finalize) }
-                .buttonStyle(.primaryAction)
-                .accessibilityLabel("Save")
-        }
+        ActionFooter(
+            secondary: showsSaveDraft ? FooterAction("Save for later") { persist(as: .draft) } : nil,
+            primary: FooterAction("Save") { persist(as: .finalize) }
+        )
         .padding(.horizontal, 16)
         .padding(.top, 12)
         .padding(.bottom, 8)

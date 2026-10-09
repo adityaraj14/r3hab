@@ -38,9 +38,9 @@ enum IncompleteRecords {
     enum Copy {
         static let cardTitle = "Complete the pending record"
         static let cardEyebrow = "Earlier day"
-        static let discardDraft = "Discard draft"
-        static let discardTitle = "Discard this draft?"
-        static let discardMessage = "R3hab deletes this draft. You cannot restore it."
+        static let discardDraft = "Discard session"
+        static let discardTitle = "Discard this session?"
+        static let discardMessage = "R3hab deletes this session. You cannot restore it."
         static let notificationTitle = "Pending record"
 
         static func dayLabel(_ day: Date, now: Date, calendar: Calendar) -> String {
@@ -57,7 +57,7 @@ enum IncompleteRecords {
             let when = dayLabel(item.day, now: now, calendar: calendar)
             switch item.kind {
             case .unfinishedDraft:
-                return "\(when): unfinished draft"
+                return "\(when): session in progress"
             case .missingMorningPain:
                 return "\(when): morning pain"
             case .missingEveningPain:

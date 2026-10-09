@@ -45,14 +45,11 @@ struct PrimaryActionButtonStyle: ButtonStyle {
 struct QuietActionButtonStyle: ButtonStyle {
     @Environment(\.isEnabled) private var isEnabled
     var compact = false
-    /// Match `PrimaryActionButtonStyle` when the secondary sits in a full-width bar.
-    var expands = false
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(compact ? .subheadline.weight(.semibold) : .headline.weight(.semibold))
             .foregroundStyle(isEnabled ? Color.white : Color.white.opacity(0.3))
-            .frame(maxWidth: expands ? .infinity : nil)
             .padding(.vertical, compact ? 8 : 14)
             .padding(.horizontal, compact ? 12 : 16)
             .background(
@@ -66,6 +63,35 @@ struct QuietActionButtonStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.8 : 1)
             .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
     }
+}
+
+/// Footer secondary. Lime label on a dark fill with a lime outline.
+/// Same size as the primary, so the two sit side by side in one row.
+struct SecondaryActionButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline.weight(.semibold))
+            .foregroundStyle(isEnabled ? AppTheme.gold : Color.white.opacity(0.35))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .padding(.horizontal, 16)
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(AppTheme.surface)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .strokeBorder(isEnabled ? AppTheme.gold.opacity(0.55) : Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == SecondaryActionButtonStyle {
+    static var secondaryAction: SecondaryActionButtonStyle { SecondaryActionButtonStyle() }
 }
 
 extension ButtonStyle where Self == PrimaryActionButtonStyle {

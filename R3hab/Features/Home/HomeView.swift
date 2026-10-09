@@ -684,13 +684,13 @@ struct HomeView: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(sessionAccessibilityLabel(title: title, trailing: trailing, placeholder: placeholder, lines: lines, status: entry.loggedStatus))
-        .accessibilityHint(logged ? "Edit" : "Record")
+        .accessibilityHint(entry == .resumeDraft ? "Continue the session" : (logged ? "Edit" : "Record"))
     }
 
     private func sessionTrailingValue(_ entry: TodaySessionEntry) -> String? {
         switch entry {
         case .resumeDraft:
-            return "Continue the draft"
+            return "In progress"
         case .logged(let load, let status) where !load.hasLines:
             return status
         case .rest, .target, .logged:

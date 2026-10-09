@@ -1,28 +1,33 @@
 import SwiftUI
 
-/// The session recorder. One question per card. Prefill is the engine target, so a set is usually one tap.
+/// The session recorder. One question per screen and one forward motion:
+/// each step has one Next button. Back is the chevron in the navigation bar.
+/// The rulers open at the plan, so a set is usually one tap.
 struct GuidedSessionLogView: View {
     @Binding var draft: SessionPrototypeDraft
-    /// Current step. The host keeps it, so a draft save stores it and a resume opens there.
+    /// Current step. The host keeps it.
     @Binding var index: Int
+    /// The first unfinished step. Steps before it are done. A draft save stores it, so a resume opens there.
+    @Binding var furthest: Int
     var spacingWarning: String?
     var onSave: () -> Void
-    /// Writes the draft checkpoint after a warm-up add/remove or a working-set record.
+    /// Writes the draft checkpoint. Called after each Next, Back, edit on a done step, and delete.
     var onCheckpointSave: () -> Void = {}
+    /// Back on step 1. The host saves the draft (if there is something to keep) and closes.
+    var onClose: () -> Void = {}
 
     @FocusState private var notesFocused: Bool
-    /// Rulers for the next warm-up set. Not stored until "Add warm-up set".
-    @State private var warmupComposer = WarmupComposer.empty
-    @State private var warmupComposerSeeded = false
+    /// Screen width for the edge test of the step swipe.
+    @State private var screenWidth: CGFloat = 390
 
-    private var isSetPrompt: Bool {
-        if case .set = prompt { return true }
-        return false
+    private var hasRulers: Bool {
+        switch prompt {
+        case .set, .warmup: return true
+        default: return false
+        }
     }
 
-    private var prompts: [GuidedPrompt] {
-        SessionPrototypePlan.guidedPrompts(setCount: draft.sets.count)
-    }
+    private var prompts: [GuidedPrompt] { draft.prompts }
 
     private var prompt: GuidedPrompt {
         let steps = prompts
@@ -33,10 +38,8 @@ struct GuidedSessionLogView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            PrototypeProgressDots(count: max(prompts.count, 1), index: min(index, max(prompts.count - 1, 0)))
-                .padding(.top, 12)
             Group {
-                if prompt == .review || prompt == .notes || prompt == .pain || prompt == .warmup {
+                if prompt == .review || prompt == .notes || prompt == .pain {
                     ScrollView {
                         stepBody
                             .padding(.horizontal, 20)
@@ -63,34 +66,52 @@ struct GuidedSessionLogView: View {
                 .frame(maxWidth: .infinity)
                 .background(AppTheme.canvas.ignoresSafeArea(edges: .bottom))
                 .overlay(alignment: .top) {
-                    // Scrolled content goes under the buttons. The line shows the edge.
+                    // Scrolled content goes under the button. The line shows the edge.
                     Rectangle().fill(AppTheme.cardHairline).frame(height: 1)
-                        .opacity(prompt == .warmup || prompt == .review ? 1 : 0)
+                        .opacity(prompt == .review ? 1 : 0)
                 }
         }
-        // The set screen rulers use drags, so the step swipe is off there.
-        .simultaneousGesture(swipe, including: isSetPrompt ? .subviews : .all)
+        // Swipe between the done steps and the first unfinished step.
+        // On the warm-up and set steps the swipe must start at a screen edge, so a drag on a ruler moves only the ruler.
+        .simultaneousGesture(swipe)
+        .background {
+            GeometryReader { proxy in
+                Color.clear
+                    .onAppear { screenWidth = proxy.size.width }
+                    .onChange(of: proxy.size.width) { _, width in screenWidth = width }
+            }
+        }
         .toolbar {
+            // Back at the leading edge. On step 1 it saves the progress and closes the sheet.
+            ToolbarItem(placement: .topBarLeading) {
+                Button(action: back) {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 44)
+                        .contentShape(Rectangle())
+                }
+                .accessibilityLabel("Back")
+                .accessibilityIdentifier(SessionPrototypeAccessibility.back)
+            }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
                 Button("Done") { notesFocused = false }
             }
         }
-        .onAppear { seedWarmupComposerIfNeeded() }
-        .onChange(of: index) { _, _ in seedWarmupComposerIfNeeded() }
     }
 
     private var swipe: some Gesture {
-        DragGesture(minimumDistance: 48).onEnded { value in
-            let horizontal = value.translation.width
-            let vertical = value.translation.height
-            guard abs(horizontal) > abs(vertical) else { return }
-            if horizontal <= -48 {
-                forward()
-            } else if horizontal >= 48 {
-                back()
+        DragGesture(minimumDistance: SessionPrototypePlan.stepSwipeMinDistance, coordinateSpace: .global)
+            .onEnded { value in
+                guard let direction = SessionPrototypePlan.stepSwipe(
+                    startX: value.startLocation.x,
+                    width: screenWidth,
+                    dx: value.translation.width,
+                    dy: value.translation.height,
+                    hasRulers: hasRulers
+                ) else { return }
+                move(direction)
             }
-        }
     }
 
     @ViewBuilder
@@ -98,8 +119,8 @@ struct GuidedSessionLogView: View {
         switch prompt {
         case .exercise:
             exerciseStep
-        case .warmup:
-            warmupStep
+        case .warmup(let step):
+            warmupStep(step)
         case .set(let setIndex):
             setStep(setIndex)
         case .pain:
@@ -137,196 +158,242 @@ struct GuidedSessionLogView: View {
         .frame(maxWidth: .infinity)
     }
 
-    private var warmupStep: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Warm-up")
-                .font(.largeTitle.weight(.bold))
-                .foregroundStyle(AppTheme.ivory)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmup)
-            if draft.warmup.source != .blank {
-                Text(draft.warmup.source.label)
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(draft.warmup.source == .lastSession ? AppTheme.ink : AppTheme.ivory)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 4)
-                    .background(
-                        draft.warmup.source == .lastSession ? AppTheme.gold : AppTheme.quietFill,
-                        in: Capsule()
-                    )
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSource)
-            }
-            Text(draft.warmup.steps.isEmpty
-                 ? "Set the rulers. Then add the warm-up set."
-                 : "Add another warm-up, or select Warm-up done.")
-                .font(.subheadline)
-                .foregroundStyle(AppTheme.quiet)
+    // MARK: Warm-up
 
-            ForEach(Array(draft.warmup.steps.enumerated()), id: \.element.id) { offset, step in
-                finishedWarmupRow(offset, step)
-            }
-
-            if draft.warmup.steps.count < WarmupPlan.maxSteps {
-                warmupComposerCard
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.bottom, 8)
+    private func promptIndex(_ target: GuidedPrompt) -> Int? {
+        prompts.firstIndex(of: target)
     }
 
-    private func finishedWarmupRow(_ offset: Int, _ step: WarmupStep) -> some View {
-        HStack(spacing: 10) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Warm-up \(offset + 1)")
-                    .font(.caption.weight(.bold))
-                    .foregroundStyle(AppTheme.quiet)
-                Text(step.line)
-                    .font(.headline)
-                    .foregroundStyle(AppTheme.ivory)
-                if step.fromLastSession {
-                    Text("From last session")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(AppTheme.gold)
-                }
-            }
-            Spacer(minLength: 4)
-            Button {
-                removeWarmupSet(id: step.id)
-            } label: {
-                Image(systemName: "trash")
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                    .frame(width: 36, height: 36)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Remove warm-up \(offset + 1)")
-            .accessibilityIdentifier(SessionPrototypeAccessibility.warmupStep(offset, "remove"))
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .posterCard()
-        .accessibilityIdentifier(SessionPrototypeAccessibility.warmupStep(offset))
+    /// The warm-up was skipped: the user is past the warm-up steps and it is not included.
+    private var warmupSkipped: Bool {
+        !draft.includeWarmup && furthest > GuidedCheckpointing.lastWarmupIndex(draft)
     }
 
-    private var warmupComposerCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 0) {
-                ForEach(WarmupStep.Kind.allCases, id: \.self) { kind in
-                    composerKindButton(kind)
-                }
-            }
-            .background(AppTheme.quietFill, in: Capsule())
-            .accessibilityIdentifier("prototype-guided-warmup-kind")
-
-            if warmupComposer.kind == .hold {
-                holdRuler
-            } else {
-                warmupRepsRuler
-            }
-            warmupLoadRuler
-        }
+    private func warmupDone(_ step: Int) -> Bool {
+        guard !warmupSkipped, let at = promptIndex(.warmup(step)) else { return false }
+        return SessionPrototypePlan.isStepDone(at, furthest: furthest)
     }
 
-    private func composerKindButton(_ kind: WarmupStep.Kind) -> some View {
-        let selected = warmupComposer.kind == kind
-        return Button {
-            warmupComposer.selectKind(kind)
-            Haptics.light()
-        } label: {
-            Text(kind.title)
+    /// A done step or an extra step can be deleted. The last step stays.
+    private func warmupDeletable(_ step: Int) -> Bool {
+        draft.warmup.steps.count > 1 && (warmupDone(step) || draft.warmup.isExtra(at: step))
+    }
+
+    private func warmupStep(_ step: Int) -> some View {
+        let total = draft.warmup.steps.count
+        let value = draft.warmup.steps.indices.contains(step) ? draft.warmup.steps[step] : nil
+        return VStack(spacing: 14) {
+            PrototypeSetStepper(
+                count: total,
+                current: step,
+                isDone: warmupDone,
+                noun: "Warm-up",
+                identifierPrefix: "prototype-guided-warmup",
+                onSelect: { node in
+                    if let at = promptIndex(.warmup(node)) { open(at) }
+                },
+                onAdd: total < WarmupPlan.maxSteps ? { addWarmupStep(from: step) } : nil,
+                addIdentifier: SessionPrototypeAccessibility.guidedWarmupAdd
+            )
+            Text("Warm-up \(step + 1) of \(total)")
                 .font(.caption.weight(.bold))
-                .foregroundStyle(selected ? AppTheme.ink : AppTheme.ivory)
-                .padding(.horizontal, 14)
-                .frame(height: 32)
-                .frame(maxWidth: .infinity)
-                .background(selected ? AppTheme.gold : Color.clear, in: Capsule())
+                .tracking(1.2)
+                .foregroundStyle(AppTheme.gold)
+                .accessibilityIdentifier(SessionPrototypeAccessibility.warmupStep(step))
+            Text(warmupCaption(step))
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSource)
+            if let value {
+                HStack(spacing: 12) {
+                    kindToggle(step, value)
+                    Spacer(minLength: 8)
+                    if warmupDeletable(step) {
+                        Button(role: .destructive) {
+                            deleteWarmupStep(step)
+                        } label: {
+                            Label("Delete set", systemImage: "trash")
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(.red)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupRemove)
+                    } else {
+                        Button("Skip warm-up", action: skipWarmup)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.quiet)
+                            .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSkip)
+                    }
+                }
+                VStack(spacing: 12) {
+                    if value.kind == .hold {
+                        holdRuler(step, value)
+                    } else {
+                        warmupRepsRuler(step, value)
+                    }
+                    warmupLoadRuler(step, value)
+                }
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityIdentifier(SessionPrototypeAccessibility.warmupStep(0, kind.rawValue))
-        .accessibilityAddTraits(selected ? [.isSelected] : [])
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmup)
     }
 
-    private var holdRuler: some View {
-        let index = WarmupPlan.holdSecondsIndex(warmupComposer.seconds)
-        let target = WarmupPlan.holdSecondsIndex(WarmupPlan.holdSeconds)
+    private func warmupCaption(_ step: Int) -> String {
+        if draft.warmup.isExtra(at: step) { return "Extra step" }
+        return draft.warmup.source.label
+    }
+
+    private func kindToggle(_ step: Int, _ value: WarmupStep) -> some View {
+        HStack(spacing: 0) {
+            ForEach(WarmupStep.Kind.allCases, id: \.self) { kind in
+                let selected = value.kind == kind
+                Button {
+                    updateWarmup(step) { $0.kind = kind }
+                    Haptics.light()
+                } label: {
+                    Text(kind.title)
+                        .font(.caption.weight(.bold))
+                        .foregroundStyle(selected ? AppTheme.ink : AppTheme.ivory)
+                        .frame(width: 72, height: 32)
+                        .background(selected ? AppTheme.gold : Color.clear, in: Capsule())
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("prototype-guided-warmup-kind-\(kind.rawValue)")
+                .accessibilityAddTraits(selected ? [.isSelected] : [])
+            }
+        }
+        .background(AppTheme.quietFill, in: Capsule())
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("prototype-guided-warmup-kind")
+    }
+
+    /// The plan for this step. An extra step has no plan, so it is its own target.
+    private func warmupTarget(_ step: Int, _ value: WarmupStep) -> WarmupStep {
+        draft.warmup.target(at: step) ?? value
+    }
+
+    private func holdRuler(_ step: Int, _ value: WarmupStep) -> some View {
+        let target = warmupTarget(step, value)
+        let index = WarmupPlan.holdSecondsIndex(value.seconds)
+        let targetIndex = WarmupPlan.holdSecondsIndex(target.seconds)
         return PrototypeRulerWheel(
             title: "Hold",
-            valueText: "\(warmupComposer.seconds)",
+            valueText: "\(value.seconds)",
             unit: "s",
-            deltaText: index == target ? "Default" : "\(warmupComposer.seconds) s",
-            onTarget: index == target,
+            deltaText: SessionPrototypePlan.secondsDelta(value.seconds, target: target.seconds),
+            onTarget: index == targetIndex,
             count: WarmupPlan.holdSecondsIndexCount,
             index: index,
-            targetIndex: target,
+            targetIndex: targetIndex,
             isMajor: { WarmupPlan.holdSeconds(atIndex: $0) % 15 == 0 },
             label: { "\(WarmupPlan.holdSeconds(atIndex: $0))" },
             identifier: "prototype-guided-warmup-hold-ruler",
-            onSelect: { warmupComposer.seconds = WarmupPlan.holdSeconds(atIndex: $0) }
+            onSelect: { position in updateWarmup(step) { $0.seconds = WarmupPlan.holdSeconds(atIndex: position) } }
         )
+        .id("warmup-hold-\(step)")
     }
 
-    private var warmupRepsRuler: some View {
-        PrototypeRulerWheel(
+    private func warmupRepsRuler(_ step: Int, _ value: WarmupStep) -> some View {
+        let target = warmupTarget(step, value)
+        return PrototypeRulerWheel(
             title: "Reps",
-            valueText: "\(warmupComposer.reps)",
-            unit: warmupComposer.reps == 1 ? "rep" : "reps",
-            deltaText: warmupComposer.reps == WarmupPlan.defaultReps ? "Default" : "\(warmupComposer.reps)",
-            onTarget: warmupComposer.reps == WarmupPlan.defaultReps,
+            valueText: "\(value.reps)",
+            unit: value.reps == 1 ? "rep" : "reps",
+            deltaText: SessionPrototypePlan.repsDelta(value.reps, target: target.reps),
+            onTarget: value.reps == target.reps,
             count: WarmupPlan.maxReps,
-            index: warmupComposer.reps - 1,
-            targetIndex: WarmupPlan.defaultReps - 1,
+            index: value.reps - 1,
+            targetIndex: target.reps - 1,
             isMajor: { ($0 + 1) % 5 == 0 },
             label: { "\($0 + 1)" },
             identifier: "prototype-guided-warmup-reps-ruler",
-            onSelect: { warmupComposer.reps = $0 + 1 }
+            onSelect: { position in updateWarmup(step) { $0.reps = position + 1 } }
         )
+        .id("warmup-reps-\(step)")
     }
 
-    private var warmupLoadRuler: some View {
-        PrototypeRulerWheel(
+    private func warmupLoadRuler(_ step: Int, _ value: WarmupStep) -> some View {
+        let target = warmupTarget(step, value)
+        return PrototypeRulerWheel(
             title: "Load",
-            valueText: LoadCopy.formatted(warmupComposer.loadLbs ?? 0),
+            valueText: LoadCopy.formatted(value.loadLbs ?? 0),
             unit: LoadCopy.unit,
-            deltaText: (warmupComposer.loadLbs ?? 0) == 0 ? "No load" : LoadCopy.labeled(warmupComposer.loadLbs ?? 0),
-            onTarget: (warmupComposer.loadLbs ?? 0) == 0,
+            deltaText: (value.loadLbs ?? 0) == 0 && (target.loadLbs ?? 0) == 0
+                ? "No load"
+                : SessionPrototypePlan.loadDelta(value.loadLbs, target: target.loadLbs),
+            onTarget: SessionPrototypePlan.loadIndex(value.loadLbs) == SessionPrototypePlan.loadIndex(target.loadLbs),
             count: SessionPrototypePlan.loadIndexCount,
-            index: SessionPrototypePlan.loadIndex(warmupComposer.loadLbs),
-            targetIndex: 0,
+            index: SessionPrototypePlan.loadIndex(value.loadLbs),
+            targetIndex: SessionPrototypePlan.loadIndex(target.loadLbs),
             isMajor: { $0 % 2 == 0 },
             label: { LoadCopy.formatted(SessionPrototypePlan.load(atIndex: $0) ?? 0) },
             identifier: "prototype-guided-warmup-load-ruler",
-            onSelect: { warmupComposer.loadLbs = SessionPrototypePlan.load(atIndex: $0) }
+            onSelect: { position in updateWarmup(step) { $0.loadLbs = SessionPrototypePlan.load(atIndex: position) } }
         )
+        .id("warmup-load-\(step)")
     }
 
-    private func seedWarmupComposerIfNeeded() {
-        guard case .warmup = prompt else { return }
-        guard !warmupComposerSeeded else { return }
-        warmupComposer = draft.warmup.composerForPlan()
-        warmupComposerSeeded = true
+    /// A ruler or toggle change. On a done step, the change is saved at once.
+    private func updateWarmup(_ step: Int, _ change: (inout WarmupStep) -> Void) {
+        guard draft.warmup.steps.indices.contains(step) else { return }
+        draft.warmup.update(id: draft.warmup.steps[step].id, change)
+        if warmupDone(step) { onCheckpointSave() }
     }
 
-    private func addWarmupSet() {
-        let step = warmupComposer.makeStep()
-        guard draft.warmup.addFromComposer(step) else { return }
-        warmupComposer = draft.warmup.composerForPlan()
+    /// The "+" node. From the last step it opens the new step. From an earlier step the new node waits in line.
+    private func addWarmupStep(from step: Int) {
+        let wasLast = step == draft.warmup.steps.count - 1
+        guard draft.warmup.addStep(),
+              let newAt = promptIndex(.warmup(draft.warmup.steps.count - 1)) else { return }
+        Haptics.light()
+        // The new node goes in front of the working sets. Keep the same unfinished step.
+        if furthest > newAt { furthest += 1 }
+        if wasLast {
+            draft.includeWarmup = true
+            index = newAt
+            furthest = max(furthest, newAt)
+        }
+        onCheckpointSave()
+    }
+
+    /// Delete set. No confirmation: the step is one value and the user can add it again with "+".
+    private func deleteWarmupStep(_ step: Int) {
+        guard warmupDeletable(step), let at = promptIndex(.warmup(step)) else { return }
+        draft.warmup.removeStep(at: step)
+        let next = SessionPrototypePlan.afterDelete(deleted: at, furthest: furthest, count: prompts.count)
+        furthest = next.furthest
+        index = next.current
         Haptics.light()
         onCheckpointSave()
     }
 
-    private func removeWarmupSet(id: UUID) {
-        draft.warmup.removeStep(id: id)
+    /// Skip warm-up: no warm-up rows are saved. Go to the first working set.
+    private func skipWarmup() {
+        notesFocused = false
+        draft.includeWarmup = false
+        draft.warmup.removeExtraSteps()
+        guard let first = promptIndex(.set(0)) ?? promptIndex(.pain) else { return }
+        index = first
+        furthest = max(furthest, first)
         Haptics.light()
         onCheckpointSave()
     }
+
+    // MARK: Working sets
 
     private func setStep(_ setIndex: Int) -> some View {
         let set = draft.sets.indices.contains(setIndex) ? draft.sets[setIndex] : nil
         let recommended = max(draft.target.workingSets, draft.sets.count, 1)
         return VStack(spacing: 14) {
             PrototypeSetStepper(
-                total: recommended,
-                filled: SessionPrototypePlan.setStepperFilled(currentSetIndex: setIndex, setCount: recommended),
-                current: setIndex
+                count: recommended,
+                current: setIndex,
+                isDone: setDone,
+                onSelect: { node in
+                    if let at = promptIndex(.set(node)) { open(at) }
+                }
             )
             Text("Set \(setIndex + 1) of \(recommended)")
                 .font(.caption.weight(.bold))
@@ -345,6 +412,11 @@ struct GuidedSessionLogView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    private func setDone(_ setIndex: Int) -> Bool {
+        guard let at = promptIndex(.set(setIndex)) else { return false }
+        return SessionPrototypePlan.isStepDone(at, furthest: furthest)
     }
 
     private func repsRuler(_ setIndex: Int, _ set: PrototypeSetDraft) -> some View {
@@ -462,135 +534,85 @@ struct GuidedSessionLogView: View {
         .font(.subheadline.weight(.semibold))
     }
 
-    @ViewBuilder
+    /// One full-width button per step. Back is in the navigation bar.
     private var bottomBar: some View {
-        VStack(spacing: 10) {
-            switch prompt {
-            case .exercise:
-                Button("Next") { advance() }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-            case .warmup:
-                if draft.warmup.steps.count < WarmupPlan.maxSteps {
-                    Button {
-                        addWarmupSet()
-                    } label: {
-                        Label(
-                            draft.warmup.steps.isEmpty ? "Add warm-up set" : "Add another warm-up",
-                            systemImage: "plus"
-                        )
-                        .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupAdd)
-                }
-                if draft.warmup.steps.isEmpty {
-                    Button("Skip warm-up") {
-                        draft.includeWarmup = false
-                        onCheckpointSave()
-                        advance()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupSkip)
-                } else {
-                    Button("Warm-up done") {
-                        draft.includeWarmup = true
-                        onCheckpointSave()
-                        advance()
-                    }
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(AppTheme.ivory)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.guidedWarmupYes)
-                }
-            case .set(let setIndex):
-                setActions(setIndex)
-            case .pain:
-                if draft.painDuring != nil {
-                    Button("Next") { advance() }
-                        .buttonStyle(.primaryAction)
-                        .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-                }
-            case .notes:
-                Button(notesAreEmpty ? "Skip" : "Next") { advance() }
-                    .buttonStyle(.primaryAction)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-            case .review:
-                Button("Save") { onSave() }
-                    .buttonStyle(.primaryAction)
-                    .disabled(draft.painDuring == nil)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.save)
-            }
-            if index > 0 {
-                Button("Back", action: back)
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(AppTheme.quiet)
-                    .accessibilityIdentifier(SessionPrototypeAccessibility.back)
-            }
+        if prompt == .review {
+            return ActionFooter(primary: FooterAction(
+                "Finish session",
+                identifier: SessionPrototypeAccessibility.save,
+                isEnabled: draft.painDuring != nil,
+                action: onSave
+            ))
         }
-    }
-
-    @ViewBuilder
-    private func setActions(_ setIndex: Int) -> some View {
-        let matches = draft.sets.indices.contains(setIndex)
-            && draft.sets[setIndex].matchesTarget(draft.target)
-        if matches {
-            Button("Same as target") { confirmTarget(setIndex) }
-                .buttonStyle(.primaryAction)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedSame)
-        } else {
-            Button("Same as target") { confirmTarget(setIndex) }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(AppTheme.quiet)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.guidedSame)
-            Button("Next") { recordWorkingSetAndAdvance() }
-                .buttonStyle(.primaryAction)
-                .accessibilityIdentifier(SessionPrototypeAccessibility.next)
-        }
-    }
-
-    private func recordWorkingSetAndAdvance() {
-        onCheckpointSave()
-        advance()
-    }
-
-    private var notesAreEmpty: Bool {
-        draft.notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        return ActionFooter(primary: FooterAction(
+            "Next",
+            identifier: SessionPrototypeAccessibility.next,
+            isEnabled: prompt != .pain || draft.painDuring != nil,
+            action: next
+        ))
     }
 
     private func updateSet(_ setIndex: Int, _ change: (inout PrototypeSetDraft) -> Void) {
         guard draft.sets.indices.contains(setIndex) else { return }
         change(&draft.sets[setIndex])
+        if setDone(setIndex) { onCheckpointSave() }
     }
 
-    private func confirmTarget(_ setIndex: Int) {
-        guard draft.sets.indices.contains(setIndex) else { return }
-        draft.sets[setIndex] = draft.sets[setIndex].aligned(to: draft.target)
-        recordWorkingSetAndAdvance()
-    }
+    // MARK: Navigation
 
-    private func forward() {
+    /// Next records the values on screen, goes forward, and saves the draft.
+    private func next() {
+        notesFocused = false
         switch prompt {
-        case .review, .warmup:
+        case .review:
             return
         case .pain:
             guard draft.painDuring != nil else { return }
-            advance()
+        case .warmup:
+            draft.includeWarmup = true
         default:
-            advance()
+            break
         }
-    }
-
-    private func advance() {
-        notesFocused = false
-        guard index + 1 < prompts.count else { return }
-        index += 1
+        let target = SessionPrototypePlan.nextIndex(current: index, furthest: furthest, count: prompts.count)
+        guard target != index else { return }
+        index = target
+        furthest = max(furthest, target)
         Haptics.light()
+        onCheckpointSave()
     }
 
+    /// Back goes one step back and saves the draft. It keeps all values.
+    /// On step 1 the host saves the draft and closes the sheet.
     private func back() {
         notesFocused = false
-        guard index > 0 else { return }
+        guard index > 0 else {
+            onClose()
+            return
+        }
         index -= 1
+        onCheckpointSave()
+    }
+
+    /// A step swipe. It keeps all values and saves the draft. It does not record a step:
+    /// forward stops at the first unfinished step, and back stops at step 1 (it does not close).
+    private func move(_ direction: SessionPrototypePlan.StepSwipe) {
+        guard let target = SessionPrototypePlan.swipeTarget(
+            direction,
+            current: index,
+            furthest: furthest,
+            count: prompts.count
+        ) else { return }
+        notesFocused = false
+        index = target
+        Haptics.light()
+        onCheckpointSave()
+    }
+
+    /// A tap on a done stepper node.
+    private func open(_ step: Int) {
+        guard let target = SessionPrototypePlan.nodeTarget(tapped: step, current: index, furthest: furthest) else { return }
+        notesFocused = false
+        index = target
+        Haptics.light()
     }
 }

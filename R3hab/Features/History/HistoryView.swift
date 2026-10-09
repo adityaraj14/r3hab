@@ -410,7 +410,7 @@ struct HistoryView: View {
                     .accessibilityHidden(true)
                 sessionTypeTag(s.sessionType)
                 if s.isDraft {
-                    Text("Draft")
+                    Text("In progress")
                         .font(.caption2.weight(.semibold))
                         .padding(.horizontal, 8)
                         .padding(.vertical, 3)
@@ -446,7 +446,7 @@ struct HistoryView: View {
             "Pain during \(PainScore.display(s.painDuring)), after \(s.displayPainAfter)"
         ]
         if s.isDraft {
-            parts.append("Draft")
+            parts.append("In progress")
         } else {
             parts.append(s.response24h.title)
         }
@@ -481,12 +481,12 @@ struct HistoryView: View {
 
     private func workoutMetricValue(finalized: [TrainingSession], drafts: [TrainingSession]) -> String {
         if finalized.isEmpty {
-            return drafts.isEmpty ? "None" : "Draft"
+            return drafts.isEmpty ? "None" : "In progress"
         }
         if finalized.count == 1 {
-            return drafts.isEmpty ? "1 session" : "1 session, draft"
+            return drafts.isEmpty ? "1 session" : "1 session, \(drafts.count) in progress"
         }
-        return drafts.isEmpty ? "\(finalized.count) sessions" : "\(finalized.count) sessions, draft"
+        return drafts.isEmpty ? "\(finalized.count) sessions" : "\(finalized.count) sessions, \(drafts.count) in progress"
     }
 
     private func metricRow(_ title: String, _ value: String) -> some View {

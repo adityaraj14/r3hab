@@ -29,9 +29,9 @@ final class DogfoodTests: XCTestCase {
 
         if app.buttons["Record morning pain"].waitForExistence(timeout: 3) {
             app.buttons["Record morning pain"].tap()
-            let morning = app.buttons["Knee resting pain 1"]
+            let morning = app.descendants(matching: .any)["morning-pain-ruler"]
             XCTAssertTrue(morning.waitForExistence(timeout: 4), app.debugDescription)
-            morning.tap()
+            XCTAssertTrue((morning.value as? String ?? "").hasPrefix("0 of 10"), "No yesterday value: the ruler opens at 0")
             snap(app, "05-morning")
             app.navigationBars.buttons["Save"].tap()
         }
@@ -51,8 +51,8 @@ final class DogfoodTests: XCTestCase {
         app.buttons["prototype-guided-warmup-skip"].tap()
         let pain = app.descendants(matching: .any)["prototype-guided-pain"]
         for _ in 0..<6 where !pain.exists {
-            let same = app.buttons["prototype-guided-same-as-target"]
-            if same.waitForExistence(timeout: 2) { same.tap() }
+            let next = app.buttons["prototype-next"]
+            if next.waitForExistence(timeout: 2) { next.tap() }
         }
         XCTAssertTrue(pain.waitForExistence(timeout: 4), app.debugDescription)
         app.buttons["prototype-pain-chip-2"].tap()

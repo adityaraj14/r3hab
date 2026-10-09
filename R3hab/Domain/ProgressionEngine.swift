@@ -33,7 +33,8 @@ enum ProgressionStance: String, Equatable, Sendable {
     case advance
     case drop
 
-    /// Advice only. The form still opens on last session’s weight.
+    /// Increase opens the form at the recommended load (last load + one increment).
+    /// Hold and decrease open at the last working load.
     var label: String {
         switch self {
         case .hold: return "Hold the load"
@@ -125,9 +126,14 @@ enum SessionPrefill {
     }
 }
 
-/// Option B gates. Stance is advice. Prefill weight is the last working load.
-/// Set and rep shape snaps into 3×8–12. The engine does not write +5 or −5.
+/// Option B gates. Set and rep shape snaps into 3×8–12.
+/// Hold and decrease: the target is the last working load.
+/// Increase: the target is the last working load + `loadIncrementLbs`, so the Today card,
+/// the guided target, and the ruler start show one recommended load.
 enum ProgressionEngine {
+    /// The smallest load step in the app (the load ruler step). An increase adds one step.
+    static let loadIncrementLbs = 5.0
+
     static let painDuringLimit = 3
     static let defaultSets = 3
     static let defaultReps = 8
@@ -249,7 +255,7 @@ enum ProgressionEngine {
         }
         if twoClean {
             return make(
-                target: current,
+                target: increased(current),
                 current: current,
                 stance: .advance,
                 reason: reasonTwoCleanIncrease,
@@ -396,6 +402,15 @@ enum ProgressionEngine {
             }
         }
         return values.max()
+    }
+
+    /// The recommended load for an increase day: one increment more than the last working load.
+    /// With no logged load there is no number to increase, so the target stays without a load.
+    static func increased(_ current: LoadPrescription) -> LoadPrescription {
+        guard let last = current.loadLbs else { return current }
+        var next = current
+        next.loadLbs = last + loadIncrementLbs
+        return next
     }
 
     // MARK: Private

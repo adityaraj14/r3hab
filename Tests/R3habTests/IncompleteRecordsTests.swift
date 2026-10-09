@@ -127,6 +127,16 @@ final class IncompleteRecordsTests: XCTestCase {
         XCTAssertEqual(IncompleteRecords.Copy.cardTitle, "Complete the pending record")
     }
 
+    func testUnfinishedSessionCopySaysInProgressNotDraft() {
+        let item = IncompleteItem(day: day(-1), kind: .unfinishedDraft(sessionID: UUID()))
+        XCTAssertEqual(IncompleteRecords.Copy.line(item, now: now, calendar: calendar), "Yesterday: session in progress")
+        XCTAssertEqual(IncompleteRecords.Copy.discardDraft, "Discard session")
+        XCTAssertEqual(IncompleteRecords.Copy.discardTitle, "Discard this session?")
+        for copy in [IncompleteRecords.Copy.discardDraft, IncompleteRecords.Copy.discardTitle, IncompleteRecords.Copy.discardMessage] {
+            XCTAssertFalse(copy.localizedCaseInsensitiveContains("draft"), copy)
+        }
+    }
+
     func testSchedulesOnlyWhenItemsExist() {
         XCTAssertFalse(IncompleteRecords.shouldScheduleNotification(items: []))
         XCTAssertTrue(IncompleteRecords.shouldScheduleNotification(items: [

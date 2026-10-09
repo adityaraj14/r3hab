@@ -29,7 +29,7 @@ final class SessionCompletionTests: XCTestCase {
         XCTAssertFalse(SessionCompletion.isComplete(isDraft: false, painDuring: PainScore.notLogged))
     }
 
-    /// The guided "Save draft" with no pain value, as Today reads it.
+    /// The guided top-bar "Save" with no pain value, as Today reads it.
     func testDraftWithoutPainNeverAsksForPainAfterOr24h() {
         var guided = SessionPrototypePlan.make(
             sessions: [],
