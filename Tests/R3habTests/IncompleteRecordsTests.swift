@@ -124,7 +124,44 @@ final class IncompleteRecordsTests: XCTestCase {
         let item = IncompleteItem(day: day(-1), kind: .missingEveningPain)
         let body = IncompleteRecords.Copy.notificationBody([item], now: now, calendar: calendar)
         XCTAssertEqual(body, "Yesterday: evening pain.")
-        XCTAssertEqual(IncompleteRecords.Copy.cardTitle, "Complete the pending record")
+    }
+
+    func testCardTitleNamesASingleKind() {
+        let pm = [day(-1), day(-2)].map { IncompleteItem(day: $0, kind: .missingEveningPain) }
+        XCTAssertEqual(IncompleteRecords.Copy.cardTitle(pm), "Add missing evening pain")
+        XCTAssertTrue(IncompleteRecords.Copy.isSingleKind(pm))
+        let am = [IncompleteItem(day: day(-3), kind: .missingMorningPain)]
+        XCTAssertEqual(IncompleteRecords.Copy.cardTitle(am), "Add missing morning pain")
+        // Two sessions with different IDs are still one kind.
+        let due = [IncompleteItem(day: day(-1), kind: .due24hResponse(sessionID: UUID())),
+                   IncompleteItem(day: day(-2), kind: .due24hResponse(sessionID: UUID()))]
+        XCTAssertEqual(IncompleteRecords.Copy.cardTitle(due), "Record the 24-hour response")
+        let draft = [IncompleteItem(day: day(-1), kind: .unfinishedDraft(sessionID: UUID()))]
+        XCTAssertEqual(IncompleteRecords.Copy.cardTitle(draft), "Finish the session in progress")
+    }
+
+    func testCardTitleIsGenericForMixedKinds() {
+        let mixed = [IncompleteItem(day: day(-1), kind: .missingEveningPain),
+                     IncompleteItem(day: day(-2), kind: .missingMorningPain)]
+        XCTAssertFalse(IncompleteRecords.Copy.isSingleKind(mixed))
+        XCTAssertEqual(IncompleteRecords.Copy.cardTitle(mixed), "Add missing records")
+        XCTAssertEqual(IncompleteRecords.Copy.kindName(.missingEveningPain), "Evening pain")
+        XCTAssertEqual(IncompleteRecords.Copy.kindName(.missingMorningPain), "Morning pain")
+        XCTAssertEqual(IncompleteRecords.Copy.kindName(.due24hResponse(sessionID: UUID())), "24-hour response")
+        XCTAssertEqual(IncompleteRecords.Copy.kindName(.unfinishedDraft(sessionID: UUID())), "Session in progress")
+    }
+
+    func testRowDateIsWeekdayMonthDayWithoutYesterdayOrYear() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/New_York")!
+        let us = Locale(identifier: "en_US")
+        let today = cal.date(from: DateComponents(year: 2026, month: 10, day: 10, hour: 18))!
+        let yesterday = cal.date(from: DateComponents(year: 2026, month: 10, day: 9))!
+        let earlier = cal.date(from: DateComponents(year: 2026, month: 10, day: 8))!
+        let lastYear = cal.date(from: DateComponents(year: 2025, month: 12, day: 31))!
+        XCTAssertEqual(IncompleteRecords.Copy.rowDate(yesterday, now: today, calendar: cal, locale: us), "Fri, Oct 9")
+        XCTAssertEqual(IncompleteRecords.Copy.rowDate(earlier, now: today, calendar: cal, locale: us), "Thu, Oct 8")
+        XCTAssertEqual(IncompleteRecords.Copy.rowDate(lastYear, now: today, calendar: cal, locale: us), "Wed, Dec 31, 2025")
     }
 
     func testUnfinishedSessionCopySaysInProgressNotDraft() {
