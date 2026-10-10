@@ -382,18 +382,16 @@ struct HomeView: View {
     }
 
     private func incompleteRecordsCard(_ items: [IncompleteItem], promotes: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text((promotes ? IncompleteRecords.Copy.cardTitle : IncompleteRecords.Copy.cardEyebrow).uppercased())
-                .font(.caption.weight(.semibold))
-                .tracking(1.1)
-                .foregroundStyle(AppTheme.quiet)
-            if promotes {
-                Text(IncompleteRecords.Copy.cardTitle)
-                    .font(.headline.weight(.semibold))
-                    .foregroundStyle(.primary)
-            }
-            ForEach(items) { item in
-                incompleteRow(item, emphasized: promotes)
+        let singleKind = IncompleteRecords.Copy.isSingleKind(items)
+        return VStack(alignment: .leading, spacing: 6) {
+            Text(IncompleteRecords.Copy.cardTitle(items))
+                .font(promotes ? .headline.weight(.semibold) : .subheadline.weight(.semibold))
+                .foregroundStyle(.primary)
+                .padding(.bottom, 2)
+                .accessibilityIdentifier("incomplete-records-title")
+            ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
+                if index > 0 { Divider() }
+                incompleteRow(item, showsKind: !singleKind)
             }
         }
         .padding(promotes ? 16 : 12)
@@ -405,18 +403,33 @@ struct HomeView: View {
         .accessibilityIdentifier("incomplete-records-card")
     }
 
-    private func incompleteRow(_ item: IncompleteItem, emphasized: Bool) -> some View {
-        HStack(alignment: .center, spacing: 8) {
+    private func incompleteRow(_ item: IncompleteItem, showsKind: Bool) -> some View {
+        let date = IncompleteRecords.Copy.rowDate(item.day, now: Date(), calendar: calendar)
+        let kind = IncompleteRecords.Copy.kindName(item.kind)
+        return HStack(alignment: .center, spacing: 8) {
             Button {
                 openIncomplete(item)
             } label: {
-                Text(IncompleteRecords.Copy.line(item, now: Date(), calendar: calendar))
-                    .font(.subheadline.weight(emphasized ? .semibold : .regular))
-                    .foregroundStyle(.primary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .multilineTextAlignment(.leading)
+                HStack(spacing: 8) {
+                    Text(date)
+                        .font(.subheadline)
+                        .foregroundStyle(.primary)
+                    Spacer(minLength: 8)
+                    if showsKind {
+                        Text(kind)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(showsKind ? "\(date), \(kind)" : date)
+            .accessibilityIdentifier("incomplete-row")
             if case .unfinishedDraft(let id) = item.kind {
                 Button(IncompleteRecords.Copy.discardDraft) {
                     discardDraftId = id

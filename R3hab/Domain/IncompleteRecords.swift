@@ -36,8 +36,7 @@ enum IncompleteRecords {
 
     /// STE copy for the Today card and the morning notification.
     enum Copy {
-        static let cardTitle = "Complete the pending record"
-        static let cardEyebrow = "Earlier day"
+        static let mixedTitle = "Add missing records"
         static let discardDraft = "Discard session"
         static let discardTitle = "Discard this session?"
         static let discardMessage = "R3hab deletes this session. You cannot restore it."
@@ -65,6 +64,44 @@ enum IncompleteRecords {
             case .due24hResponse:
                 return "\(when): 24-hour response"
             }
+        }
+
+        /// One title for the card. Same kind on every row: name it. Mixed kinds: generic.
+        static func cardTitle(_ items: [IncompleteItem]) -> String {
+            guard let first = items.first, isSingleKind(items) else { return mixedTitle }
+            switch first.kind {
+            case .missingEveningPain: return "Add missing evening pain"
+            case .missingMorningPain: return "Add missing morning pain"
+            case .due24hResponse: return "Record the 24-hour response"
+            case .unfinishedDraft: return "Finish the session in progress"
+            }
+        }
+
+        /// True when every item is the same kind (session IDs do not count).
+        static func isSingleKind(_ items: [IncompleteItem]) -> Bool {
+            guard let first = items.first else { return true }
+            return items.allSatisfy { kindName($0.kind) == kindName(first.kind) }
+        }
+
+        /// The item name on a row of a mixed card.
+        static func kindName(_ kind: IncompleteKind) -> String {
+            switch kind {
+            case .unfinishedDraft: return "Session in progress"
+            case .missingMorningPain: return "Morning pain"
+            case .missingEveningPain: return "Evening pain"
+            case .due24hResponse: return "24-hour response"
+            }
+        }
+
+        /// Row date: "Fri, Oct 9". The year shows only when it is not the current year.
+        static func rowDate(_ day: Date, now: Date, calendar: Calendar, locale: Locale = .current) -> String {
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.locale = locale
+            let sameYear = calendar.component(.year, from: day) == calendar.component(.year, from: now)
+            formatter.setLocalizedDateFormatFromTemplate(sameYear ? "EEEMMMd" : "EEEMMMdy")
+            return formatter.string(from: day)
         }
 
         static func notificationBody(_ items: [IncompleteItem], now: Date, calendar: Calendar) -> String {
