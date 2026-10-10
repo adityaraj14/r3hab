@@ -400,6 +400,7 @@ struct HomeView: View {
             RoundedRectangle(cornerRadius: 16, style: .continuous)
                 .fill(promotes ? AppTheme.gold.opacity(0.16) : AppTheme.quietFill)
         )
+        .accessibilityElement(children: .contain)
         .accessibilityIdentifier("incomplete-records-card")
     }
 
@@ -423,6 +424,7 @@ struct HomeView: View {
                     Image(systemName: "chevron.right")
                         .font(.footnote.weight(.semibold))
                         .foregroundStyle(.tertiary)
+                        .accessibilityHidden(true)
                 }
                 .padding(.vertical, 8)
                 .contentShape(Rectangle())
