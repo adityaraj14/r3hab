@@ -46,10 +46,10 @@ final class TodayPlannerTests: XCTestCase {
         XCTAssertEqual(TodayPlanner.nextAction(input(morning: true)), .logSession)
     }
 
-    func testEveningWinsOverSessionOnceReminderHourPasses() {
+    func testSessionStaysOverEveningPainOnATrainingDayEvening() {
         XCTAssertEqual(
             TodayPlanner.nextAction(input(morning: true, isEvening: true)),
-            .logEvening
+            .logSession
         )
         XCTAssertEqual(
             TodayPlanner.nextAction(input(morning: true, evening: true, isEvening: true)),

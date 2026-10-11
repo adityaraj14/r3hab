@@ -61,9 +61,12 @@ enum TodayPlanner {
     }
 
     /// Priority: the forced 24h loop first, then the morning score (it is the
-    /// protocol’s judge), then a fresh after-pain, then the day’s one load
-    /// (evening pain wins once it is evening, see `isEvening`). On a rest
-    /// day the load is never pushed; the card goes calm until evening.
+    /// protocol’s judge), then a fresh after-pain, then the day’s one load.
+    /// Training day: the session stays the action until Finish session saves it,
+    /// also after 17:00. Then evening pain. A session in progress is a
+    /// `.logSession` (the card resumes it).
+    /// Rest day: the load is never pushed; the card goes calm until evening
+    /// (see `isEvening`), then evening pain.
     static func nextAction(_ input: TodayPlannerInput) -> TodayNextAction {
         if let first = input.overduePending.first {
             return .resolvePending(sessionID: first, remaining: input.overduePending.count - 1)
@@ -74,7 +77,8 @@ enum TodayPlanner {
         if let session = input.missingAfterPain.first {
             return .logAfterPain(sessionID: session)
         }
-        if input.isEvening, !input.hasEveningPain {
+        // Before this rule, evening pain replaced an unfinished session at 17:00 on a training day.
+        if input.isEvening, !input.hasEveningPain, input.trainedToday || input.isRestDay {
             return .logEvening
         }
         if !input.trainedToday {
