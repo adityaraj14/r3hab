@@ -99,10 +99,10 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.blockedBy, [.consecutiveCleanHits])
     }
 
-    func testMissedRepsHoldAtTheBandFloor() {
+    func testMissedRepsHoldAtTheLoggedReps() {
         let miss = hsr(dayOffset: -2, sets: 3, reps: 6, load: 35, pain: 2)
         let result = today([miss])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 6, loadLbs: 35))
         XCTAssertEqual(result.stance, .hold)
         XCTAssertEqual(result.reason, ProgressionEngine.reasonShortReps)
         XCTAssertTrue(result.blockedBy.contains(.consecutiveCleanHits))
@@ -275,6 +275,70 @@ final class ProgressionEngineTests: XCTestCase {
 
         let fifteen = today([hsr(dayOffset: -2, sets: 3, reps: 15, load: 35, pain: 1)])
         XCTAssertEqual(fifteen.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 35))
+    }
+
+    // MARK: Target from the logged sets, not the last guidance (Adi, Oct 13)
+
+    /// A session that was guided at `guidance` for every set, with the sets actually logged.
+    private func logged(
+        dayOffset: Int,
+        guidance: Double,
+        sets: [(reps: Int, load: Double)],
+        pain: Int = 2,
+        response: Response24h = .same
+    ) -> TrainingSessionSnapshot {
+        var base = hsr(dayOffset: dayOffset, sets: sets.count, reps: 8, load: guidance, pain: pain, response: response)
+        base.resistanceSets = sets.flatMap {
+            SessionSummary.makePair(reps: $0.reps, loadLbs: $0.load, holdSeconds: nil, isWarmup: false)
+        }
+        return base
+    }
+
+    func testHoldTargetsTheLoggedLoadNotTheGuidance() {
+        // Guided at 65 lb. He did 8 reps at 65, then 6 reps at 60 twice.
+        let last = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (6, 60), (6, 60)])
+        let result = today([last])
+        XCTAssertEqual(result.stance, .hold)
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 6, loadLbs: 60))
+        XCTAssertEqual(result.current, result.target)
+        XCTAssertNil(result.suggestedChangeLoadLbs)
+    }
+
+    func testHoldTieGoesToTheLaterSetNotTheHeaviest() {
+        // 65 then 60 then 55: no load repeats. The target is the last set's load, not the 65 lb guidance.
+        let last = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60), (8, 55)])
+        XCTAssertEqual(today([last]).target.loadLbs, 55)
+        let two = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60)])
+        XCTAssertEqual(today([two]).target.loadLbs, 60)
+        // Two at 65 and one at 60: 65 is the most common load.
+        let mostly = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 65), (8, 60)])
+        XCTAssertEqual(today([mostly]).target.loadLbs, 65)
+    }
+
+    func testIncreaseAddsToTheLoggedLoadNotTheGuidance() {
+        // Guided at 65 both times, but he logged 3×8 @ 60 both times: two clean sessions at 60.
+        let a = logged(dayOffset: -4, guidance: 65, sets: [(8, 60), (8, 60), (8, 60)])
+        let b = logged(dayOffset: -2, guidance: 65, sets: [(8, 60), (8, 60), (8, 60)])
+        let result = today([a, b])
+        XCTAssertEqual(result.stance, .advance)
+        XCTAssertEqual(result.target.loadLbs, 65, "60 lb logged + 5, not 65 lb guidance + 5")
+        XCTAssertEqual(result.cardReason, "Increase the load. Try 65 lb.")
+    }
+
+    func testDecreaseUsesTheLoggedLoadNotTheGuidance() {
+        let hot = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60), (8, 60)], pain: 5)
+        let result = today([hot])
+        XCTAssertEqual(result.stance, .drop)
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 60))
+        XCTAssertEqual(result.current.loadLbs, 60)
+    }
+
+    func testModalLoadTieGoesToTheLaterSet() {
+        XCTAssertEqual(ProgressionEngine.modalLoad([65, 60]), 60)
+        XCTAssertEqual(ProgressionEngine.modalLoad([60, 65]), 65)
+        XCTAssertEqual(ProgressionEngine.modalLoad([65, 60, 60]), 60)
+        XCTAssertEqual(ProgressionEngine.modalLoad([65, 65, 60]), 65)
+        XCTAssertNil(ProgressionEngine.modalLoad([]))
     }
 
     func testTwoCleanMidLadderSessionsStepLoadInsteadOfNextRung() {

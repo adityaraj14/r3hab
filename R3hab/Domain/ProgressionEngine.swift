@@ -126,9 +126,9 @@ enum SessionPrefill {
     }
 }
 
-/// Option B gates. Set and rep shape snaps into 3×8–12.
-/// Hold and decrease: the target is the last working load.
-/// Increase: the target is the last working load + `loadIncrementLbs`, so the Today card,
+/// Option B gates. Set count snaps to 3; reps above 12 snap to 12.
+/// Hold and decrease: the target is the last session's logged load and reps.
+/// Increase: the target is the last logged load + `loadIncrementLbs`, so the Today card,
 /// the guided target, and the ruler start show one recommended load.
 enum ProgressionEngine {
     /// The smallest load step in the app (the load ruler step). An increase adds one step.
@@ -352,27 +352,23 @@ enum ProgressionEngine {
 
     // MARK: Infer
 
+    /// What the session actually logged: the most common working-set load and the lowest reps.
+    /// A tie between loads goes to the load of the later set. Example: guidance 65 lb, logged
+    /// 65 then 60 → 60 lb. Before this rule a tie went to the heaviest load, so a hold day
+    /// showed the earlier guidance (65 lb) instead of the load you could do.
     static func inferPrescription(_ session: TrainingSessionSnapshot) -> LoadPrescription? {
         let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
         guard !pairs.isEmpty else { return nil }
         let minReps = pairs.compactMap(\.reps).min() ?? defaultReps
         let loads = pairs.compactMap(\.leftLoad)
-        let load = modalLoad(loads) ?? loads.max()
-        return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: load)
+        return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: modalLoad(loads))
     }
 
-    /// Keep the logged load. Collapse set-count climbs into 3 sets.
-    /// Reps land in 8–12. Anything above the hard max (15) is pulled back too.
+    /// Keep the logged load and the logged reps. Collapse set-count climbs into 3 sets.
+    /// Reps above 12 (the band ceiling) are pulled back to 12. Low reps stay as logged,
+    /// so a hold day targets what you did. Before this rule they were raised to 8.
     static func snap(_ raw: LoadPrescription) -> LoadPrescription {
-        let capped = min(raw.reps, repHardMax)
-        let reps: Int
-        if capped < repFloor {
-            reps = repFloor
-        } else if capped > repCeiling {
-            reps = repCeiling
-        } else {
-            reps = capped
-        }
+        let reps = max(1, min(raw.reps, repCeiling))
         return LoadPrescription(workingSets: defaultSets, reps: reps, loadLbs: raw.loadLbs)
     }
 
@@ -489,15 +485,18 @@ enum ProgressionEngine {
         }
     }
 
-    private static func modalLoad(_ loads: [Double]) -> Double? {
+    /// Most common load, in set order. A tie goes to the load of the later set.
+    static func modalLoad(_ loads: [Double]) -> Double? {
         guard !loads.isEmpty else { return nil }
         var counts: [Double: Int] = [:]
-        for load in loads {
+        var lastIndex: [Double: Int] = [:]
+        for (index, load) in loads.enumerated() {
             counts[load, default: 0] += 1
+            lastIndex[load] = index
         }
         return counts.max { a, b in
             if a.value != b.value { return a.value < b.value }
-            return a.key < b.key
+            return (lastIndex[a.key] ?? 0) < (lastIndex[b.key] ?? 0)
         }?.key
     }
 }
