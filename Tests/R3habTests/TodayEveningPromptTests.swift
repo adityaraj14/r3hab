@@ -5,8 +5,8 @@ import XCTest
 @testable import R3habDomain
 #endif
 
-/// Evening pain becomes the primary card once it is evening, on rest days and
-/// training days. Priority: 24-hour response > morning pain > after pain > evening pain.
+/// Evening pain becomes the primary card once it is evening on a rest day.
+/// On a training day it waits until Finish session saves today's session. Priority: 24-hour response > morning pain > after pain > evening pain.
 final class TodayEveningPromptTests: XCTestCase {
     private var cal: Calendar = {
         var c = Calendar(identifier: .gregorian)
@@ -83,8 +83,55 @@ final class TodayEveningPromptTests: XCTestCase {
         XCTAssertEqual(TodayPlanner.nextAction(input(isEvening: evening(16, 0), restDay: true)), .restDay)
     }
 
-    func testTrainingDayEveningPromotesEveningPainOverTheSession() {
-        XCTAssertEqual(TodayPlanner.nextAction(input(isEvening: true, restDay: false)), .logEvening)
+    // MARK: Training day after 17:00 (Adi, Oct 11)
+
+    private func session(on day: Date, draft: Bool) -> TrainingSessionSnapshot {
+        TrainingSessionSnapshot(
+            date: day,
+            createdAt: day,
+            sessionType: .hsrStrength,
+            response24h: .pending,
+            decision: nil,
+            resolvedAt: nil,
+            snoozedUntil: nil,
+            phase: .cHeavySlowResistance,
+            painDuring: 2,
+            painAfter: 2,
+            isDraft: draft
+        )
+    }
+
+    private func trainingDayAction(sessions: [TrainingSessionSnapshot], now: Date) -> TodayNextAction {
+        TodayPlanner.nextAction(input(
+            trained: TodayPlanner.trainedToday(sessions: sessions, now: now, calendar: cal),
+            isEvening: TodayPlanner.isEvening(now: now, pmReminderHour: 18, pmReminderMinute: 30, calendar: cal),
+            restDay: false
+        ))
+    }
+
+    func testTrainingDayAfterFivePMWithTheWorkoutNotDoneShowsTheWorkout() {
+        let now = at(17, 30)
+        XCTAssertTrue(evening(17, 30))
+        XCTAssertEqual(trainingDayAction(sessions: [], now: now), .logSession)
+        XCTAssertEqual(TodayPlanner.eyebrow(for: .logSession), "Next")
+    }
+
+    func testTrainingDayAfterFivePMWithTheSessionFinishedShowsEveningPain() {
+        let now = at(19, 0)
+        let finished = session(on: at(16, 0), draft: false)
+        XCTAssertEqual(trainingDayAction(sessions: [finished], now: now), .logEvening)
+    }
+
+    func testTrainingDayAfterFivePMWithTheSessionInProgressShowsResume() {
+        let now = at(18, 0)
+        let inProgress = session(on: at(17, 10), draft: true)
+        let action = trainingDayAction(sessions: [inProgress], now: now)
+        XCTAssertEqual(action, .logSession, "A session in progress is not finished")
+        XCTAssertEqual(TodayPlanner.eyebrow(for: action, hasSessionDraft: true), "Session in progress")
+    }
+
+    func testTrainingDayEveningKeepsTheSessionOverEveningPain() {
+        XCTAssertEqual(TodayPlanner.nextAction(input(isEvening: true, restDay: false)), .logSession)
         XCTAssertEqual(TodayPlanner.nextAction(input(isEvening: false, restDay: false)), .logSession)
     }
 
