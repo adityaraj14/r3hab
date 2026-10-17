@@ -99,10 +99,11 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.blockedBy, [.consecutiveCleanHits])
     }
 
-    func testMissedRepsHoldAtTheLoggedReps() {
+    func testMissedRepsHoldAtTheBandFloor() {
         let miss = hsr(dayOffset: -2, sets: 3, reps: 6, load: 35, pain: 2)
         let result = today([miss])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 6, loadLbs: 35))
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+        XCTAssertEqual(result.lastLoggedReps, 6)
         XCTAssertEqual(result.stance, .hold)
         XCTAssertEqual(result.reason, ProgressionEngine.reasonShortReps)
         XCTAssertTrue(result.blockedBy.contains(.consecutiveCleanHits))
@@ -299,8 +300,10 @@ final class ProgressionEngineTests: XCTestCase {
         let last = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (6, 60), (6, 60)])
         let result = today([last])
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 6, loadLbs: 60))
+        // The logged load (60), with the reps back at the band floor (8). Last time: 6 reps.
+        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 60))
         XCTAssertEqual(result.current, result.target)
+        XCTAssertEqual(result.lastLoggedReps, 6)
         XCTAssertNil(result.suggestedChangeLoadLbs)
     }
 
@@ -323,6 +326,7 @@ final class ProgressionEngineTests: XCTestCase {
         XCTAssertEqual(result.stance, .advance)
         XCTAssertEqual(result.target.loadLbs, 65, "60 lb logged + 5, not 65 lb guidance + 5")
         XCTAssertEqual(result.cardReason, "Increase the load. Try 65 lb.")
+        XCTAssertNil(result.lastLoggedReps, "The reps reached the target")
     }
 
     func testDecreaseUsesTheLoggedLoadNotTheGuidance() {

@@ -80,6 +80,28 @@ final class SessionPrototypePlanTests: XCTestCase {
     }
 
     /// A hold day keeps the last load everywhere, and the Today card names no new weight.
+    /// Adi, Oct 17: guided at 65 lb, logged 8 @ 65, 6 @ 60, 6 @ 60. Hold at the logged load,
+    /// reps back to 8, and the set step names the reps from last time.
+    func testHoldDayTargetsTheLoggedLoadAtTheRepFloorAndNamesLastReps() {
+        var last = session(dayOffset: -3, reps: 8, load: 65)
+        last.resistanceSets = [(8, 65.0), (6, 60.0), (6, 60.0)].flatMap {
+            SessionSummary.makePair(reps: $0.0, loadLbs: $0.1, holdSeconds: nil, isWarmup: false)
+        }
+        let draft = SessionPrototypePlan.make(sessions: [last], phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
+        XCTAssertEqual(draft.stanceLabel, "Hold the load")
+        XCTAssertEqual(draft.perSetTargetLine, "Target 8 × 60 lb")
+        XCTAssertEqual(draft.lastRepsLine, "Last time: 6 reps")
+        XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 8 && $0.loadLbs == 60 })
+    }
+
+    func testNoLastRepsLineWhenTheRepsReachedTheTarget() {
+        let draft = SessionPrototypePlan.make(
+            sessions: [session(dayOffset: -3, reps: 8, load: 50)],
+            phase: .cHeavySlowResistance, asOf: day0, calendar: calendar
+        )
+        XCTAssertNil(draft.lastRepsLine)
+    }
+
     func testHoldDayKeepsTheLastLoad() {
         let history = [session(dayOffset: -3, reps: 8, load: 50)]
         let engine = ProgressionEngine.today(sessions: history, asOf: day0, calendar: calendar)

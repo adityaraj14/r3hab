@@ -404,6 +404,12 @@ struct GuidedSessionLogView: View {
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.quiet)
                 .accessibilityIdentifier("prototype-guided-dose-\(setIndex + 1)")
+            if let lastReps = draft.lastRepsLine {
+                Text(lastReps)
+                    .font(.footnote)
+                    .foregroundStyle(AppTheme.quiet)
+                    .accessibilityIdentifier("prototype-guided-last-reps-\(setIndex + 1)")
+            }
             if let set {
                 VStack(spacing: 12) {
                     repsRuler(setIndex, set)

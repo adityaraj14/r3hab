@@ -54,6 +54,9 @@ struct ProgressionResult: Equatable, Sendable {
     var laterality: SetLaterality
     /// Set when the latest primary-load session still needs a 24h resolve.
     var pendingResolveID: UUID?
+    /// The lowest reps logged last session, when they were below today's rep target.
+    /// Nil when the reps reached the target.
+    var lastLoggedReps: Int? = nil
 
     /// Reason on the gold Next Up card.
     /// Hold never adds a weight. A change-load stance names a suggested
@@ -126,8 +129,8 @@ enum SessionPrefill {
     }
 }
 
-/// Option B gates. Set count snaps to 3; reps above 12 snap to 12.
-/// Hold and decrease: the target is the last session's logged load and reps.
+/// Option B gates. Set and rep shape snaps into 3×8–12.
+/// Hold and decrease: the target is the last session's logged load, with reps in 8–12.
 /// Increase: the target is the last logged load + `loadIncrementLbs`, so the Today card,
 /// the guided target, and the ruler start show one recommended load.
 enum ProgressionEngine {
@@ -160,6 +163,28 @@ enum ProgressionEngine {
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
         calendar: Calendar = .current
+    ) -> ProgressionResult {
+        var result = prescribe(
+            sessions: sessions,
+            primaryLoadTitle: primaryLoadTitle,
+            asOf: asOf,
+            calendar: calendar
+        )
+        let asOfDay = calendar.startOfDay(for: asOf)
+        let latest = hsrHistory(sessions: sessions, primaryLoadTitle: primaryLoadTitle, calendar: calendar)
+            .filter { calendar.startOfDay(for: $0.date) <= asOfDay }
+            .last
+        if let raw = latest.flatMap(inferPrescription), raw.reps < result.target.reps {
+            result.lastLoggedReps = raw.reps
+        }
+        return result
+    }
+
+    private static func prescribe(
+        sessions: [TrainingSessionSnapshot],
+        primaryLoadTitle: String,
+        asOf: Date,
+        calendar: Calendar
     ) -> ProgressionResult {
         let asOfDay = calendar.startOfDay(for: asOf)
         let history = hsrHistory(
@@ -364,11 +389,19 @@ enum ProgressionEngine {
         return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: modalLoad(loads))
     }
 
-    /// Keep the logged load and the logged reps. Collapse set-count climbs into 3 sets.
-    /// Reps above 12 (the band ceiling) are pulled back to 12. Low reps stay as logged,
-    /// so a hold day targets what you did. Before this rule they were raised to 8.
+    /// Keep the logged load. Collapse set-count climbs into 3 sets.
+    /// Reps land in 8–12: missed reps go back to the band floor (8), and the set step shows
+    /// "Last time: N reps" (`ProgressionResult.lastLoggedReps`). Anything above 12 is pulled back.
     static func snap(_ raw: LoadPrescription) -> LoadPrescription {
-        let reps = max(1, min(raw.reps, repCeiling))
+        let capped = min(raw.reps, repHardMax)
+        let reps: Int
+        if capped < repFloor {
+            reps = repFloor
+        } else if capped > repCeiling {
+            reps = repCeiling
+        } else {
+            reps = capped
+        }
         return LoadPrescription(workingSets: defaultSets, reps: reps, loadLbs: raw.loadLbs)
     }
 
