@@ -99,8 +99,16 @@ struct SessionPrototypeDraft: Equatable, Sendable {
     var sets: [PrototypeSetDraft]
     var painDuring: Int?
     var notes: String
+    /// Reps logged last session when they were below the rep target. Nil otherwise.
+    var lastLoggedReps: Int? = nil
 
     var planLine: String { target.displayLine }
+
+    /// "Last time: 6 reps" under the set target. Nil when the reps reached the target.
+    var lastRepsLine: String? {
+        guard let lastLoggedReps, lastLoggedReps < target.reps else { return nil }
+        return "Last time: \(lastLoggedReps) \(lastLoggedReps == 1 ? "rep" : "reps")"
+    }
 
     /// The guided steps for this draft: exercise, each warm-up step, each set, pain, notes, review.
     var prompts: [GuidedPrompt] {
@@ -195,7 +203,8 @@ enum SessionPrototypePlan {
             ),
             sets: sets,
             painDuring: nil,
-            notes: ""
+            notes: "",
+            lastLoggedReps: result.lastLoggedReps
         )
     }
 

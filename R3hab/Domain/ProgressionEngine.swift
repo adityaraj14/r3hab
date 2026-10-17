@@ -54,6 +54,9 @@ struct ProgressionResult: Equatable, Sendable {
     var laterality: SetLaterality
     /// Set when the latest primary-load session still needs a 24h resolve.
     var pendingResolveID: UUID?
+    /// The lowest reps logged last session, when they were below today's rep target.
+    /// Nil when the reps reached the target.
+    var lastLoggedReps: Int? = nil
 
     /// Reason on the gold Next Up card.
     /// Hold never adds a weight. A change-load stance names a suggested
@@ -127,8 +130,8 @@ enum SessionPrefill {
 }
 
 /// Option B gates. Set and rep shape snaps into 3×8–12.
-/// Hold and decrease: the target is the last working load.
-/// Increase: the target is the last working load + `loadIncrementLbs`, so the Today card,
+/// Hold and decrease: the target is the last session's logged load, with reps in 8–12.
+/// Increase: the target is the last logged load + `loadIncrementLbs`, so the Today card,
 /// the guided target, and the ruler start show one recommended load.
 enum ProgressionEngine {
     /// The smallest load step in the app (the load ruler step). An increase adds one step.
@@ -160,6 +163,28 @@ enum ProgressionEngine {
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
         calendar: Calendar = .current
+    ) -> ProgressionResult {
+        var result = prescribe(
+            sessions: sessions,
+            primaryLoadTitle: primaryLoadTitle,
+            asOf: asOf,
+            calendar: calendar
+        )
+        let asOfDay = calendar.startOfDay(for: asOf)
+        let latest = hsrHistory(sessions: sessions, primaryLoadTitle: primaryLoadTitle, calendar: calendar)
+            .filter { calendar.startOfDay(for: $0.date) <= asOfDay }
+            .last
+        if let raw = latest.flatMap(inferPrescription), raw.reps < result.target.reps {
+            result.lastLoggedReps = raw.reps
+        }
+        return result
+    }
+
+    private static func prescribe(
+        sessions: [TrainingSessionSnapshot],
+        primaryLoadTitle: String,
+        asOf: Date,
+        calendar: Calendar
     ) -> ProgressionResult {
         let asOfDay = calendar.startOfDay(for: asOf)
         let history = hsrHistory(
@@ -352,17 +377,21 @@ enum ProgressionEngine {
 
     // MARK: Infer
 
+    /// What the session actually logged: the most common working-set load and the lowest reps.
+    /// A tie between loads goes to the load of the later set. Example: guidance 65 lb, logged
+    /// 65 then 60 → 60 lb. Before this rule a tie went to the heaviest load, so a hold day
+    /// showed the earlier guidance (65 lb) instead of the load you could do.
     static func inferPrescription(_ session: TrainingSessionSnapshot) -> LoadPrescription? {
         let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
         guard !pairs.isEmpty else { return nil }
         let minReps = pairs.compactMap(\.reps).min() ?? defaultReps
         let loads = pairs.compactMap(\.leftLoad)
-        let load = modalLoad(loads) ?? loads.max()
-        return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: load)
+        return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: modalLoad(loads))
     }
 
     /// Keep the logged load. Collapse set-count climbs into 3 sets.
-    /// Reps land in 8–12. Anything above the hard max (15) is pulled back too.
+    /// Reps land in 8–12: missed reps go back to the band floor (8), and the set step shows
+    /// "Last time: N reps" (`ProgressionResult.lastLoggedReps`). Anything above 12 is pulled back.
     static func snap(_ raw: LoadPrescription) -> LoadPrescription {
         let capped = min(raw.reps, repHardMax)
         let reps: Int
@@ -489,15 +518,18 @@ enum ProgressionEngine {
         }
     }
 
-    private static func modalLoad(_ loads: [Double]) -> Double? {
+    /// Most common load, in set order. A tie goes to the load of the later set.
+    static func modalLoad(_ loads: [Double]) -> Double? {
         guard !loads.isEmpty else { return nil }
         var counts: [Double: Int] = [:]
-        for load in loads {
+        var lastIndex: [Double: Int] = [:]
+        for (index, load) in loads.enumerated() {
             counts[load, default: 0] += 1
+            lastIndex[load] = index
         }
         return counts.max { a, b in
             if a.value != b.value { return a.value < b.value }
-            return a.key < b.key
+            return (lastIndex[a.key] ?? 0) < (lastIndex[b.key] ?? 0)
         }?.key
     }
 }
