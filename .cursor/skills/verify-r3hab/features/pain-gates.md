@@ -1,29 +1,18 @@
 # Pain gates
 
-Option B. Pain is the session peak during the set, inclusive of 3. The 24h response is read by the engine.
+Pain up to 3 out of 10 during the exercise is fine. A next morning above the baseline drops the load 5 lb for one session. Pain over 3 warns and holds the load. A missing next morning holds and asks.
 
 ## Sub-features
 
-- `advance` when peak pain during is ≤3 and 24h is Better or Same, after two clean hits at the load
-- `hold-worse` when 24h is Worse and pain is still ≤3. Soft cut stays DecisionSuggester advice and does not rewrite the load
-- `drop` when peak pain during is above 3. Load steps down 5 lb to 3×8
-- `hold-cta` when 24h is still pending. Reason is `Waiting on 24h check-in` and `pendingResolveID` is set
-
-## How to get to it (user POV)
-
-- Log a session, then resolve 24h
-- Open Today the next lift day. The gold card shows Advance, Hold, or Drop plus one reason
+- `morning-drop` when the next morning is above the baseline morning
+- `pain-warn` when pain during is over 3 and the next morning is at baseline
+- `missing-morning` holds the last load and sets `pendingResolveID` when the 24h response is still pending
+- `weekly-increase` adds 5 lb on a new program week for the seated leg extension and the leg press when pain was at or under 3
 
 ## Driving it with swift test
 
-Preconditions: domain tests pass.
-
 - Run `./scripts/test-domain.sh`.
-- Confirm `testPainDuringAboveThreeDropsLoad` passed. Pain 4 keeps the last load and says Decrease load. Reason `Pain during was 4`.
-- Confirm `testPainThreeInclusiveStillAdvances` passed.
-- Confirm `testWorseHoldsLoadAndSoftCutStaysAdvice` passed.
-- Confirm `testMissing24hHoldsAndAsks` passed. The reason is not empty.
-
-## Gotchas
-
-Pain 3 still advances. Pain 4 drops. A missing 24h is a hold with a resolve id, never a silent hold. Next-morning AM and week-over-week creep do not decide the dose.
+- Confirm `testNextMorningAboveBaselineDropsFivePoundsForOneSession` passed.
+- Confirm `testPainAboveThreeWarnsAndDoesNotDropWhenTheMorningIsQuiet` passed.
+- Confirm `testMissingMorningHoldsTheLoad` passed.
+- Confirm `testNewWeekAddsFivePoundsAndUsesThatWeeksReps` passed.

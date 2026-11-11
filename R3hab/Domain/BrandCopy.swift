@@ -62,28 +62,30 @@ enum BrandCopy {
     static let primaryLiftTip = "Select an exercise that is easy to continue."
 
     static let setupEyebrow = "Setup"
-    static let setupTitle = "Select your current phase."
-    static let setupLead = "Select the start phase. You can change it in Settings."
-    /// Ties the phase cards to the tenets without renaming the phases.
-    static let setupTenetFraming = "Phase A is Reduce. Phase B and Phase C are Rebuild. Return is the goal."
+    static let setupTitle = "Where are you in the 12 weeks?"
+    static let setupLead = "The plan is 12 weeks, three days a week. You can change the week in Settings."
+    static let setupTenetFraming = "Weeks 1–2 calm the tendon. Weeks 3–10 rebuild with heavy slow resistance. Weeks 11–12 bring back spring."
 
-    /// The three selectable starting points. Title + explanation live on the
-    /// card itself; there is no separate phase explainer.
     static let setupPhaseChoices: [SetupPhaseChoice] = [
         SetupPhaseChoice(
-            phase: .aFlareDeLoad,
-            title: "Phase A · Flare",
-            body: "Decrease the load until the resting pain is stable."
+            phase: .calmTendon,
+            title: "Weeks 1–2 · Calm the tendon",
+            body: "Seated holds, a light single-leg press, and hip and calf work."
         ),
         SetupPhaseChoice(
-            phase: .bIsometrics,
-            title: "Phase B · Isometrics",
-            body: "Do easy isometric holds with your primary exercise."
+            phase: .heavySlow,
+            title: "Weeks 3–6 · Heavy slow resistance",
+            body: "Four sets, from 15 reps down to 10. Add weight each week."
         ),
         SetupPhaseChoice(
-            phase: .cHeavySlowResistance,
-            title: "Phase C · Heavy slow resistance (HSR)",
-            body: "This phase rebuilds the tendon."
+            phase: .heavier,
+            title: "Weeks 7–10 · Heavier",
+            body: "Four sets, from 8 reps down to 6. Spanish squats are optional."
+        ),
+        SetupPhaseChoice(
+            phase: .springiness,
+            title: "Weeks 11–12 · Springiness",
+            body: "Two heavy days, then hops, jump-ups, and landings."
         )
     ]
 

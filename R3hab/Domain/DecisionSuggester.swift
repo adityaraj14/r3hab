@@ -62,7 +62,7 @@ enum DecisionSuggester {
         case .softCut:
             return "Keep this phase. Decrease the load by 20 to 30 percent. You can use a shorter hold instead. You can use fewer sets instead."
         case .hardDrop:
-            return "Go to the previous phase when you are ready. You can go from Phase C to Phase B. You can go from Phase B to Phase A. Change the phase only if you want the change."
+            return "Drop the load for one session. Do not move back a phase. The week stays the same."
         case .stay, .progress, .rest:
             return nil
         }
@@ -79,7 +79,7 @@ enum DecisionSuggester {
         case .softCut:
             return "Use a little less load next time."
         case .hardDrop:
-            return "Go to the previous phase."
+            return "Drop the load for one session."
         case .rest:
             return "Do not judge the load."
         }
@@ -115,7 +115,7 @@ enum LoadNudge: Equatable, Identifiable {
     var message: String {
         switch self {
         case .easeOffMorning(let previous, let current):
-            return "The pain this morning is \(current). The pain on the morning of the last session was \(previous). Change only one item. Decrease the load, the reps, or the hold time."
+            return "The pain this morning is \(current). The baseline morning was \(previous). Drop the load for one session."
         case .easeOffWorse:
             return "The pain was worse after that session. Make one change only. Decrease the load by about 20 to 30 percent. You can do fewer sets instead. You can use a shorter hold instead."
         case .progress:

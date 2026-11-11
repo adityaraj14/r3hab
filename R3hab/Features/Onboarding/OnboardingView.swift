@@ -481,9 +481,9 @@ struct BrandCardRow: View {
 /// chosen injury and modality (unknown ids fall back to that injury’s default).
 enum OnboardingCompletion {
     /// Pre-selected card on the Setup page.
-    static let initialPhase: RehabPhase = .aFlareDeLoad
-    /// Phase applied when the user skips without choosing.
-    static let defaultPhase: RehabPhase = .bIsometrics
+    static let initialPhase: RehabPhase = .calmTendon
+    /// Phase applied when the user skips without choosing. Week 1 of the plan.
+    static let defaultPhase: RehabPhase = .calmTendon
 
     static func result(
         skipped: Bool,
@@ -525,6 +525,10 @@ enum OnboardingCompletion {
             primaryLoadID: primaryLoadID
         )
         settings.currentPhase = choices.phase
+        settings.programStartDate = TwelveWeekPlan.startDate(
+            landingTodayInWeek: TwelveWeekPlan.openingWeek(for: choices.phase),
+            today: Date()
+        )
         settings.hasCompletedOnboarding = true
         settings.notificationsEnabled = choices.notificationsEnabled
         settings.selectedInjuryID = choices.injuryID

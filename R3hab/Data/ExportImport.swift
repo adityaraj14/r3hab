@@ -55,6 +55,8 @@ struct SettingsDTO: Codable {
     var protocolRevision: String
     var selectedInjuryID: String?
     var primaryLoadID: String?
+    /// Absent in backups from before the 12-week plan.
+    var programStartDate: Date?
 }
 
 struct DailyDTO: Codable {
@@ -271,7 +273,8 @@ enum ExportImportService {
                 notificationsEnabled: settings.notificationsEnabled,
                 protocolRevision: settings.protocolRevision,
                 selectedInjuryID: settings.selectedInjuryID,
-                primaryLoadID: settings.primaryLoadID
+                primaryLoadID: settings.primaryLoadID,
+                programStartDate: settings.programStartDate
             ),
             dailyCheckIns: checkIns.map {
                 DailyDTO(
@@ -361,6 +364,16 @@ enum ExportImportService {
         settings.pmReminderMinute = dto.pmReminderMinute
         settings.notificationsEnabled = dto.notificationsEnabled
         settings.protocolRevision = dto.protocolRevision
+        if let programStartDate = dto.programStartDate {
+            settings.programStartDate = programStartDate
+        } else {
+            let phase = RehabPhase.normalized(rawValue: dto.currentPhase)
+            settings.programStartDate = TwelveWeekPlan.startDate(
+                landingTodayInWeek: TwelveWeekPlan.openingWeek(for: phase),
+                today: Date()
+            )
+        }
+        settings.currentPhaseRaw = TwelveWeekPlan.phase(on: Date(), start: settings.programStartDate).rawValue
         if let injuryID = dto.selectedInjuryID, !injuryID.isEmpty {
             settings.selectedInjury = InjuryCatalog.definition(for: injuryID)
         }

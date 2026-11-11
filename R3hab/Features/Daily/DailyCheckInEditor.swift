@@ -103,7 +103,7 @@ struct DailyCheckInEditor: View {
                 } header: {
                     Text("Evening")
                 } footer: {
-                    Text("Record the pain during the day's activities. Use 0 to 10. The steps show Phase A progress. You can import the steps from Apple Health. You can also edit the number.")
+                    Text("Record the pain during the day's activities. Use 0 to 10. You can import the steps from Apple Health. You can also edit the number.")
                 }
 
                 Section {

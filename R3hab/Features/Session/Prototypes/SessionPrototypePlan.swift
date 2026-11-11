@@ -162,14 +162,23 @@ enum SessionPrototypePlan {
         sessions: [TrainingSessionSnapshot],
         phase: RehabPhase,
         asOf: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        checkIns: [DailyCheckInSnapshot] = []
     ) -> SessionPrototypeDraft {
         let title = PrimaryLoadCatalog.seatedExtension.title
+        let start = TwelveWeekPlan.startDate(
+            landingTodayInWeek: TwelveWeekPlan.openingWeek(for: phase),
+            today: asOf,
+            calendar: calendar
+        )
         let result = ProgressionEngine.today(
             sessions: sessions,
             primaryLoadTitle: title,
             asOf: asOf,
-            calendar: calendar
+            calendar: calendar,
+            programStart: start,
+            checkIns: checkIns,
+            exercise: .legExtension
         )
         let prefilled = SessionPrefill.workSets(from: result.target, laterality: result.laterality)
         let pairs = SessionSummary.groupWorkSets(prefilled)

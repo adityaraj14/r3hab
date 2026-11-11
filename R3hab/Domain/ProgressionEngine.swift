@@ -5,10 +5,19 @@ struct LoadPrescription: Equatable, Sendable {
     var workingSets: Int
     var reps: Int
     var loadLbs: Double?
+    var holdSeconds: Int? = nil
+    var restSeconds: Int? = nil
+    var tempo: String? = nil
 
     var displayLine: String {
-        guard let loadLbs else { return "\(workingSets)×\(reps)" }
-        return "\(workingSets)×\(reps) @ \(LoadCopy.labeled(loadLbs))"
+        let dose: String
+        if let holdSeconds {
+            dose = "\(workingSets)×\(holdSeconds)s"
+        } else {
+            dose = "\(workingSets)×\(reps)"
+        }
+        guard let loadLbs else { return dose }
+        return "\(dose) @ \(LoadCopy.labeled(loadLbs))"
     }
 
     var todayLine: String {
@@ -57,6 +66,8 @@ struct ProgressionResult: Equatable, Sendable {
     /// The lowest reps logged last session, when they were below today's rep target.
     /// Nil when the reps reached the target.
     var lastLoggedReps: Int? = nil
+    /// Set when the last session's pain during was over 3. The load rule does not drop for this alone.
+    var painWarning: String? = nil
 
     /// Reason on the gold Next Up card.
     /// Hold never adds a weight. A change-load stance names a suggested
@@ -114,11 +125,12 @@ enum SessionPrefill {
         from target: LoadPrescription,
         laterality: SetLaterality
     ) -> [ResistanceSet] {
-        (0..<target.workingSets).flatMap { _ in
+        let reps = target.holdSeconds == nil ? target.reps : 1
+        return (0..<target.workingSets).flatMap { _ in
             SessionSummary.makePair(
-                reps: target.reps,
+                reps: reps,
                 loadLbs: target.loadLbs,
-                holdSeconds: nil,
+                holdSeconds: target.holdSeconds,
                 isWarmup: false
             )
         }
@@ -129,189 +141,98 @@ enum SessionPrefill {
     }
 }
 
-/// Option B gates. Set and rep shape snaps into 3×8–12.
-/// Hold and decrease: the target is the last session's logged load, with reps in 8–12.
-/// Increase: the target is the last logged load + `loadIncrementLbs`, so the Today card,
-/// the guided target, and the ruler start show one recommended load.
+/// Load advice for the 12-week plan. Reps come from the week. Weight goes up
+/// once each new week when the next morning stayed at baseline. A morning
+/// above baseline drops the load for one session. Pain over 3 warns, and
+/// does not drop the load by itself.
 enum ProgressionEngine {
-    /// The smallest load step in the app (the load ruler step). An increase adds one step.
-    static let loadIncrementLbs = 5.0
-
-    static let painDuringLimit = 3
-    static let defaultSets = 3
-    static let defaultReps = 8
-    static let repFloor = 8
-    static let repCeiling = 12
-    static let repHardMax = 15
-
-    static let reasonWaitingOn24h = "The 24-hour response is not recorded."
-    static let reasonWorseHolding = "The 24-hour response is Worse. Hold the load."
-    static let reasonTwoCleanIncrease = "Two clean sessions. Increase the load."
-    static let reasonOneClean = "One clean session. Hold the load."
-    static let reasonShortReps = "The reps were low. Hold the load."
-    static let reasonStart = "Start with 3 sets of 8 reps."
-    static let reasonNotApplicable = "The 24-hour response does not apply. Hold the load."
-    static let reasonPainUnlogged = "You did not record the pain during the session."
-    static let reasonHolding = "Hold the load."
-
-    static func reasonPain(_ pain: Int) -> String {
-        "The pain during the session was \(pain)."
-    }
+    static let loadIncrementLbs = TwelveWeekPlan.loadIncrementLbs
+    static let painDuringLimit = PainRule.duringLimit
+    static let reasonStart = TwelveWeekPlan.reasonPickLoad
+    static let reasonOutsidePlan = TwelveWeekPlan.reasonOutsidePlan
+    static let reasonAwaitMorning = TwelveWeekPlan.reasonAwaitMorning
 
     static func today(
         sessions: [TrainingSessionSnapshot],
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        programStart: Date? = nil,
+        checkIns: [DailyCheckInSnapshot] = [],
+        exercise: PlanExerciseKind? = nil
     ) -> ProgressionResult {
-        var result = prescribe(
-            sessions: sessions,
-            primaryLoadTitle: primaryLoadTitle,
-            asOf: asOf,
-            calendar: calendar
-        )
-        let asOfDay = calendar.startOfDay(for: asOf)
-        let latest = hsrHistory(sessions: sessions, primaryLoadTitle: primaryLoadTitle, calendar: calendar)
-            .filter { calendar.startOfDay(for: $0.date) <= asOfDay }
-            .last
-        if let raw = latest.flatMap(inferPrescription), raw.reps < result.target.reps {
-            result.lastLoggedReps = raw.reps
-        }
-        return result
-    }
-
-    private static func prescribe(
-        sessions: [TrainingSessionSnapshot],
-        primaryLoadTitle: String,
-        asOf: Date,
-        calendar: Calendar
-    ) -> ProgressionResult {
-        let asOfDay = calendar.startOfDay(for: asOf)
-        let history = hsrHistory(
-            sessions: sessions,
-            primaryLoadTitle: primaryLoadTitle,
-            calendar: calendar
-        ).filter { calendar.startOfDay(for: $0.date) <= asOfDay }
-
-        let laterality = history.last.map {
-            SessionSummary.inferredLaterality(workSets: $0.resistanceSets)
-        } ?? .bilateral
-
-        guard let latest = history.last else {
-            let seed = LoadPrescription(
-                workingSets: defaultSets,
-                reps: defaultReps,
-                loadLbs: lastPrimaryLoad(
-                    sessions: sessions,
-                    primaryLoadTitle: primaryLoadTitle
-                )
-            )
+        let start = programStart ?? calendar.startOfDay(for: asOf)
+        let week = TwelveWeekPlan.programWeek(start: start, on: asOf, calendar: calendar)
+        let kind = exercise ?? inferredKind(title: primaryLoadTitle, week: week)
+        guard let kind else {
+            let seed = LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil)
             return ProgressionResult(
                 target: seed,
                 current: seed,
                 stance: .hold,
-                reason: reasonStart,
+                reason: reasonOutsidePlan,
                 blockedBy: [],
-                laterality: laterality,
+                laterality: .bilateral,
                 pendingResolveID: nil
             )
         }
-
-        let raw = inferPrescription(latest) ?? LoadPrescription(
-            workingSets: defaultSets,
-            reps: defaultReps,
-            loadLbs: latest.chartLoad
+        let advice = TwelveWeekPlan.advise(
+            kind: kind,
+            programStart: start,
+            sessions: sessions,
+            checkIns: checkIns,
+            asOf: asOf,
+            calendar: calendar
         )
-        let current = snap(raw)
-        let pendingID: UUID? = latest.response24h == .pending ? latest.id : nil
-        let pain = peakPain(in: latest)
-
-        if let pain, pain > painDuringLimit {
-            return make(
-                target: current,
-                current: current,
-                stance: .drop,
-                reason: reasonPain(pain),
-                blockedBy: [.painDuring],
-                laterality: laterality,
-                pendingResolveID: pendingID
-            )
-        }
-
-        switch latest.response24h {
-        case .pending:
-            return make(
-                target: current,
-                current: current,
-                stance: .hold,
-                reason: reasonWaitingOn24h,
-                blockedBy: [.awaiting24h],
-                laterality: laterality,
-                pendingResolveID: pendingID
-            )
-        case .worse:
-            return make(
-                target: current,
-                current: current,
-                stance: .hold,
-                reason: reasonWorseHolding,
-                blockedBy: [.responseWorse],
-                laterality: laterality,
-                pendingResolveID: nil
-            )
-        case .notApplicable:
-            return make(
-                target: current,
-                current: current,
-                stance: .hold,
-                reason: reasonNotApplicable,
-                blockedBy: [.awaiting24h],
-                laterality: laterality,
-                pendingResolveID: nil
-            )
-        case .better, .same:
-            break
-        }
-
-        let atLoad = sessionsAtLoad(history, loadLbs: current.loadLbs)
-        let recent = Array(atLoad.suffix(2))
-        let twoClean = recent.count == 2 && recent.allSatisfy {
-            isCleanHit($0, loadLbs: current.loadLbs)
-        }
-        if twoClean {
-            return make(
-                target: increased(current),
-                current: current,
-                stance: .advance,
-                reason: reasonTwoCleanIncrease,
-                blockedBy: [],
-                laterality: laterality,
-                pendingResolveID: nil
-            )
-        }
-
-        return make(
-            target: current,
-            current: current,
-            stance: .hold,
-            reason: holdReason(latest: latest, loadLbs: current.loadLbs),
-            blockedBy: [.consecutiveCleanHits],
-            laterality: laterality,
-            pendingResolveID: nil
+        return ProgressionResult(
+            target: advice.target,
+            current: advice.last ?? advice.target,
+            stance: advice.stance,
+            reason: advice.reason,
+            blockedBy: advice.blockedBy,
+            laterality: advice.laterality,
+            pendingResolveID: advice.pendingResolveID,
+            lastLoggedReps: advice.lastLoggedReps,
+            painWarning: advice.painWarning
         )
+    }
+
+    static func inferredKind(title: String, week: Int) -> PlanExerciseKind? {
+        let text = title.lowercased()
+        if text.contains("hip thrust") || text.contains("side bend") || text == "walking" {
+            return nil
+        }
+        if text.contains("pogo") { return .pogoHop }
+        if text.contains("box jump") { return .boxJumpUp }
+        if text.contains("landing") { return .landing }
+        if text.contains("spanish") { return .spanishSquat }
+        if text.contains("hip abduction") { return .hipAbduction }
+        if text.contains("calf") { return .calfRaise }
+        if text.contains("single-leg") && text.contains("press") { return .singleLegPress }
+        if text.contains("leg press") {
+            return TwelveWeekPlan.contentWeek(week) <= 2 ? .singleLegPress : .legPress
+        }
+        if text.contains("seated") {
+            return TwelveWeekPlan.contentWeek(week) <= 2 ? .isometricLegExtension : .legExtension
+        }
+        return nil
     }
 
     static func evaluateAfterSave(
         sessions: [TrainingSessionSnapshot],
         primaryLoadTitle: String = PrimaryLoadCatalog.seatedExtension.title,
         asOf: Date,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        programStart: Date? = nil,
+        checkIns: [DailyCheckInSnapshot] = []
     ) -> ProgressionResult {
         today(
             sessions: sessions,
             primaryLoadTitle: primaryLoadTitle,
             asOf: asOf,
-            calendar: calendar
+            calendar: calendar,
+            programStart: programStart,
+            checkIns: checkIns
         )
     }
 
@@ -384,40 +305,9 @@ enum ProgressionEngine {
     static func inferPrescription(_ session: TrainingSessionSnapshot) -> LoadPrescription? {
         let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
         guard !pairs.isEmpty else { return nil }
-        let minReps = pairs.compactMap(\.reps).min() ?? defaultReps
+        let minReps = pairs.compactMap(\.reps).min() ?? 8
         let loads = pairs.compactMap(\.leftLoad)
         return LoadPrescription(workingSets: pairs.count, reps: minReps, loadLbs: modalLoad(loads))
-    }
-
-    /// Keep the logged load. Collapse set-count climbs into 3 sets.
-    /// Reps land in 8–12: missed reps go back to the band floor (8), and the set step shows
-    /// "Last time: N reps" (`ProgressionResult.lastLoggedReps`). Anything above 12 is pulled back.
-    static func snap(_ raw: LoadPrescription) -> LoadPrescription {
-        let capped = min(raw.reps, repHardMax)
-        let reps: Int
-        if capped < repFloor {
-            reps = repFloor
-        } else if capped > repCeiling {
-            reps = repCeiling
-        } else {
-            reps = capped
-        }
-        return LoadPrescription(workingSets: defaultSets, reps: reps, loadLbs: raw.loadLbs)
-    }
-
-    static func hitTopReps(_ session: TrainingSessionSnapshot, target: LoadPrescription) -> Bool {
-        let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
-        guard pairs.count >= target.workingSets else { return false }
-        let relevant = Array(pairs.prefix(target.workingSets))
-        return relevant.allSatisfy { pair in
-            guard let reps = pair.reps, reps >= target.reps else { return false }
-            if let need = target.loadLbs {
-                let left = pair.leftLoad ?? 0
-                let right = pair.rightLoad ?? left
-                return left + 0.001 >= need && right + 0.001 >= need
-            }
-            return true
-        }
     }
 
     static func peakPain(in session: TrainingSessionSnapshot) -> Int? {
@@ -440,82 +330,6 @@ enum ProgressionEngine {
         var next = current
         next.loadLbs = last + loadIncrementLbs
         return next
-    }
-
-    // MARK: Private
-
-    private static func make(
-        target: LoadPrescription,
-        current: LoadPrescription,
-        stance: ProgressionStance,
-        reason: String,
-        blockedBy: [ProgressionGate],
-        laterality: SetLaterality,
-        pendingResolveID: UUID?
-    ) -> ProgressionResult {
-        ProgressionResult(
-            target: target,
-            current: current,
-            stance: stance,
-            reason: reason,
-            blockedBy: blockedBy,
-            laterality: laterality,
-            pendingResolveID: pendingResolveID
-        )
-    }
-
-    private static func holdReason(
-        latest: TrainingSessionSnapshot,
-        loadLbs: Double?
-    ) -> String {
-        if peakPain(in: latest) == nil {
-            return reasonPainUnlogged
-        }
-        let floor = LoadPrescription(workingSets: defaultSets, reps: repFloor, loadLbs: loadLbs)
-        if !hitTopReps(latest, target: floor) {
-            return reasonShortReps
-        }
-        if isCleanHit(latest, loadLbs: loadLbs) {
-            return reasonOneClean
-        }
-        return reasonHolding
-    }
-
-    private static func isCleanHit(
-        _ session: TrainingSessionSnapshot,
-        loadLbs: Double?
-    ) -> Bool {
-        switch session.response24h {
-        case .better, .same:
-            break
-        case .pending, .worse, .notApplicable:
-            return false
-        }
-        guard let pain = peakPain(in: session), pain <= painDuringLimit else { return false }
-        let floor = LoadPrescription(workingSets: defaultSets, reps: repFloor, loadLbs: loadLbs)
-        return hitTopReps(session, target: floor)
-    }
-
-    private static func sessionsAtLoad(
-        _ history: [TrainingSessionSnapshot],
-        loadLbs: Double?
-    ) -> [TrainingSessionSnapshot] {
-        history.filter { sameLoad(inferredLoad($0), loadLbs) }
-    }
-
-    private static func inferredLoad(_ session: TrainingSessionSnapshot) -> Double? {
-        inferPrescription(session)?.loadLbs
-    }
-
-    private static func sameLoad(_ lhs: Double?, _ rhs: Double?) -> Bool {
-        switch (lhs, rhs) {
-        case (nil, nil):
-            return true
-        case let (left?, right?):
-            return abs(left - right) < 0.001
-        default:
-            return false
-        }
     }
 
     /// Most common load, in set order. A tie goes to the load of the later set.

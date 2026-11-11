@@ -18,6 +18,8 @@ struct SessionEditor: View {
     /// Session to edit; `nil` logs a new one.
     var existingId: UUID?
     var focus: SessionLogFocus = .general
+    /// Opens a specific exercise from today's plan.
+    var initialPresetID: String? = nil
 
     @State private var phase: RehabPhase = .aFlareDeLoad
     @State private var sessionType: SessionType = .isometrics
@@ -138,6 +140,11 @@ struct SessionEditor: View {
             // with the banner if it is empty.
             Section {
                 PainScoreControl(title: "Pain during the session", value: $painDuring, allowsClear: false)
+                if let painDuring, let warning = PainRule.warning(for: painDuring) {
+                    Text(warning)
+                        .font(.footnote.weight(.semibold))
+                        .foregroundStyle(.orange)
+                }
                 if kind.shows24hResolution {
                     Picker("Response", selection: $response24hEdit) {
                         Text("Better").tag(Optional.some(Response24h.better))
@@ -162,7 +169,7 @@ struct SessionEditor: View {
             }
 
             if showsResistance {
-                if activeLoad.usesPatellarLadder, let planAdvice, let planReason, !usesIsoHolds {
+                if activeLoad.usesPatellarLadder, let planAdvice, let planReason {
                     Section {
                         Text(planAdvice)
                             .font(.subheadline.weight(.semibold))
@@ -172,7 +179,7 @@ struct SessionEditor: View {
                     } header: {
                         Text("Today’s plan")
                     } footer: {
-                        Text("The load starts at the last session. Change the load to match your plates or stack.")
+                        Text(planNote ?? "The load starts at the last session. Change the load to match your plates or stack.")
                     }
                 }
                 if showsWarmup {
@@ -347,7 +354,32 @@ struct SessionEditor: View {
     }
 
     private var presetsForPhase: [SessionPreset] {
-        SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID)
+        guard activeLoad.usesPatellarLadder else {
+            return SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID)
+        }
+        let ids = editorDayPlan.exercises.map(\.presetID)
+        let matched = ids.compactMap { id in SessionPreset.all.first { $0.id == id } }
+        return matched.isEmpty ? SessionPreset.forPhase(phase, primaryLoadID: primaryLoadID) : matched
+    }
+
+    private var editorProgramStart: Date {
+        let stored = settings?.programStartDate ?? Date()
+        return TwelveWeekPlan.isUnsetStart(stored) ? Date() : stored
+    }
+
+    private var editorDayPlan: DayPlan {
+        TwelveWeekPlan.dayPlan(
+            start: editorProgramStart,
+            on: Date(),
+            sessions: sessions.map(\.snapshot),
+            checkIns: checkIns.map(\.snapshot),
+            calendar: calendar
+        )
+    }
+
+    private var planNote: String? {
+        guard let id = selectedPresetId else { return nil }
+        return editorDayPlan.exercises.first { $0.presetID == id }?.note
     }
 
     private var primaryLoadID: String {
@@ -705,7 +737,12 @@ struct SessionEditor: View {
         laterality = SetLaterality(rawValue: storedLateralityRaw) ?? .bilateral
         switch focus {
         case .kneeResistance, .general:
-            applyPreset(SessionPreset.preferred(for: phase, primaryLoadID: primaryLoadID))
+            if let initialPresetID,
+               let preset = SessionPreset.all.first(where: { $0.id == initialPresetID }) {
+                applyPreset(preset)
+            } else {
+                applyPreset(SessionPreset.preferred(for: phase, primaryLoadID: primaryLoadID))
+            }
         }
         refreshSpacing()
         finishLoad()
@@ -773,36 +810,25 @@ struct SessionEditor: View {
             }
             return
         }
-        if usesIsoHolds {
-            warmupSets = []
-            if workSets.isEmpty {
-                workSets = SessionSummary.makePair(
-                    reps: 4,
-                    loadLbs: nil,
-                    holdSeconds: 30,
-                    isWarmup: false
-                )
-            }
-            return
-        }
-
-        let title: String
-        if let id = selectedPresetId, let preset = SessionPreset.all.first(where: { $0.id == id }) {
-            title = preset.label
-        } else {
-            title = PrimaryLoadCatalog.option(for: primaryLoadID).title
-        }
+        let preset = selectedPresetId.flatMap { id in SessionPreset.all.first { $0.id == id } }
+        let title = preset?.whatIDid ?? PrimaryLoadCatalog.option(for: primaryLoadID).title
+        let kind = preset.flatMap { TwelveWeekPlan.kind(presetID: $0.id) }
         let prescription = ProgressionEngine.today(
             sessions: sessions.filter { $0.id != existingId }.map(\.snapshot),
             primaryLoadTitle: title,
             asOf: Date(),
-            calendar: calendar
+            calendar: calendar,
+            programStart: editorProgramStart,
+            checkIns: checkIns.map(\.snapshot),
+            exercise: kind
         )
         laterality = prescription.laterality
         storedLateralityRaw = prescription.laterality.rawValue
         planAdvice = prescription.stance.label
-        planReason = prescription.reason
-        if warmupSets.isEmpty {
+        planReason = [prescription.reason, prescription.painWarning].compactMap { $0 }.joined(separator: " ")
+        if usesIsoHolds || prescription.target.holdSeconds != nil {
+            warmupSets = []
+        } else if warmupSets.isEmpty {
             warmupSets = [SessionPrefill.warmupSet(loadLbs: prescription.target.loadLbs)]
         }
         if workSets.isEmpty {

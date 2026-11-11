@@ -25,6 +25,8 @@ final class AppSettings {
     var selectedInjuryID: String = "patellar-tendinopathy"
     /// Primary movement from `PrimaryLoadCatalog`, scoped to the selected injury.
     var primaryLoadID: String = "seated-extension"
+    /// First day of week 1. Epoch means an older store that still needs a start date.
+    var programStartDate: Date = Date(timeIntervalSince1970: 0)
 
     var currentPhase: RehabPhase {
         get { RehabPhase.normalized(rawValue: currentPhaseRaw) }
@@ -45,8 +47,9 @@ final class AppSettings {
     }
 
     init() {
-        self.currentPhaseRaw = RehabPhase.aFlareDeLoad.rawValue
+        self.currentPhaseRaw = RehabPhase.calmTendon.rawValue
         self.phaseChangedAt = Date()
+        self.programStartDate = Date()
         self.phaseAPainThreshold = 2
         self.phaseAStableDaysRequired = 3
         self.stepNearNormalMin = 6000

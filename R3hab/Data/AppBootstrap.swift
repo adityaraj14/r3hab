@@ -68,6 +68,23 @@ enum AppBootstrap {
                 existing.currentPhaseRaw = RehabPhase.normalizedRawValue(existing.currentPhaseRaw)
                 changed = true
             }
+            if TwelveWeekPlan.isUnsetStart(existing.programStartDate) {
+                let legacy = RehabPhase.normalized(rawValue: existing.currentPhaseRaw)
+                existing.programStartDate = TwelveWeekPlan.startDate(
+                    landingTodayInWeek: TwelveWeekPlan.openingWeek(for: legacy),
+                    today: Date()
+                )
+                changed = true
+            }
+            let planPhase = TwelveWeekPlan.phase(on: Date(), start: existing.programStartDate)
+            if existing.currentPhaseRaw != planPhase.rawValue {
+                existing.currentPhaseRaw = planPhase.rawValue
+                changed = true
+            }
+            if existing.protocolRevision != TwelveWeekPlan.protocolRevision {
+                existing.protocolRevision = TwelveWeekPlan.protocolRevision
+                changed = true
+            }
             if changed {
                 try context.save()
             }

@@ -69,11 +69,11 @@ enum PrimaryLoadCatalog {
         id: "seated-extension",
         injuryID: "patellar-tendinopathy",
         title: "Seated leg extension",
-        subtitle: "Default exercise. Use holds, then heavy slow resistance on the machine.",
+        subtitle: "Seated, so the back stays unloaded. Holds, then heavy slow resistance.",
         isometricPresetID: "ext",
         hsrPresetID: "ke",
         logCTA: "Record session",
-        homeObjective: "The primary exercise is seated leg extension. Increase tendon capacity. Do not cause a flare the next morning.",
+        homeObjective: "Seated leg extension. The back stays unloaded. Pain up to 3 out of 10 is fine if the next morning is back to baseline.",
         logging: .kneeLadder
     )
 
@@ -81,11 +81,11 @@ enum PrimaryLoadCatalog {
         id: "leg-press",
         injuryID: "patellar-tendinopathy",
         title: "Leg press",
-        subtitle: "Use the same session record as seated leg extension. Use holds, then heavy slow resistance.",
+        subtitle: "Machine leg press, back supported. Light single-leg work first, then heavy slow resistance.",
         isometricPresetID: "lp-iso",
         hsrPresetID: "lp",
         logCTA: "Record leg press",
-        homeObjective: "The primary exercise is leg press. Increase tendon capacity. Do not cause a flare the next morning.",
+        homeObjective: "Leg press with the back supported. Pain up to 3 out of 10 is fine if the next morning is back to baseline.",
         logging: .kneeLadder
     )
 

@@ -24,8 +24,10 @@ struct PhaseChip: View {
     private var phaseColor: Color {
         switch phase {
         case .aFlareDeLoad: return .red
-        case .bIsometrics: return .orange
-        case .cHeavySlowResistance: return .green
+        case .bIsometrics, .calmTendon: return .orange
+        case .cHeavySlowResistance, .heavySlow: return .green
+        case .heavier: return .mint
+        case .springiness: return .purple
         }
     }
 }
