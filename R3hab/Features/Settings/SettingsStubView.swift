@@ -296,8 +296,10 @@ struct SettingsStubView: View {
         }
     }
 
+    private var calendar: Calendar { .current }
+
     private func planWeekLabel(_ settings: AppSettings) -> String {
-        let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date())
+        let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date(), calendar: calendar)
         let shown = min(week, TwelveWeekPlan.weekCount)
         return "Week \(shown) of \(TwelveWeekPlan.weekCount)"
     }
@@ -305,7 +307,7 @@ struct SettingsStubView: View {
     private func weekBinding(_ settings: AppSettings) -> Binding<Int> {
         Binding(
             get: {
-                let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date())
+                let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date(), calendar: calendar)
                 return min(max(week, 1), TwelveWeekPlan.weekCount)
             },
             set: { newValue in

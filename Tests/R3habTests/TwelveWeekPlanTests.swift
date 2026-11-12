@@ -174,6 +174,20 @@ final class TwelveWeekPlanTests: XCTestCase {
         XCTAssertTrue(early.needsTest)
     }
 
+    func testNextSessionDaySkipsTheRestDay() {
+        let start = monday
+        let tuesday = calendar.date(byAdding: .day, value: 1, to: monday)!
+        let wednesday = calendar.date(byAdding: .day, value: 2, to: monday)!
+        XCTAssertEqual(
+            TwelveWeekPlan.nextSessionDay(from: tuesday, start: start, calendar: calendar),
+            wednesday
+        )
+        XCTAssertEqual(
+            TwelveWeekPlan.nextSessionDay(from: monday, start: start, calendar: calendar),
+            wednesday
+        )
+    }
+
     func testProgramWeekRollsFromTheStartDate() {
         let start = monday
         let nextMonday = calendar.date(byAdding: .day, value: 7, to: monday)!

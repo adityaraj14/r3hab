@@ -10,6 +10,7 @@ struct RehabProgressView: View {
     @State private var range: ProgressDayRange = .days7
 
     private var settings: AppSettings? { settingsList.first }
+    private var calendar: Calendar { .current }
 
     private var metrics: [DailyMetricSnapshot] {
         checkIns.map {
@@ -246,7 +247,8 @@ struct RehabProgressView: View {
         let trend = TwelveWeekPlan.declineTrend(
             start: programStart,
             checkIns: checkIns.map(\.snapshot),
-            asOf: Date()
+            asOf: Date(),
+            calendar: calendar
         )
         return VStack(alignment: .leading, spacing: 6) {
             Text("Decline squat")

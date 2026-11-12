@@ -264,6 +264,20 @@ enum TwelveWeekPlan {
         return .recovery
     }
 
+    /// The next training, heavy, or plyometric day after `date`. Nil if none falls within a week.
+    static func nextSessionDay(from date: Date, start: Date, calendar: Calendar) -> Date? {
+        let today = calendar.startOfDay(for: date)
+        for offset in 1...7 {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            let week = programWeek(start: start, on: day, calendar: calendar)
+            let weekday = calendar.component(.weekday, from: day)
+            if dayKind(week: week, weekday: weekday).isSessionDay {
+                return day
+            }
+        }
+        return nil
+    }
+
     // MARK: Session content
 
     static func dayPlan(

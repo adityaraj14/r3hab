@@ -500,8 +500,13 @@ struct HomeView: View {
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
 
-            if showsPatellarLadder, action.showsLoadProgression, !actionShowsDose(action) {
+            if showsPatellarLadder, !planIsRestDay, action.showsLoadProgression, !actionShowsDose(action) {
                 stanceLine(todayProgression, onGold: false)
+            } else if showsPatellarLadder, planIsRestDay, action != .restDay, !actionShowsDose(action) {
+                Text(restDayDetail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             switch action {
@@ -541,8 +546,14 @@ struct HomeView: View {
             case .logSession:
                 Button { recordSession() } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        if showsPatellarLadder {
+                        if showsPatellarLadder, !planIsRestDay {
                             stanceLine(todayProgression, onGold: true)
+                        }
+                        if let plyoNote = dayPlan.plyoNote {
+                            Text(plyoNote)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         Label(nextUpSessionTitle, systemImage: activeInjury.systemImage)
                         if !showsPatellarLadder {
@@ -567,7 +578,7 @@ struct HomeView: View {
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
                     Text(showsPatellarLadder
-                         ? "No heavy session today. The seated leg extension hold is still available."
+                         ? restDayDetail
                          : "This is a rest day. Do not add load today.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
@@ -986,6 +997,15 @@ struct HomeView: View {
         showSession = true
     }
 
+    private var restDayDetail: String {
+        guard let next = TwelveWeekPlan.nextSessionDay(from: Date(), start: programStart, calendar: calendar) else {
+            return "The seated hold is optional today."
+        }
+        let weekday = calendar.component(.weekday, from: next)
+        let name = calendar.weekdaySymbols[weekday - 1]
+        return "The seated hold is optional today. Next training day is \(name)."
+    }
+
     private var planExercises: [PlanExercise] {
         if dayPlan.exercises.contains(where: { $0.id == .isometricLegExtension }) {
             return dayPlan.exercises
@@ -1001,6 +1021,11 @@ struct HomeView: View {
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            if let plyoNote = dayPlan.plyoNote {
+                Text(plyoNote)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             ForEach(planExercises) { exercise in
                 VStack(alignment: .leading, spacing: 4) {
                     Text(exercise.name)
@@ -1008,11 +1033,6 @@ struct HomeView: View {
                     Text(exercise.doseLine)
                         .font(.caption)
                         .foregroundStyle(.secondary)
-                    if let tempo = exercise.tempo {
-                        Text(tempo)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
                     if let note = exercise.note {
                         Text(note)
                             .font(.caption)
