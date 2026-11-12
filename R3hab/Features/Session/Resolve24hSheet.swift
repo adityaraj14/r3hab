@@ -278,49 +278,31 @@ struct Resolve24hSheet: View {
     }
 }
 
-/// Optional phase step-back after HardDrop.
+/// Confirms a one-session load drop. The week does not move backward.
 struct HardDropPhaseSheet: View {
     @Environment(\.dismiss) private var dismiss
     let current: RehabPhase
     var onFinish: (RehabPhase?) -> Void
 
-    @State private var selected: RehabPhase = .aFlareDeLoad
-    @State private var changePhase = true
-
-    private var earlier: [RehabPhase] {
-        let all = RehabPhase.allCases
-        guard let idx = all.firstIndex(of: current), idx > 0 else { return [] }
-        return Array(all.prefix(idx))
-    }
-
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    Toggle("Also change the current phase", isOn: $changePhase)
-                    if changePhase, !earlier.isEmpty {
-                        Picker("New phase", selection: $selected) {
-                            ForEach(earlier) { p in
-                                Text(p.title).tag(p)
-                            }
-                        }
-                    }
+                    Text("If the next morning is above baseline, drop the load for one session. The week stays \(current.title).")
+                        .font(.body)
                 } footer: {
-                    Text("Go to the previous phase when you are ready. You can keep this phase. Decrease only the load.")
+                    Text(TwelveWeekPlan.reasonDropOneSession)
                 }
             }
-            .navigationTitle("Previous phase")
+            .navigationTitle("One lighter session")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") {
-                        onFinish(changePhase ? selected : nil)
+                        onFinish(nil)
                         dismiss()
                     }
                 }
-            }
-            .onAppear {
-                selected = earlier.last ?? .aFlareDeLoad
             }
         }
         .preferredColorScheme(.dark)

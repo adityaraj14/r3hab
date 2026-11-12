@@ -90,7 +90,9 @@ final class SessionCompletionTests: XCTestCase {
             sessions: [session],
             primaryLoadTitle: guided.exerciseTitle,
             asOf: now,
-            calendar: calendar
+            calendar: calendar,
+            programStart: TwelveWeekPlan.startDate(landingTodayInWeek: 3, today: now, calendar: calendar),
+            exercise: .legExtension
         )
         XCTAssertEqual(progression.pendingResolveID, session.id)
     }

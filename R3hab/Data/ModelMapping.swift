@@ -2,7 +2,13 @@ import Foundation
 
 extension DailyCheckIn {
     var snapshot: DailyCheckInSnapshot {
-        DailyCheckInSnapshot(date: date, restingPainAM: restingPainAM, steps: steps)
+        DailyCheckInSnapshot(
+            date: date,
+            restingPainAM: restingPainAM,
+            steps: steps,
+            declineSquatL: declineSquatL,
+            declineSquatR: declineSquatR
+        )
     }
 }
 

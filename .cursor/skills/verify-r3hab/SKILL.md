@@ -15,7 +15,7 @@ Domain tests:
 ./scripts/test-domain.sh
 ```
 
-Ready when `swift test` prints `Test Suite 'ProgressionEngineTests' passed`.
+Ready when `swift test` prints `Test Suite 'TwelveWeekPlanTests' passed` and `Test Suite 'ProgressionEngineTests' passed`.
 
 iOS app, Mac only:
 
@@ -45,7 +45,7 @@ Run the real engine the way Today and SessionEditor call it.
 ./scripts/test-domain.sh
 ```
 
-That filter is `ProgressionEngine.today`, `SessionPrefill.workSets`, and `ProgressionEngine.applySessionPain`.
+That filter covers the 12-week plan, `ProgressionEngine.today`, `SessionPrefill.workSets`, and `ProgressionEngine.applySessionPain`.
 
 ## Evidence
 
@@ -53,11 +53,12 @@ Write stdout to `/tmp/r3hab-verify/domain-tests.txt`. Keep that file after clean
 
 Proof is a zero exit from `./scripts/test-domain.sh` plus these literals in the log:
 
-- `testTwoCleanHitsAdviseIncreaseWithoutChangingPrefill` passed
-- `testPainDuringAboveThreeDropsLoad` passed
-- `testWorseHoldsLoadAndSoftCutStaysAdvice` passed
-- `testMissing24hHoldsAndAsks` passed
-- `testMidLadderSnapsIntoBandAtSameLoad` passed
+- `testRepRamp` passed
+- `testNextMorningAboveBaselineDropsFivePoundsForOneSession` passed
+- `testPainAboveThreeWarnsAndDoesNotDropWhenTheMorningIsQuiet` passed
+- `testMissingMorningHoldsTheLoad` passed
+- `testNewWeekAddsFivePoundsAndUsesThatWeeksReps` passed
+- `testNoRunningOrHighVolumeJumpingBeforeWeekEleven` passed
 - `testPrefillBuildsEditableWorkingPairs` passed
 - `testLegacyResistanceSetJSONDecodesWithoutPain` passed
 

@@ -10,6 +10,7 @@ struct RehabProgressView: View {
     @State private var range: ProgressDayRange = .days7
 
     private var settings: AppSettings? { settingsList.first }
+    private var calendar: Calendar { .current }
 
     private var metrics: [DailyMetricSnapshot] {
         checkIns.map {
@@ -73,16 +74,6 @@ struct RehabProgressView: View {
         ProgressInterpretation.classify(points: explorePoints)
     }
 
-    /// Phase B stretch: clean sessions since phase change while in B (REQ-FUNC-017).
-    private var phaseBCleanCount: Int? {
-        guard let settings, settings.currentPhase == .bIsometrics else { return nil }
-        return finalizedSessions.filter {
-            $0.date >= settings.phaseChangedAt
-                && $0.phase == .bIsometrics
-                && ($0.response24h == .better || $0.response24h == .same)
-        }.count
-    }
-
     private var hasAnyData: Bool {
         !checkIns.isEmpty || !finalizedSessions.isEmpty
     }
@@ -137,12 +128,8 @@ struct RehabProgressView: View {
 
                         heroRow
 
-                        if let settings, settings.currentPhase == .aFlareDeLoad {
-                            phaseACard(settings)
-                        }
-
-                        if let phaseBCleanCount {
-                            phaseBCard(phaseBCleanCount)
+                        if InjuryCatalog.isPatellar(settings?.selectedInjuryID ?? InjuryCatalog.patellarTendinopathy.id) {
+                            declineTrendCard
                         }
 
                         OutcomeMixCard(mix: outcomeMix)
@@ -254,35 +241,26 @@ struct RehabProgressView: View {
         .accessibilityLabel("\(title): \(value)")
     }
 
-    private func phaseACard(_ settings: AppSettings) -> some View {
-        let status = PhaseAExitEvaluator.evaluate(
+    private var declineTrendCard: some View {
+        let start = settings?.programStartDate ?? Date()
+        let programStart = TwelveWeekPlan.isUnsetStart(start) ? Date() : start
+        let trend = TwelveWeekPlan.declineTrend(
+            start: programStart,
             checkIns: checkIns.map(\.snapshot),
-            settings: settings.phaseSnapshot,
-            today: Date()
+            asOf: Date(),
+            calendar: calendar
         )
         return VStack(alignment: .leading, spacing: 6) {
-            Text("Phase A exit")
+            Text("Decline squat")
                 .font(.subheadline.weight(.semibold))
-            Text(status.message)
+            Text(trend.headline)
                 .font(.footnote)
                 .foregroundStyle(.secondary)
-        }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                .fill(status.isReadyToAdvance ? Color.green.opacity(0.12) : Color(.secondarySystemBackground))
-        )
-        .accessibilityElement(children: .combine)
-    }
-
-    private func phaseBCard(_ count: Int) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text("Phase B clean sessions")
-                .font(.subheadline.weight(.semibold))
-            Text("\(count) Better or Same sessions since you started Phase B")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+            if !trend.points.isEmpty {
+                Text(trend.points.map { "W\($0.week) \($0.score)" }.joined(separator: " · "))
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -290,6 +268,7 @@ struct RehabProgressView: View {
             RoundedRectangle(cornerRadius: 14, style: .continuous)
                 .fill(Color(.secondarySystemBackground))
         )
+        .accessibilityElement(children: .combine)
     }
 }
 

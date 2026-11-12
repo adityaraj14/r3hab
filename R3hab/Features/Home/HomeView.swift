@@ -22,6 +22,8 @@ struct HomeView: View {
     @State private var showPM = false
     /// Walk and QL primary loads keep the standard form.
     @State private var showSession = false
+    /// Preset opened from today's plan. Nil resumes the draft, if there is one.
+    @State private var sessionPresetID: String?
     /// Seated-extension ladder: the guided recorder, new or resumed.
     @State private var guidedSession: GuidedSessionRequest?
     @State private var pastCheckInDate: Date?
@@ -92,17 +94,6 @@ struct HomeView: View {
         activePrimaryLoad.nextUpCTA(hasDraft: todayDraftId != nil)
     }
 
-    private var phaseAStatus: PhaseAExitStatus? {
-        guard let settings, settings.currentPhase == .aFlareDeLoad else { return nil }
-        guard InjuryCatalog.isPatellar(settings.selectedInjuryID) else { return nil }
-        return PhaseAExitEvaluator.evaluate(
-            checkIns: checkIns.map(\.snapshot),
-            settings: settings.phaseSnapshot,
-            today: Date(),
-            calendar: calendar
-        )
-    }
-
     private var streak: WorkoutStreak.Snapshot {
         WorkoutStreak.evaluate(sessions: sessionSnaps, now: Date(), calendar: calendar)
     }
@@ -122,12 +113,39 @@ struct HomeView: View {
         activePrimaryLoad.usesPatellarLadder
     }
 
-    private var todayProgression: ProgressionResult {
-        ProgressionEngine.today(
+    private var programStart: Date {
+        let stored = settings?.programStartDate ?? Date()
+        return TwelveWeekPlan.isUnsetStart(stored) ? Date() : stored
+    }
+
+    private var checkInSnaps: [DailyCheckInSnapshot] {
+        checkIns.map(\.snapshot)
+    }
+
+    private var dayPlan: DayPlan {
+        TwelveWeekPlan.dayPlan(
+            start: programStart,
+            on: Date(),
             sessions: sessionSnaps,
-            primaryLoadTitle: activePrimaryLoad.title,
-            asOf: Date(),
+            checkIns: checkInSnaps,
             calendar: calendar
+        )
+    }
+
+    private var planIsRestDay: Bool {
+        showsPatellarLadder ? !dayPlan.kind.isSessionDay : streak.isRestDay
+    }
+
+    private var todayProgression: ProgressionResult {
+        let exercise = dayPlan.exercises.first(where: { $0.logsWeight && !$0.isWarmup }) ?? dayPlan.dailyIsometric
+        return ProgressionEngine.today(
+            sessions: sessionSnaps,
+            primaryLoadTitle: exercise.name,
+            asOf: Date(),
+            calendar: calendar,
+            programStart: programStart,
+            checkIns: checkInSnaps,
+            exercise: exercise.id
         )
     }
 
@@ -146,7 +164,7 @@ struct HomeView: View {
                     pmReminderMinute: settings?.pmReminderMinute ?? 30,
                     calendar: calendar
                 ),
-                isRestDay: streak.isRestDay
+                isRestDay: planIsRestDay
             )
         )
     }
@@ -154,7 +172,7 @@ struct HomeView: View {
     private var sessionEntry: TodaySessionEntry {
         if showsPatellarLadder {
             return TodaySessionEntry.resolve(
-                isRestDay: streak.isRestDay,
+                isRestDay: planIsRestDay,
                 hasDraft: todayDraftId != nil,
                 todaySessions: todaySessions.map(\.snapshot),
                 target: todayProgression.target,
@@ -206,12 +224,12 @@ struct HomeView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     streakCard
                     header
+                    if showsPatellarLadder {
+                        planCard
+                    }
                     nextUpCard(action)
                     if !earlierIncomplete.isEmpty {
                         incompleteRecordsCard(earlierIncomplete, promotes: IncompleteRecords.becomesMainCard(todayAction: action))
-                    }
-                    if let phaseAStatus {
-                        phaseALine(phaseAStatus)
                     }
                     entryRows
                 }
@@ -263,12 +281,13 @@ struct HomeView: View {
                     .preferredColorScheme(.dark)
                 }
             }
-            .sheet(isPresented: $showSession) {
+            .sheet(isPresented: $showSession, onDismiss: { sessionPresetID = nil }) {
                 NavigationStack {
                     SessionEditor(
                         targetDate: today,
-                        existingId: todayDraftId,
-                        focus: .kneeResistance
+                        existingId: sessionPresetID == nil ? todayDraftId : nil,
+                        focus: .kneeResistance,
+                        initialPresetID: sessionPresetID
                     )
                 }
                 .preferredColorScheme(.dark)
@@ -355,10 +374,15 @@ struct HomeView: View {
             NavigationLink {
                 PhaseGuideView()
             } label: {
-                PhaseChip(phase: settings?.currentPhase ?? .aFlareDeLoad)
+                PhaseChip(phase: showsPatellarLadder ? dayPlan.phase : (settings?.currentPhase ?? .calmTendon))
             }
             .buttonStyle(.plain)
             .accessibilityHint("Opens the phase guide")
+            if showsPatellarLadder {
+                Text(dayPlan.weekLabel)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
             Spacer()
             Text(today.formatted(date: .abbreviated, time: .omitted))
                 .font(.subheadline)
@@ -476,8 +500,13 @@ struct HomeView: View {
                 .tracking(1.1)
                 .foregroundStyle(AppTheme.quiet)
 
-            if showsPatellarLadder, action.showsLoadProgression, !actionShowsDose(action) {
+            if showsPatellarLadder, !planIsRestDay, action.showsLoadProgression, !actionShowsDose(action) {
                 stanceLine(todayProgression, onGold: false)
+            } else if showsPatellarLadder, planIsRestDay, action != .restDay, !actionShowsDose(action) {
+                Text(restDayDetail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             switch action {
@@ -517,8 +546,14 @@ struct HomeView: View {
             case .logSession:
                 Button { recordSession() } label: {
                     VStack(alignment: .leading, spacing: 8) {
-                        if showsPatellarLadder {
+                        if showsPatellarLadder, !planIsRestDay {
                             stanceLine(todayProgression, onGold: true)
+                        }
+                        if let plyoNote = dayPlan.plyoNote {
+                            Text(plyoNote)
+                                .font(.subheadline.weight(.semibold))
+                                .foregroundStyle(AppTheme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                         Label(nextUpSessionTitle, systemImage: activeInjury.systemImage)
                         if !showsPatellarLadder {
@@ -539,10 +574,12 @@ struct HomeView: View {
 
             case .restDay:
                 VStack(alignment: .leading, spacing: 4) {
-                    Label("Rest day", systemImage: "leaf.fill")
+                    Label(showsPatellarLadder ? "Walk or stretch" : "Rest day", systemImage: "leaf.fill")
                         .font(.headline.weight(.semibold))
                         .foregroundStyle(.primary)
-                    Text("This is a rest day. Do not add load today.")
+                    Text(showsPatellarLadder
+                         ? restDayDetail
+                         : "This is a rest day. Do not add load today.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -611,17 +648,6 @@ struct HomeView: View {
     private func actionShowsDose(_ action: TodayNextAction) -> Bool {
         if case .logSession = action { return true }
         return false
-    }
-
-    // MARK: Phase A (only while in Phase A)
-
-    private func phaseALine(_ status: PhaseAExitStatus) -> some View {
-        Label(status.message, systemImage: status.isReadyToAdvance ? "checkmark.seal.fill" : "flag")
-            .font(.footnote)
-            .foregroundStyle(status.isReadyToAdvance ? Color.green : Color.secondary)
-            .lineLimit(2)
-            .padding(.horizontal, 4)
-            .accessibilityLabel("Phase A exit. \(status.message)")
     }
 
     // MARK: Entry rows — quiet, one tap each
@@ -948,21 +974,126 @@ struct HomeView: View {
         router.requestNotificationSync()
     }
 
-    /// Record button, Next Up, and the session row. The knee ladder opens the
-    /// guided recorder at the saved step of today's draft, if there is one.
+    /// Record button. A guided draft resumes in the guided form. A new log
+    /// opens the day's first weighted exercise.
     private func recordSession() {
         guard showsPatellarLadder else {
+            sessionPresetID = nil
             showSession = true
             return
         }
         if let id = todayDraftId,
            let row = sessions.first(where: { $0.id == id }),
-           !GuidedCheckpointing.resumesInGuidedForm(sessionType: row.sessionType, stepIndex: row.guidedStepIndex) {
-            // An older hold draft keeps the standard form, so its values stay.
-            showSession = true
+           GuidedCheckpointing.resumesInGuidedForm(sessionType: row.sessionType, stepIndex: row.guidedStepIndex) {
+            guidedSession = GuidedSessionRequest(draftId: id, targetDate: today)
             return
         }
-        guidedSession = GuidedSessionRequest(draftId: todayDraftId, targetDate: today)
+        let primary = dayPlan.exercises.first { $0.logsWeight && !$0.isWarmup } ?? dayPlan.dailyIsometric
+        openPlanExercise(primary)
+    }
+
+    private func openPlanExercise(_ exercise: PlanExercise) {
+        sessionPresetID = exercise.presetID
+        showSession = true
+    }
+
+    private var restDayDetail: String {
+        guard let next = TwelveWeekPlan.nextSessionDay(from: Date(), start: programStart, calendar: calendar) else {
+            return "The seated hold is optional today."
+        }
+        let weekday = calendar.component(.weekday, from: next)
+        let name = calendar.weekdaySymbols[weekday - 1]
+        return "The seated hold is optional today. Next training day is \(name)."
+    }
+
+    private var planExercises: [PlanExercise] {
+        if dayPlan.exercises.contains(where: { $0.id == .isometricLegExtension }) {
+            return dayPlan.exercises
+        }
+        return [dayPlan.dailyIsometric] + dayPlan.exercises
+    }
+
+    private var planCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("\(dayPlan.weekLabel) · \(dayPlan.kind.title)")
+                .font(.headline.weight(.semibold))
+            Text(dayPlan.summary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            if let plyoNote = dayPlan.plyoNote {
+                Text(plyoNote)
+                    .font(.subheadline.weight(.semibold))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            ForEach(planExercises) { exercise in
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(exercise.name)
+                        .font(.subheadline.weight(.semibold))
+                    Text(exercise.doseLine)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    if let note = exercise.note {
+                        Text(note)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Button("Log \(exercise.name)") {
+                        openPlanExercise(exercise)
+                    }
+                    .font(.caption.weight(.semibold))
+                    .buttonStyle(.bordered)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            declineTest
+        }
+        .padding(16)
+        .posterCard()
+    }
+
+    private var declineTest: some View {
+        let trend = TwelveWeekPlan.declineTrend(
+            start: programStart,
+            checkIns: checkInSnaps,
+            asOf: Date(),
+            calendar: calendar
+        )
+        return VStack(alignment: .leading, spacing: 8) {
+            Text("Single-leg decline squat")
+                .font(.subheadline.weight(.semibold))
+            Text(trend.headline)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if trend.needsTest {
+                PainScoreControl(title: "This week", value: declineBinding)
+            }
+        }
+    }
+
+    private var declineBinding: Binding<Int?> {
+        Binding(
+            get: { todayCheckIn?.declineSquatL },
+            set: { newValue in
+                guard let newValue else { return }
+                saveDeclineScore(newValue)
+            }
+        )
+    }
+
+    private func saveDeclineScore(_ score: Int) {
+        let existing = todayCheckIn
+        let values = DailyCheckInValues(
+            restingPainAM: existing?.restingPainAM,
+            dailyPainPM: existing?.dailyPainPM,
+            steps: existing?.steps,
+            phase: showsPatellarLadder ? dayPlan.phase : (settings?.currentPhase ?? .calmTendon),
+            notes: existing?.notes ?? "",
+            declineSquatL: score,
+            declineSquatR: nil
+        )
+        try? DailyCheckInStore.upsert(day: Date(), values: values, context: modelContext, calendar: calendar)
     }
 
     private func markRest(_ session: TrainingSession) {

@@ -30,7 +30,7 @@ struct PhaseGuideView: View {
                 }
                 .padding(.vertical, 4)
 
-                ForEach(RehabPhase.allCases) { phase in
+                ForEach(RehabPhase.planCases) { phase in
                     VStack(alignment: .leading, spacing: 4) {
                         Text(phase.title)
                             .font(.subheadline.weight(.semibold))
@@ -46,6 +46,21 @@ struct PhaseGuideView: View {
                 }
             } header: {
                 Text(injury.protocolName)
+            }
+
+            Section("Rules") {
+                Text("Pain up to 3 out of 10 during the exercise is fine if it is back to baseline by the next morning. If it is not, drop the load for one session.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text("Each week, test pain with a single-leg decline squat and rate it 0 to 10. The aim is a downward trend.")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(TwelveWeekPlan.holdOffRunningAndJumping)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                Text(TwelveWeekPlan.spanishSquatSkipNote)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Warning signs") {

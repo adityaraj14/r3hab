@@ -25,10 +25,12 @@ final class SessionPrototypePlanTests: XCTestCase {
         )
         XCTAssertEqual(draft.exerciseTitle, "Seated leg extension")
         XCTAssertEqual(draft.sessionType, .hsrStrength)
-        XCTAssertEqual(draft.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil))
-        XCTAssertEqual(draft.sets.count, 3)
+        XCTAssertEqual(draft.target.workingSets, 4)
+        XCTAssertEqual(draft.target.reps, 15)
+        XCTAssertNil(draft.target.loadLbs)
+        XCTAssertEqual(draft.sets.count, 4)
         XCTAssertTrue(draft.sets.allSatisfy { $0.matchesTarget(draft.target) })
-        XCTAssertEqual(draft.planLine, "3×8")
+        XCTAssertEqual(draft.planLine, "4×15")
         XCTAssertFalse(draft.includeWarmup)
         XCTAssertTrue(draft.whatIDid().hasPrefix("Seated leg extension"))
     }
@@ -41,14 +43,16 @@ final class SessionPrototypePlanTests: XCTestCase {
             asOf: day0,
             calendar: calendar
         )
-        XCTAssertEqual(draft.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45))
-        XCTAssertEqual(draft.sets.count, 3)
-        XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 8 && $0.loadLbs == 45 })
-        XCTAssertEqual(draft.planLine, "3×8 @ 45 lb")
+        XCTAssertEqual(draft.target.workingSets, 4)
+        XCTAssertEqual(draft.target.reps, 15)
+        XCTAssertEqual(draft.target.loadLbs, 45)
+        XCTAssertEqual(draft.sets.count, 4)
+        XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 15 && $0.loadLbs == 45 })
+        XCTAssertEqual(draft.planLine, "4×15 @ 45 lb")
         XCTAssertEqual(draft.stanceLabel, "Hold the load")
         let work = draft.resistanceSets().filter { !$0.isWarmup }
-        XCTAssertEqual(work.count, 6)
-        XCTAssertTrue(work.allSatisfy { $0.loadLbs == 45 && $0.reps == 8 })
+        XCTAssertEqual(work.count, 8)
+        XCTAssertTrue(work.allSatisfy { $0.loadLbs == 45 && $0.reps == 15 })
     }
 
     /// TestFlight 45 bug: on an increase day, set 2 showed "Target 8 × 50 lb" (the last load).
@@ -58,8 +62,22 @@ final class SessionPrototypePlanTests: XCTestCase {
             session(dayOffset: -5, reps: 8, load: 50),
             session(dayOffset: -3, reps: 8, load: 50)
         ]
-        let engine = ProgressionEngine.today(sessions: history, asOf: day0, calendar: calendar)
-        let draft = SessionPrototypePlan.make(sessions: history, phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
+        let mornings = quietMornings(on: [-3])
+        let engine = ProgressionEngine.today(
+            sessions: history,
+            asOf: day0,
+            calendar: calendar,
+            programStart: TwelveWeekPlan.startDate(landingTodayInWeek: 3, today: day0, calendar: calendar),
+            checkIns: mornings,
+            exercise: .legExtension
+        )
+        let draft = SessionPrototypePlan.make(
+            sessions: history,
+            phase: .cHeavySlowResistance,
+            asOf: day0,
+            calendar: calendar,
+            checkIns: mornings
+        )
         let recommended = 50 + ProgressionEngine.loadIncrementLbs
         XCTAssertEqual(draft.stanceLabel, "Increase the load")
         // Today card.
@@ -89,14 +107,14 @@ final class SessionPrototypePlanTests: XCTestCase {
         }
         let draft = SessionPrototypePlan.make(sessions: [last], phase: .cHeavySlowResistance, asOf: day0, calendar: calendar)
         XCTAssertEqual(draft.stanceLabel, "Hold the load")
-        XCTAssertEqual(draft.perSetTargetLine, "Target 8 × 60 lb")
+        XCTAssertEqual(draft.perSetTargetLine, "Target 15 × 60 lb")
         XCTAssertEqual(draft.lastRepsLine, "Last time: 6 reps")
-        XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 8 && $0.loadLbs == 60 })
+        XCTAssertTrue(draft.sets.allSatisfy { $0.reps == 15 && $0.loadLbs == 60 })
     }
 
     func testNoLastRepsLineWhenTheRepsReachedTheTarget() {
         let draft = SessionPrototypePlan.make(
-            sessions: [session(dayOffset: -3, reps: 8, load: 50)],
+            sessions: [session(dayOffset: -3, reps: 15, load: 50)],
             phase: .cHeavySlowResistance, asOf: day0, calendar: calendar
         )
         XCTAssertNil(draft.lastRepsLine)
@@ -165,7 +183,7 @@ final class SessionPrototypePlanTests: XCTestCase {
         XCTAssertEqual(warmup[2].reps, 2)
         XCTAssertEqual(warmup[2].loadLbs, WarmupPlan.roundLoad(working * 0.75, step: 5))
         XCTAssertTrue(warmup.allSatisfy { $0.painDuring == nil })
-        XCTAssertEqual(work.count, 6)
+        XCTAssertEqual(work.count, 8)
         XCTAssertTrue(work.allSatisfy { $0.painDuring == 2 })
         XCTAssertTrue(draft.whatIDid().contains("Seated leg extension"))
         XCTAssertTrue(draft.whatIDid().contains("Warm-up"))
@@ -233,6 +251,17 @@ final class SessionPrototypePlanTests: XCTestCase {
         )
         XCTAssertFalse(draft.sets.isEmpty)
         XCTAssertTrue(draft.sets.allSatisfy { $0.matchesTarget(draft.target) })
+    }
+
+    private func quietMornings(on offsets: [Int]) -> [DailyCheckInSnapshot] {
+        offsets.flatMap { offset -> [DailyCheckInSnapshot] in
+            let sessionDay = calendar.date(byAdding: .day, value: offset, to: day0)!
+            let next = calendar.date(byAdding: .day, value: 1, to: sessionDay)!
+            return [
+                DailyCheckInSnapshot(date: sessionDay, restingPainAM: 1),
+                DailyCheckInSnapshot(date: next, restingPainAM: 1)
+            ]
+        }
     }
 
     private func session(dayOffset: Int, reps: Int, load: Double) -> TrainingSessionSnapshot {

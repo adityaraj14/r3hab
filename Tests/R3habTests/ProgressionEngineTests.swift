@@ -16,367 +16,186 @@ final class ProgressionEngineTests: XCTestCase {
         calendar.startOfDay(for: Date(timeIntervalSince1970: 1_777_766_400))
     }
 
-    func testEmptyHistoryHoldsDefaultThreeByEight() {
+    func testEmptyHistoryInWeekOneAsksForALoadOnTheHold() {
         let result = ProgressionEngine.today(
             sessions: [],
             asOf: day0,
             calendar: calendar
         )
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil))
+        XCTAssertEqual(result.target.workingSets, 5)
+        XCTAssertEqual(result.target.holdSeconds, 45)
+        XCTAssertNil(result.target.loadLbs)
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold the load")
         XCTAssertEqual(result.reason, ProgressionEngine.reasonStart)
-        XCTAssertFalse(result.reason.isEmpty)
-        XCTAssertEqual(result.blockedBy, [])
         XCTAssertNil(result.pendingResolveID)
+        XCTAssertNil(result.painWarning)
     }
 
-    func testTwoCleanHitsAdviseIncreaseAndPrefillTheIncreasedLoad() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 2, response: .better)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 3, response: .same)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase the load")
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(result.current.loadLbs, 35)
-        XCTAssertEqual(result.suggestedChangeLoadLbs, 40)
-        XCTAssertEqual(result.cardReason, "Increase the load. Try 40 lb.")
-        XCTAssertFalse(result.cardReason.contains("Last time"))
-        XCTAssertEqual(result.blockedBy, [])
-        let prefill = SessionPrefill.workSets(from: result.target, laterality: .bilateral)
-        XCTAssertTrue(prefill.allSatisfy { $0.loadLbs == 40 })
+    func testWeekThreeEmptyHistoryUsesFourByFifteen() {
+        let result = advise(sessions: [], week: 3)
+        XCTAssertEqual(result.target.workingSets, 4)
+        XCTAssertEqual(result.target.reps, 15)
+        XCTAssertNil(result.target.loadLbs)
+        XCTAssertEqual(result.target.tempo, "3 seconds up, 3 seconds down")
+        XCTAssertEqual(result.reason, TwelveWeekPlan.reasonPickLoad)
     }
 
-    func testPainThreeInclusiveStillAdvances() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 3, response: .same)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 3, response: .better)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase the load")
-        XCTAssertFalse(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 40))
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
-    }
-
-    func testSameResponseAdvancesLikeBetter() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 12, load: 50, pain: 1, response: .same)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 12, load: 50, pain: 0, response: .same)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 55))
-    }
-
-    func testAdvanceAddsOneIncrementToThePrefill() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 1)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.target.loadLbs, 35 + ProgressionEngine.loadIncrementLbs)
-        let sets = SessionPrefill.workSets(from: result.target, laterality: .bilateral)
-        XCTAssertTrue(sets.allSatisfy { $0.loadLbs == 40 })
-    }
-
-    func testDropAdvisesDecreaseWithoutLoweringPrefill() {
-        let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
-        let result = today([hot])
+    func testNextMorningAboveBaselineDropsFivePoundsForOneSession() {
+        let logged = hsr(dayOffset: -2, sets: 4, reps: 15, load: 40, pain: 2)
+        let result = advise(
+            sessions: [logged],
+            week: 3,
+            checkIns: [
+                checkIn(dayOffset: -2, am: 1),
+                checkIn(dayOffset: -1, am: 3)
+            ]
+        )
         XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.stance.label, "Decrease the load")
         XCTAssertEqual(result.target.loadLbs, 35)
-        XCTAssertNotEqual(result.target.loadLbs, 30)
+        XCTAssertEqual(result.target.reps, 15)
+        XCTAssertEqual(result.reason, TwelveWeekPlan.reasonDropOneSession)
+        XCTAssertEqual(result.suggestedChangeLoadLbs, 35)
     }
 
-    func testOneCleanHitHolds() {
-        let only = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 2)
-        let result = today([only])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
+    func testPainAboveThreeWarnsAndDoesNotDropWhenTheMorningIsQuiet() {
+        let logged = hsr(dayOffset: -2, sets: 4, reps: 15, load: 40, pain: 4)
+        let result = advise(
+            sessions: [logged],
+            week: 3,
+            checkIns: [
+                checkIn(dayOffset: -2, am: 1),
+                checkIn(dayOffset: -1, am: 1)
+            ]
+        )
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.stance.label, "Hold the load")
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonOneClean)
-        XCTAssertNil(result.suggestedChangeLoadLbs)
-        XCTAssertEqual(result.cardReason, ProgressionEngine.reasonOneClean)
-        XCTAssertFalse(result.cardReason.contains("lbs"))
-        XCTAssertEqual(result.blockedBy, [.consecutiveCleanHits])
-    }
-
-    func testMissedRepsHoldAtTheBandFloor() {
-        let miss = hsr(dayOffset: -2, sets: 3, reps: 6, load: 35, pain: 2)
-        let result = today([miss])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
-        XCTAssertEqual(result.lastLoggedReps, 6)
-        XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonShortReps)
-        XCTAssertTrue(result.blockedBy.contains(.consecutiveCleanHits))
-        XCTAssertFalse(result.blockedBy.contains(.painDuring))
-    }
-
-    func testPainDuringAboveThreeDropsLoad() {
-        let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 4, response: .better)
-        let result = today([hot])
-        XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.stance.label, "Decrease the load")
-        XCTAssertEqual(result.reason, "The pain during the session was 4.")
-        XCTAssertNil(result.suggestedChangeLoadLbs)
-        XCTAssertEqual(result.cardReason, "The pain during the session was 4.")
+        XCTAssertEqual(result.target.loadLbs, 40)
+        XCTAssertEqual(result.reason, TwelveWeekPlan.reasonPainHeld)
+        XCTAssertNotNil(result.painWarning)
         XCTAssertTrue(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
     }
 
-    func testPainDuringSixKeepsLastLoad() {
-        let hot = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 6, response: .same)
-        let result = today([hot])
-        XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "The pain during the session was 6.")
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
-    }
-
-    func testPerSetPainCanFailThePainGate() {
-        var hot = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 2, response: .same)
-        hot.resistanceSets = SessionPrefill.workSets(
-            from: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35),
-            laterality: .bilateral
-        )
-        hot.resistanceSets[0].painDuring = 4
-        let result = today([hot])
-        XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "The pain during the session was 4.")
-        XCTAssertTrue(result.blockedBy.contains(.painDuring))
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
-    }
-
-    func testWorseHoldsLoadAndSoftCutStaysAdvice() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 2, response: .worse)
-        let second = hsr(dayOffset: -2, sets: 4, reps: 8, load: 35, pain: 3, response: .worse)
-        let result = today([first, second])
+    func testMissingMorningHoldsTheLoad() {
+        let logged = hsr(dayOffset: -2, sets: 4, reps: 15, load: 40, pain: 2, response: .pending)
+        let result = advise(sessions: [logged], week: 3)
         XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, "The 24-hour response is Worse. Hold the load.")
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
-        XCTAssertEqual(result.blockedBy, [.responseWorse])
-        XCTAssertEqual(
-            DecisionSuggester.suggest(response: .worse, recentResolvedNonRest: []),
-            .softCut
+        XCTAssertEqual(result.target.loadLbs, 40)
+        XCTAssertEqual(result.reason, ProgressionEngine.reasonAwaitMorning)
+        XCTAssertEqual(result.pendingResolveID, logged.id)
+        XCTAssertTrue(result.blockedBy.contains(.awaiting24h))
+    }
+
+    func testNewWeekAddsFivePoundsAndUsesThatWeeksReps() {
+        let logged = hsr(dayOffset: -7, sets: 4, reps: 15, load: 40, pain: 2)
+        let result = advise(
+            sessions: [logged],
+            week: 4,
+            checkIns: [
+                checkIn(dayOffset: -7, am: 1),
+                checkIn(dayOffset: -6, am: 1)
+            ]
         )
-        XCTAssertEqual(
-            DecisionSuggester.suggest(response: .worse, recentResolvedNonRest: [.worse]),
-            .hardDrop
-        )
-        let advice = DecisionSuggester.guidance(for: .softCut)
-        XCTAssertNotNil(advice)
-        XCTAssertTrue(advice?.contains("Decrease the load") == true)
-        XCTAssertEqual(result.target.loadLbs, result.current.loadLbs)
-    }
-
-    func testSaving24hClearsTheTodayResolvePrompt() {
-        let waiting = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1, response: .pending)
-        let before = today([waiting])
-        XCTAssertEqual(before.pendingResolveID, waiting.id)
-
-        let asking = TodayPlanner.nextAction(
-            TodayPlannerInput(
-                hasMorningPain: true,
-                hasEveningPain: true,
-                overduePending: [waiting.id],
-                trainedToday: true,
-                isEvening: true
-            )
-        )
-        XCTAssertEqual(asking, .resolvePending(sessionID: waiting.id, remaining: 0))
-
-        // The session query can still say pending for a turn after Save.
-        // The answer recorded by the sheet has to win immediately.
-        let saved = TodayPendingGate.applying(resolved: [waiting.id: .better], to: [waiting])
-        XCTAssertEqual(saved.first?.response24h, .better)
-        let after = today(saved)
-        XCTAssertNil(after.pendingResolveID)
-        let cleared = TodayPlanner.nextAction(
-            TodayPlannerInput(
-                hasMorningPain: true,
-                hasEveningPain: true,
-                overduePending: saved.filter { $0.response24h == .pending }.map(\.id),
-                trainedToday: true,
-                isEvening: true
-            )
-        )
-        if case .resolvePending = cleared {
-            XCTFail("Resolve prompt stayed up after the 24h save")
-        }
-
-        var alreadyWorse = waiting
-        alreadyWorse.response24h = .worse
-        let caughtUp = TodayPendingGate.applying(resolved: [waiting.id: .better], to: [alreadyWorse])
-        XCTAssertEqual(caughtUp.first?.response24h, .worse)
-
-        XCTAssertEqual(
-            TodayPendingGate.remainingOverrides(
-                [waiting.id: .better],
-                liveResponses: [waiting.id: .pending]
-            )[waiting.id],
-            .better
-        )
-        XCTAssertTrue(
-            TodayPendingGate.remainingOverrides(
-                [waiting.id: .better],
-                liveResponses: [waiting.id: .better]
-            ).isEmpty
-        )
-        XCTAssertEqual(
-            TodayPendingGate.remainingOverrides([waiting.id: .better], liveResponses: [:])[waiting.id],
-            .better
-        )
-    }
-
-    func testMissing24hHoldsAndAsks() {
-        let ready = hsr(dayOffset: -4, sets: 3, reps: 10, load: 35, pain: 1, response: .better)
-        let waiting = hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 1, response: .pending)
-        let result = today([ready, waiting])
-        XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, "The 24-hour response is not recorded.")
-        XCTAssertFalse(result.reason.isEmpty)
-        XCTAssertEqual(result.blockedBy, [.awaiting24h])
-        XCTAssertEqual(result.pendingResolveID, waiting.id)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
-        XCTAssertEqual(result.target.loadLbs, 35)
-        XCTAssertNotEqual(result.stance, .advance)
-    }
-
-    func testPendingStillAsksWhenPainWouldOtherwiseAdvance() {
-        let first = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 1, response: .same)
-        let second = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 1, response: .pending)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonWaitingOn24h)
-        XCTAssertNotNil(result.pendingResolveID)
-        XCTAssertEqual(result.target.loadLbs, 35)
-    }
-
-    func testNotApplicableHoldsWithoutAResolveCTA() {
-        let session = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 1, response: .notApplicable)
-        let result = today([session])
-        XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonNotApplicable)
-        XCTAssertNil(result.pendingResolveID)
-        XCTAssertEqual(result.target.loadLbs, 35)
-    }
-
-    func testMidLadderSnapsIntoBandAtSameLoad() {
-        let threeByTen = today([hsr(dayOffset: -2, sets: 3, reps: 10, load: 35, pain: 2)])
-        XCTAssertEqual(threeByTen.stance, .hold)
-        XCTAssertEqual(threeByTen.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 35))
-
-        let fourByEight = today([hsr(dayOffset: -2, sets: 4, reps: 8, load: 35, pain: 2)])
-        XCTAssertEqual(fourByEight.stance, .hold)
-        XCTAssertEqual(fourByEight.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
-
-        let fourByTwelve = today([hsr(dayOffset: -2, sets: 4, reps: 12, load: 50, pain: 1)])
-        XCTAssertEqual(fourByTwelve.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 50))
-
-        let twenty = today([hsr(dayOffset: -2, sets: 3, reps: 20, load: 35, pain: 1)])
-        XCTAssertEqual(twenty.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 35))
-        XCTAssertLessThanOrEqual(twenty.target.reps, ProgressionEngine.repHardMax)
-
-        let fifteen = today([hsr(dayOffset: -2, sets: 3, reps: 15, load: 35, pain: 1)])
-        XCTAssertEqual(fifteen.target, LoadPrescription(workingSets: 3, reps: 12, loadLbs: 35))
-    }
-
-    // MARK: Target from the logged sets, not the last guidance (Adi, Oct 13)
-
-    /// A session that was guided at `guidance` for every set, with the sets actually logged.
-    private func logged(
-        dayOffset: Int,
-        guidance: Double,
-        sets: [(reps: Int, load: Double)],
-        pain: Int = 2,
-        response: Response24h = .same
-    ) -> TrainingSessionSnapshot {
-        var base = hsr(dayOffset: dayOffset, sets: sets.count, reps: 8, load: guidance, pain: pain, response: response)
-        base.resistanceSets = sets.flatMap {
-            SessionSummary.makePair(reps: $0.reps, loadLbs: $0.load, holdSeconds: nil, isWarmup: false)
-        }
-        return base
-    }
-
-    func testHoldTargetsTheLoggedLoadNotTheGuidance() {
-        // Guided at 65 lb. He did 8 reps at 65, then 6 reps at 60 twice.
-        let last = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (6, 60), (6, 60)])
-        let result = today([last])
-        XCTAssertEqual(result.stance, .hold)
-        // The logged load (60), with the reps back at the band floor (8). Last time: 6 reps.
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 60))
-        XCTAssertEqual(result.current, result.target)
-        XCTAssertEqual(result.lastLoggedReps, 6)
-        XCTAssertNil(result.suggestedChangeLoadLbs)
-    }
-
-    func testHoldTieGoesToTheLaterSetNotTheHeaviest() {
-        // 65 then 60 then 55: no load repeats. The target is the last set's load, not the 65 lb guidance.
-        let last = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60), (8, 55)])
-        XCTAssertEqual(today([last]).target.loadLbs, 55)
-        let two = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60)])
-        XCTAssertEqual(today([two]).target.loadLbs, 60)
-        // Two at 65 and one at 60: 65 is the most common load.
-        let mostly = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 65), (8, 60)])
-        XCTAssertEqual(today([mostly]).target.loadLbs, 65)
-    }
-
-    func testIncreaseAddsToTheLoggedLoadNotTheGuidance() {
-        // Guided at 65 both times, but he logged 3×8 @ 60 both times: two clean sessions at 60.
-        let a = logged(dayOffset: -4, guidance: 65, sets: [(8, 60), (8, 60), (8, 60)])
-        let b = logged(dayOffset: -2, guidance: 65, sets: [(8, 60), (8, 60), (8, 60)])
-        let result = today([a, b])
         XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.target.loadLbs, 65, "60 lb logged + 5, not 65 lb guidance + 5")
-        XCTAssertEqual(result.cardReason, "Increase the load. Try 65 lb.")
-        XCTAssertNil(result.lastLoggedReps, "The reps reached the target")
+        XCTAssertEqual(result.target.loadLbs, 45)
+        XCTAssertEqual(result.target.reps, 13)
+        XCTAssertEqual(result.reason, TwelveWeekPlan.reasonWeeklyIncrease)
+        XCTAssertEqual(result.cardReason, "Increase the load. Try 45 lb.")
     }
 
-    func testDecreaseUsesTheLoggedLoadNotTheGuidance() {
-        let hot = logged(dayOffset: -2, guidance: 65, sets: [(8, 65), (8, 60), (8, 60)], pain: 5)
-        let result = today([hot])
-        XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 60))
-        XCTAssertEqual(result.current.loadLbs, 60)
+    func testWeeksOneAndTwoDoNotAddWeight() {
+        let logged = session(
+            dayOffset: -2,
+            type: .hsrStrength,
+            sets: 3,
+            reps: 15,
+            load: 30,
+            pain: 1,
+            whatIDid: "Single-leg leg press"
+        )
+        let result = ProgressionEngine.today(
+            sessions: [logged],
+            primaryLoadTitle: "Single-leg leg press",
+            asOf: day0,
+            calendar: calendar,
+            programStart: TwelveWeekPlan.startDate(landingTodayInWeek: 2, today: day0, calendar: calendar),
+            checkIns: [
+                checkIn(dayOffset: -2, am: 0),
+                checkIn(dayOffset: -1, am: 0)
+            ],
+            exercise: .singleLegPress
+        )
+        XCTAssertEqual(result.stance, .hold)
+        XCTAssertEqual(result.target.loadLbs, 30)
+        XCTAssertEqual(result.target.reps, 15)
+        XCTAssertEqual(result.target.workingSets, 3)
+    }
+
+    func testOneSessionDeloadRestoresThePreviousLoad() {
+        // Today is the last day of week 3, so the lighter session is still this week.
+        let start = day(-20)
+        let heavy = hsr(dayOffset: -8, sets: 4, reps: 15, load: 50, pain: 2)
+        let light = hsr(dayOffset: -1, sets: 4, reps: 15, load: 45, pain: 2)
+        let result = ProgressionEngine.today(
+            sessions: [heavy, light],
+            asOf: day0,
+            calendar: calendar,
+            programStart: start,
+            checkIns: [
+                checkIn(dayOffset: -8, am: 1),
+                checkIn(dayOffset: -7, am: 4),
+                checkIn(dayOffset: -1, am: 1),
+                checkIn(dayOffset: 0, am: 1)
+            ],
+            exercise: .legExtension
+        )
+        XCTAssertEqual(result.stance, .hold)
+        XCTAssertEqual(result.target.loadLbs, 50)
+        XCTAssertEqual(result.reason, TwelveWeekPlan.reasonRestored)
+    }
+
+    func testShortRepsAreRememberedAgainstThisWeeksTarget() {
+        let logged = hsr(dayOffset: -1, sets: 4, reps: 10, load: 40, pain: 1)
+        let result = ProgressionEngine.today(
+            sessions: [logged],
+            asOf: day0,
+            calendar: calendar,
+            programStart: day(-20),
+            checkIns: [
+                checkIn(dayOffset: -1, am: 1),
+                checkIn(dayOffset: 0, am: 1)
+            ],
+            exercise: .legExtension
+        )
+        XCTAssertEqual(result.target.reps, 15)
+        XCTAssertEqual(result.lastLoggedReps, 10)
+        XCTAssertEqual(result.target.loadLbs, 40)
+        XCTAssertEqual(result.stance, .hold)
+    }
+
+    func testLegacyShortNameStillCountsAsSeatedLegExtension() {
+        var legacy = hsr(dayOffset: -1, sets: 4, reps: 15, load: 35, pain: 2)
+        legacy.whatIDid = "\(PrimaryLoadCatalog.legacySeatedExtensionDisplayName) · 4×15 @ 35 lb"
+        let result = ProgressionEngine.today(
+            sessions: [legacy],
+            asOf: day0,
+            calendar: calendar,
+            programStart: day(-20),
+            checkIns: [
+                checkIn(dayOffset: -1, am: 1),
+                checkIn(dayOffset: 0, am: 1)
+            ],
+            exercise: .legExtension
+        )
+        XCTAssertEqual(result.target.loadLbs, 35)
+        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(legacy, title: PrimaryLoadCatalog.seatedExtension.title))
     }
 
     func testModalLoadTieGoesToTheLaterSet() {
-        XCTAssertEqual(ProgressionEngine.modalLoad([65, 60]), 60)
-        XCTAssertEqual(ProgressionEngine.modalLoad([60, 65]), 65)
-        XCTAssertEqual(ProgressionEngine.modalLoad([65, 60, 60]), 60)
-        XCTAssertEqual(ProgressionEngine.modalLoad([65, 65, 60]), 65)
-        XCTAssertNil(ProgressionEngine.modalLoad([]))
-    }
-
-    func testTwoCleanMidLadderSessionsStepLoadInsteadOfNextRung() {
-        let first = hsr(dayOffset: -4, sets: 4, reps: 8, load: 35, pain: 2)
-        let second = hsr(dayOffset: -2, sets: 4, reps: 10, load: 35, pain: 2)
-        let result = today([first, second])
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase the load")
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 10, loadLbs: 40))
-    }
-
-    func testUserHistoryPrefillsTheIncreasedLoadAndAdvisesIncrease() {
-        let sessions = [
-            hsr(dayOffset: -5, sets: 3, reps: 8, load: 35, pain: 2, response: .better),
-            hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 1, response: .same)
-        ]
-        let result = today(sessions)
-        XCTAssertEqual(result.target.displayLine, "3×8 @ 40 lb")
-        XCTAssertEqual(result.current.displayLine, "3×8 @ 35 lb")
-        XCTAssertEqual(result.stance, .advance)
-        XCTAssertEqual(result.stance.label, "Increase the load")
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonTwoCleanIncrease)
-        XCTAssertEqual(result.cardReason, "Increase the load. Try 40 lb.")
-        XCTAssertFalse(result.cardReason.contains("Last time"))
-        XCTAssertEqual(result.laterality, .bilateral)
-    }
-
-    func testUnilateralSixRowsCountAsThreeSets() {
-        let session = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 2, unilateral: true)
-        XCTAssertEqual(session.resistanceSets.count, 6)
-        XCTAssertEqual(
-            ProgressionEngine.inferPrescription(session),
-            LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35)
-        )
+        var logged = hsr(dayOffset: -2, sets: 4, reps: 15, load: 65, pain: 1)
+        logged.resistanceSets = [(15, 65.0), (12, 60.0), (12, 60.0), (12, 60.0)].flatMap {
+            SessionSummary.makePair(reps: $0.0, loadLbs: $0.1, holdSeconds: nil, isWarmup: false)
+        }
+        XCTAssertEqual(ProgressionEngine.inferPrescription(logged)?.loadLbs, 60)
+        XCTAssertEqual(ProgressionEngine.inferPrescription(logged)?.reps, 12)
     }
 
     func testPrefillBuildsEditableWorkingPairs() {
@@ -405,158 +224,56 @@ final class ProgressionEngineTests: XCTestCase {
         let json = """
         [{"id":"00000000-0000-0000-0000-000000000001","reps":8,"loadLbs":35,"isWarmup":false,"side":"left"}]
         """
-        let data = Data(json.utf8)
-        let decoded = try JSONDecoder().decode([ResistanceSet].self, from: data)
+        let decoded = try JSONDecoder().decode([ResistanceSet].self, from: Data(json.utf8))
         XCTAssertEqual(decoded.count, 1)
         XCTAssertEqual(decoded[0].reps, 8)
         XCTAssertEqual(decoded[0].loadLbs, 35)
         XCTAssertNil(decoded[0].painDuring)
     }
 
-    func testIgnoresIsometricAndDraftSessions() {
-        let iso = session(
-            dayOffset: -2,
-            type: .isometrics,
-            sets: 3,
-            reps: 8,
-            load: 20,
-            pain: 1
-        )
-        let draft = hsr(dayOffset: -1, sets: 4, reps: 12, load: 40, pain: 1)
-        var draftCopy = draft
-        draftCopy.isDraft = true
-        let live = hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 2)
-        let result = today([iso, draftCopy, live])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 35))
-        XCTAssertEqual(result.stance, .hold)
-        XCTAssertEqual(result.reason, ProgressionEngine.reasonOneClean)
-    }
-
-    func testLegacyShortNameStillCountsAsSeatedLegExtension() {
-        var legacy = hsr(dayOffset: -4, sets: 3, reps: 8, load: 35, pain: 2)
-        legacy.whatIDid = "\(PrimaryLoadCatalog.legacySeatedExtensionDisplayName) · 3×8 @ 35 lbs"
-        var renamed = hsr(dayOffset: -2, sets: 3, reps: 8, load: 35, pain: 1)
-        renamed.whatIDid = "\(PrimaryLoadCatalog.seatedExtension.title) · 3×8 @ 35 lbs"
-        let oldHold = TrainingSessionSnapshot(
-            date: day(-6),
-            createdAt: day(-6),
-            sessionType: .isometrics,
+    func testHipThrustIsOutsideTheKneePlan() {
+        let now = day0
+        let session = TrainingSessionSnapshot(
+            date: now,
+            createdAt: now,
+            sessionType: .other,
             response24h: .same,
-            decision: .stay,
+            decision: nil,
             resolvedAt: nil,
             snoozedUntil: nil,
             phase: .bIsometrics,
-            whatIDid: "\(PrimaryLoadCatalog.legacySeatedExtensionDisplayName) hold ~60°"
+            painDuring: 1,
+            whatIDid: "Hip thrust",
+            resistanceSets: [ResistanceSet(reps: 10, loadLbs: 95, isWarmup: false)]
         )
-        let newHold = TrainingSessionSnapshot(
-            date: day(-5),
-            createdAt: day(-5),
-            sessionType: .isometrics,
-            response24h: .same,
-            decision: .stay,
-            resolvedAt: nil,
-            snoozedUntil: nil,
-            phase: .bIsometrics,
-            whatIDid: "Seated leg extension hold ~60°"
-        )
-        let title = PrimaryLoadCatalog.seatedExtension.title
-        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(legacy, title: title))
-        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(renamed, title: title))
-        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(oldHold, title: title))
-        XCTAssertTrue(ProgressionEngine.matchesPrimaryLoad(newHold, title: title))
-        XCTAssertFalse(ProgressionEngine.matchesPrimaryLoad(legacy, title: PrimaryLoadCatalog.legPress.title))
-
-        let result = today([legacy, renamed])
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(result.stance, .advance)
-    }
-
-    func testEvaluateAfterSaveAdvancesWhenTheNewSessionCompletesThePair() {
-        let first = hsr(dayOffset: -3, sets: 3, reps: 8, load: 35, pain: 2)
-        let second = hsr(dayOffset: -1, sets: 3, reps: 8, load: 35, pain: 2)
-        let after = ProgressionEngine.evaluateAfterSave(
-            sessions: [first, second],
-            asOf: day0,
-            calendar: calendar
-        )
-        XCTAssertEqual(after.stance, .advance)
-        XCTAssertEqual(after.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-        XCTAssertEqual(after.reason, ProgressionEngine.reasonTwoCleanIncrease)
-    }
-
-    func testCardReasonNamesOnlyADistinctSuggestedWeight() {
-        let increase = ProgressionResult(
-            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50),
-            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
-            stance: .advance,
-            reason: ProgressionEngine.reasonTwoCleanIncrease,
-            blockedBy: [],
-            laterality: .bilateral,
-            pendingResolveID: nil
-        )
-        XCTAssertEqual(increase.suggestedChangeLoadLbs, 50)
-        XCTAssertEqual(increase.cardReason, "Increase the load. Try 50 lb.")
-
-        let decrease = ProgressionResult(
-            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40),
-            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
-            stance: .drop,
-            reason: ProgressionEngine.reasonPain(4),
-            blockedBy: [.painDuring],
-            laterality: .bilateral,
-            pendingResolveID: nil
-        )
-        XCTAssertEqual(decrease.suggestedChangeLoadLbs, 40)
-        XCTAssertEqual(decrease.cardReason, "Decrease the load. Try 40 lb.")
-
-        let hold = ProgressionResult(
-            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 50),
-            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
-            stance: .hold,
-            reason: ProgressionEngine.reasonOneClean,
-            blockedBy: [.consecutiveCleanHits],
-            laterality: .bilateral,
-            pendingResolveID: nil
-        )
-        XCTAssertNil(hold.suggestedChangeLoadLbs)
-        XCTAssertEqual(hold.cardReason, ProgressionEngine.reasonOneClean)
-
-        let noLoad = ProgressionResult(
-            target: LoadPrescription(workingSets: 3, reps: 8, loadLbs: nil),
-            current: LoadPrescription(workingSets: 3, reps: 8, loadLbs: 45),
-            stance: .advance,
-            reason: ProgressionEngine.reasonTwoCleanIncrease,
-            blockedBy: [],
-            laterality: .bilateral,
-            pendingResolveID: nil
-        )
-        XCTAssertNil(noLoad.suggestedChangeLoadLbs)
-        XCTAssertEqual(noLoad.cardReason, ProgressionEngine.reasonTwoCleanIncrease)
-    }
-
-    func testDropStanceLabel() {
-        XCTAssertEqual(ProgressionStance.drop.label, "Decrease the load")
-        XCTAssertEqual(ProgressionStance.advance.label, "Increase the load")
-        XCTAssertEqual(ProgressionStance.hold.label, "Hold the load")
-    }
-
-    func testPainAboveThreeWinsOverAMissingResolve() {
-        let hot = hsr(dayOffset: -1, sets: 3, reps: 8, load: 40, pain: 5, response: .pending)
-        let result = today([hot])
-        XCTAssertEqual(result.stance, .drop)
-        XCTAssertEqual(result.reason, "The pain during the session was 5.")
-        XCTAssertEqual(result.pendingResolveID, hot.id)
-        XCTAssertEqual(result.target, LoadPrescription(workingSets: 3, reps: 8, loadLbs: 40))
-    }
-
-    private func today(_ sessions: [TrainingSessionSnapshot]) -> ProgressionResult {
         let result = ProgressionEngine.today(
-            sessions: sessions,
-            asOf: day0,
+            sessions: [session],
+            primaryLoadTitle: "Hip thrust",
+            asOf: now,
             calendar: calendar
         )
-        XCTAssertFalse(result.reason.isEmpty)
-        return result
+        XCTAssertEqual(result.reason, ProgressionEngine.reasonOutsidePlan)
+        XCTAssertEqual(result.stance, .hold)
+    }
+
+    private func advise(
+        sessions: [TrainingSessionSnapshot],
+        week: Int,
+        checkIns: [DailyCheckInSnapshot] = []
+    ) -> ProgressionResult {
+        ProgressionEngine.today(
+            sessions: sessions,
+            primaryLoadTitle: PrimaryLoadCatalog.seatedExtension.title,
+            asOf: day0,
+            calendar: calendar,
+            programStart: TwelveWeekPlan.startDate(landingTodayInWeek: week, today: day0, calendar: calendar),
+            checkIns: checkIns,
+            exercise: .legExtension
+        )
+    }
+
+    private func checkIn(dayOffset: Int, am: Int) -> DailyCheckInSnapshot {
+        DailyCheckInSnapshot(date: day(dayOffset), restingPainAM: am)
     }
 
     private func day(_ offset: Int) -> Date {
@@ -569,7 +286,6 @@ final class ProgressionEngineTests: XCTestCase {
         reps: Int,
         load: Double,
         pain: Int,
-        unilateral: Bool = false,
         response: Response24h = .same
     ) -> TrainingSessionSnapshot {
         session(
@@ -579,7 +295,7 @@ final class ProgressionEngineTests: XCTestCase {
             reps: reps,
             load: load,
             pain: pain,
-            unilateral: unilateral,
+            whatIDid: "\(PrimaryLoadCatalog.seatedExtension.title) · \(sets)×\(reps) @ \(LoadCopy.labeled(load))",
             response: response
         )
     }
@@ -591,30 +307,26 @@ final class ProgressionEngineTests: XCTestCase {
         reps: Int,
         load: Double,
         pain: Int,
-        unilateral: Bool = false,
+        whatIDid: String,
         response: Response24h = .same
     ) -> TrainingSessionSnapshot {
         let date = day(dayOffset)
-        let target = LoadPrescription(workingSets: sets, reps: reps, loadLbs: load)
-        var rows = SessionPrefill.workSets(from: target, laterality: .bilateral)
-        if unilateral {
-            for index in rows.indices where rows[index].side == .right {
-                rows[index].loadLbs = load
-            }
-        }
-        let resolvedAt: Date? = response == .pending ? nil : date.addingTimeInterval(86_400)
+        let rows = SessionPrefill.workSets(
+            from: LoadPrescription(workingSets: sets, reps: reps, loadLbs: load),
+            laterality: .bilateral
+        )
         return TrainingSessionSnapshot(
             date: date,
             createdAt: date.addingTimeInterval(60),
             sessionType: type,
             response24h: response,
             decision: response == .pending ? nil : .stay,
-            resolvedAt: resolvedAt,
+            resolvedAt: response == .pending ? nil : date.addingTimeInterval(86_400),
             snoozedUntil: nil,
-            phase: .cHeavySlowResistance,
+            phase: .heavySlow,
             painDuring: pain,
             painAfter: pain,
-            whatIDid: "\(PrimaryLoadCatalog.seatedExtension.title) · \(sets)×\(reps) @ \(LoadCopy.labeled(load))",
+            whatIDid: whatIDid,
             resistanceSets: rows
         )
     }

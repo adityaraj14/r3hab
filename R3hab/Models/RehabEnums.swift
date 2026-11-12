@@ -3,9 +3,15 @@ import Foundation
 /// Rehab phase ladder A → C (user-owned; app only suggests). Matches the
 /// onboarding choices: Flare / Isometrics / Heavy slow resistance.
 enum RehabPhase: String, Codable, CaseIterable, Identifiable, Sendable {
+    /// Legacy diary labels. Old rows keep these raw values.
     case aFlareDeLoad = "A"
     case bIsometrics = "B"
     case cHeavySlowResistance = "C"
+    /// 12-week plan.
+    case calmTendon = "calm"
+    case heavySlow = "hsr"
+    case heavier = "heavier"
+    case springiness = "spring"
 
     var id: String { rawValue }
 
@@ -14,6 +20,37 @@ enum RehabPhase: String, Codable, CaseIterable, Identifiable, Sendable {
         case .aFlareDeLoad: return "A · Flare"
         case .bIsometrics: return "B · Isometrics"
         case .cHeavySlowResistance: return "C · Heavy slow resistance"
+        case .calmTendon: return "Weeks 1–2 · Calm the tendon"
+        case .heavySlow: return "Weeks 3–6 · Heavy slow resistance"
+        case .heavier: return "Weeks 7–10 · Heavier"
+        case .springiness: return "Weeks 11–12 · Springiness"
+        }
+    }
+
+    /// Phases the 12-week plan uses. Legacy A–C stay decodable for old logs.
+    static let planCases: [RehabPhase] = [.calmTendon, .heavySlow, .heavier, .springiness]
+
+    var isLegacy: Bool {
+        switch self {
+        case .aFlareDeLoad, .bIsometrics, .cHeavySlowResistance:
+            return true
+        case .calmTendon, .heavySlow, .heavier, .springiness:
+            return false
+        }
+    }
+
+    /// Map a stored phase onto the 12-week plan. A and B start at week 1.
+    /// C starts at week 3, the heavy slow block.
+    static func planPhase(for phase: RehabPhase) -> RehabPhase {
+        switch phase {
+        case .aFlareDeLoad, .bIsometrics, .calmTendon:
+            return .calmTendon
+        case .cHeavySlowResistance, .heavySlow:
+            return .heavySlow
+        case .heavier:
+            return .heavier
+        case .springiness:
+            return .springiness
         }
     }
 

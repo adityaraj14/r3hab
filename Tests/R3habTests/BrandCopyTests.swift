@@ -146,26 +146,15 @@ final class BrandCopyTests: XCTestCase {
         )
     }
 
-    func testSetupPageHasThreeSelectablePhasesWithInlineExplanations() {
-        XCTAssertEqual(BrandCopy.setupTitle, "Select your current phase.")
-        XCTAssertEqual(BrandCopy.setupLead, "Select the start phase. You can change it in Settings.")
+    func testSetupPageHasTheTwelveWeekPhasesWithInlineExplanations() {
+        XCTAssertEqual(BrandCopy.setupTitle, "Where are you in the 12 weeks?")
+        XCTAssertEqual(BrandCopy.setupLead, "The plan is 12 weeks, three days a week. You can change the week in Settings.")
         XCTAssertEqual(
             BrandCopy.setupPhaseChoices.map(\.phase),
-            [.aFlareDeLoad, .bIsometrics, .cHeavySlowResistance]
+            [.calmTendon, .heavySlow, .heavier, .springiness]
         )
-        XCTAssertEqual(
-            BrandCopy.setupPhaseChoices.map(\.title),
-            ["Phase A · Flare", "Phase B · Isometrics", "Phase C · Heavy slow resistance (HSR)"]
-        )
-        XCTAssertEqual(
-            BrandCopy.setupPhaseChoices.map(\.body),
-            [
-                "Decrease the load until the resting pain is stable.",
-                "Do easy isometric holds with your primary exercise.",
-                "This phase rebuilds the tendon."
-            ]
-        )
-        XCTAssertEqual(OnboardingCompletion.initialPhase, .aFlareDeLoad)
+        XCTAssertEqual(OnboardingCompletion.initialPhase, .calmTendon)
+        XCTAssertEqual(OnboardingCompletion.defaultPhase, .calmTendon)
     }
 
     func testDisclaimerTitleAndNotificationsCopy() {

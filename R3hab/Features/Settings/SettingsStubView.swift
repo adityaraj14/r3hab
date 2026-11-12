@@ -34,17 +34,20 @@ struct SettingsStubView: View {
     var body: some View {
         List {
             if let settings {
-                Section("Phase") {
-                    Picker("Phase", selection: phaseBinding(settings)) {
-                        ForEach(RehabPhase.allCases) { p in
-                            Text(p.title).tag(p)
-                        }
-                    }
+                Section("12-week plan") {
+                    Stepper(
+                        "\(planWeekLabel(settings))",
+                        value: weekBinding(settings),
+                        in: 1...TwelveWeekPlan.weekCount
+                    )
                     Text(PhaseGuideCopy.summary(
                         for: settings.currentPhase,
                         primaryLift: settings.primaryLoad.title,
                         injuryID: settings.selectedInjuryID
                     ))
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Text("Pain up to 3 out of 10 is fine if the next morning is back to baseline. If it is higher, the next session uses less load.")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -60,19 +63,9 @@ struct SettingsStubView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                Section("Phase A thresholds") {
+                Section("Walking") {
                     Stepper(
-                        "Stable days required: \(settings.phaseAStableDaysRequired)",
-                        value: intBinding(settings, keyPath: \.phaseAStableDaysRequired),
-                        in: 2...7
-                    )
-                    Stepper(
-                        "Maximum morning pain for a stable day: \(settings.phaseAPainThreshold)",
-                        value: intBinding(settings, keyPath: \.phaseAPainThreshold),
-                        in: 0...5
-                    )
-                    Stepper(
-                        "Minimum steps: \(settings.stepNearNormalMin)",
+                        "Step reminder: \(settings.stepNearNormalMin)",
                         value: intBinding(settings, keyPath: \.stepNearNormalMin),
                         in: 3000...15000,
                         step: 500
@@ -303,11 +296,27 @@ struct SettingsStubView: View {
         }
     }
 
-    private func phaseBinding(_ settings: AppSettings) -> Binding<RehabPhase> {
+    private var calendar: Calendar { .current }
+
+    private func planWeekLabel(_ settings: AppSettings) -> String {
+        let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date(), calendar: calendar)
+        let shown = min(week, TwelveWeekPlan.weekCount)
+        return "Week \(shown) of \(TwelveWeekPlan.weekCount)"
+    }
+
+    private func weekBinding(_ settings: AppSettings) -> Binding<Int> {
         Binding(
-            get: { settings.currentPhase },
+            get: {
+                let week = TwelveWeekPlan.programWeek(start: settings.programStartDate, on: Date(), calendar: calendar)
+                return min(max(week, 1), TwelveWeekPlan.weekCount)
+            },
             set: { newValue in
-                settings.currentPhase = newValue
+                settings.programStartDate = TwelveWeekPlan.startDate(
+                    landingTodayInWeek: newValue,
+                    today: Date()
+                )
+                settings.currentPhaseRaw = TwelveWeekPlan.phase(forWeek: newValue).rawValue
+                settings.phaseChangedAt = Date()
                 try? modelContext.save()
             }
         )

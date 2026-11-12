@@ -5,6 +5,9 @@ struct DailyCheckInSnapshot: Equatable, Sendable {
     var date: Date
     var restingPainAM: Int?
     var steps: Int?
+    /// Weekly single-leg decline squat. Older rows used left and right.
+    var declineSquatL: Int? = nil
+    var declineSquatR: Int? = nil
 }
 
 struct TrainingSessionSnapshot: Equatable, Sendable {

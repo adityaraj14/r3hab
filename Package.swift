@@ -1,6 +1,23 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
+// SwiftData ships with the Apple SDK. The Linux domain build omits those files
+// and the one test that opens a store. The iOS target still compiles them.
+#if os(Linux)
+let persistenceSources: [String] = []
+let roundTripTests: [String] = []
+#else
+let persistenceSources = [
+    "Models/AppSettings.swift",
+    "Models/DailyCheckIn.swift",
+    "Models/TrainingSession.swift",
+    "Data/ModelMapping.swift",
+    "Data/AppBootstrap.swift",
+    "Data/ExportImport.swift",
+]
+let roundTripTests = ["BackupRestoreRoundTripTests.swift"]
+#endif
+
 let package = Package(
     name: "R3habDomain",
     platforms: [
@@ -18,12 +35,6 @@ let package = Package(
                 "Models/ResistanceSet.swift",
                 "Models/InjuryCatalog.swift",
                 "Models/PrimaryLoadCatalog.swift",
-                "Models/AppSettings.swift",
-                "Models/DailyCheckIn.swift",
-                "Models/TrainingSession.swift",
-                "Data/ModelMapping.swift",
-                "Data/AppBootstrap.swift",
-                "Data/ExportImport.swift",
                 "Data/BackupLibrary.swift",
                 "Features/Session/SessionPresets.swift",
                 "Features/Session/Prototypes/SessionPrototypePlan.swift",
@@ -34,6 +45,7 @@ let package = Package(
                 "Domain/DecisionSuggester.swift",
                 "Domain/SessionEditorChrome.swift",
                 "Domain/ProgressionEngine.swift",
+                "Domain/TwelveWeekPlan.swift",
                 "Domain/WarmupPlan.swift",
                 "Domain/TodayPlanner.swift",
                 "Domain/TodaySessionEntry.swift",
@@ -43,7 +55,7 @@ let package = Package(
                 "Domain/NotificationRoute.swift",
                 "Domain/SessionUpsert.swift",
                 "Domain/IncompleteRecords.swift"
-            ]
+            ] + persistenceSources
         ),
         .testTarget(
             name: "R3habDomainTests",
@@ -54,6 +66,7 @@ let package = Package(
                 "DecisionSuggesterTests.swift",
                 "ProgressInterpretationTests.swift",
                 "ProgressionEngineTests.swift",
+                "TwelveWeekPlanTests.swift",
                 "SessionEditorChromeTests.swift",
                 "SessionPrototypePlanTests.swift",
                 "WarmupPlanTests.swift",
@@ -64,12 +77,11 @@ let package = Package(
                 "NotificationRouteTests.swift",
                 "TodayResolvePromptTests.swift",
                 "BackupLibraryTests.swift",
-                "BackupRestoreRoundTripTests.swift",
                 "TodayEveningPromptTests.swift",
                 "SessionUpsertTests.swift",
                 "IncompleteRecordsTests.swift",
                 "MorningPainTests.swift"
-            ]
+            ] + roundTripTests
         )
     ]
 )

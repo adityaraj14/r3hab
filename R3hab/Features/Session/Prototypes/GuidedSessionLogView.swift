@@ -465,6 +465,12 @@ struct GuidedSessionLogView: View {
         VStack(spacing: 16) {
             PrototypePainReadout(value: draft.painDuring)
             PrototypePainChips(value: $draft.painDuring)
+            if let pain = draft.painDuring, let warning = PainRule.warning(for: pain) {
+                Text(warning)
+                    .font(.footnote.weight(.semibold))
+                    .foregroundStyle(.orange)
+                    .multilineTextAlignment(.center)
+            }
         }
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(SessionPrototypeAccessibility.guidedPain)

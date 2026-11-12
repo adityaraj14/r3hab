@@ -21,7 +21,7 @@ enum InjuryCatalog {
         id: "patellar-tendinopathy",
         title: "Patellar tendinopathy, or jumper's knee, or patellar tendonitis",
         protocolName: "Patellar tendinopathy",
-        protocolDescription: "Increase the load from Phase A to Phase C. Use the pain and the 24-hour response to decide. Use one primary exercise. The default is seated leg extension.",
+        protocolDescription: "A 12-week plan. Seated work, so the back stays unloaded. Pain up to 3 out of 10 is fine if the next morning is back to baseline. If it is not, drop the load for one session.",
         systemImage: "figure.strengthtraining.traditional"
     )
 

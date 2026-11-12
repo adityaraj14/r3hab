@@ -46,7 +46,7 @@ final class QLPathwayTests: XCTestCase {
 
     func testKneeChipsStayKneeAndQLChipsAreTheThreeModalities() {
         let knee = SessionPreset.forPhase(.cHeavySlowResistance, primaryLoadID: "seated-extension")
-        XCTAssertEqual(knee.map(\.id), ["ke", "lp"])
+        XCTAssertEqual(knee.map(\.id), ["ext", "ke", "lp"])
         let ql = SessionPreset.forPhase(.aFlareDeLoad, primaryLoadID: "ql-side-bend")
         XCTAssertEqual(ql.first?.id, "ql-side-bend")
         XCTAssertEqual(Set(ql.map(\.id)), ["ql-walk", "ql-side-bend", "ql-hip-thrust"])
@@ -117,7 +117,7 @@ final class QLPathwayTests: XCTestCase {
             primaryLoadTitle: "Hip thrust",
             asOf: now
         )
-        XCTAssertEqual(ladder.reason, ProgressionEngine.reasonStart)
+        XCTAssertEqual(ladder.reason, ProgressionEngine.reasonOutsidePlan)
         XCTAssertNotEqual(ladder.stance, .advance)
     }
 }

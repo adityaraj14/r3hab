@@ -36,29 +36,17 @@ final class DogfoodTests: XCTestCase {
             app.navigationBars.buttons["Save"].tap()
         }
 
-        // The session row opens the guided recorder.
+        // A plan row opens the session editor. The label is "Log …".
         let logSession = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Seated leg extension")
+            NSPredicate(format: "label BEGINSWITH %@", "Log ")
         ).firstMatch
         XCTAssertTrue(logSession.waitForExistence(timeout: 6), app.debugDescription)
-        let exercise = app.descendants(matching: .any)["prototype-guided-exercise"]
-        for _ in 0..<4 where !exercise.exists {
-            if logSession.isHittable { logSession.tap() }
-            _ = exercise.waitForExistence(timeout: 3)
-        }
-        XCTAssertTrue(exercise.exists, app.debugDescription)
-        app.buttons["prototype-next"].tap()
-        app.buttons["prototype-guided-warmup-skip"].tap()
-        let pain = app.descendants(matching: .any)["prototype-guided-pain"]
-        for _ in 0..<6 where !pain.exists {
-            let next = app.buttons["prototype-next"]
-            if next.waitForExistence(timeout: 2) { next.tap() }
-        }
+        logSession.tap()
+        XCTAssertTrue(app.navigationBars["Record session"].waitForExistence(timeout: 6), app.debugDescription)
+        let pain = app.buttons["Pain during the session 2"]
         XCTAssertTrue(pain.waitForExistence(timeout: 4), app.debugDescription)
-        app.buttons["prototype-pain-chip-2"].tap()
-        app.buttons["prototype-next"].tap()
-        app.buttons["prototype-next"].tap()
-        app.buttons["prototype-save"].tap()
+        pain.tap()
+        app.buttons["Save"].tap()
 
         XCTAssertTrue(poster.waitForExistence(timeout: 8))
         snap(app, "08-today-after-session")

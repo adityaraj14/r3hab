@@ -1,7 +1,7 @@
 import Foundation
 
 enum PhaseGuideCopy {
-    static let protocolRevision = "v1.2 · 2026-09-11"
+    static let protocolRevision = TwelveWeekPlan.protocolRevision
 
     static func summary(
         for phase: RehabPhase,
@@ -11,24 +11,27 @@ enum PhaseGuideCopy {
         if InjuryCatalog.isQL(injuryID) {
             return qlSummary(for: phase, modality: primaryLift)
         }
-        let lift = primaryLift.lowercased()
-        switch phase {
-        case .aFlareDeLoad:
-            return "Rest the knee. Do not do a heavy knee load, impact, or tennis. You can ride a bicycle if you have no pain. Record 3 mornings with pain of 2 or less. Record one day with about 6000 steps or more. Then start Phase B."
-        case .bIsometrics:
-            return "The primary exercise is \(lift) holds. Start with 3 or 4 holds of 20 to 30 seconds. Do this 2 times each week. Keep at least 48 hours between sessions. Increase the hold time before you add a session day."
-        case .cHeavySlowResistance:
-            return "Do a heavy slow \(lift) at a tempo of 3-1-3. Do this 2 or 3 times each week. This is the main capacity phase. It often continues for months."
+        switch RehabPhase.planPhase(for: phase) {
+        case .calmTendon:
+            return "Weeks 1–2. Seated leg extension hold, 5 times for 45 seconds, rest 2 minutes. You can do the hold every day. Single-leg leg press, 3×15, slow and light, in a pain-free range. Side-lying hip abduction 3×15 and bodyweight calf raises 3×15. Train Monday, Wednesday, and Friday. Walk or stretch on the other days."
+        case .heavySlow:
+            return "Weeks 3–6. Seated leg extension and leg press, 4 sets. Reps step from 15 down to 10. 3 seconds up and 3 seconds down. Add weight each week when the next morning stays at baseline. Keep the leg extension hold as the warm-up."
+        case .heavier:
+            return "Weeks 7–10. Seated leg extension and leg press, 4 sets. Reps step from 8 down to 6. Still slow and heavy. Spanish squat: 5 holds of 45 seconds. Optional. Skip if it bothers your back."
+        case .springiness:
+            return "Weeks 11–12. Two heavy days. On the third training day add pogo hops 3×20, then box jump-ups 3×8, then landings. Add the next drill only when the next morning does not flare."
+        case .aFlareDeLoad, .bIsometrics, .cHeavySlowResistance:
+            return summary(for: RehabPhase.planPhase(for: phase), primaryLift: primaryLift, injuryID: injuryID)
         }
     }
 
     /// Honest QL copy. Phases stay so the diary has a place to stand.
     /// They are not the patellar tendon ladder. Clinical targets are TBD.
     private static func qlSummary(for phase: RehabPhase, modality: String) -> String {
-        switch phase {
-        case .aFlareDeLoad:
+        switch RehabPhase.planPhase(for: phase) {
+        case .calmTendon, .aFlareDeLoad, .bIsometrics:
             return "Decrease the load. Record \(modality.lowercased()) if the pain is acceptable. Clinical targets are not set."
-        case .bIsometrics, .cHeavySlowResistance:
+        case .heavySlow, .heavier, .springiness, .cHeavySlowResistance:
             return "Continue to record \(modality.lowercased()). The last load is the start value for the next session. Clinical targets are not set."
         }
     }

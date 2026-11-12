@@ -1,6 +1,6 @@
 # R3hab
 
-Personal offline-first iOS app for **patellar tendinopathy rehab logging**: daily pain check-ins, training sessions, and a forced 24-hour load–response decision loop.
+Personal offline-first iOS app for **patellar tendinopathy rehab**: a 12-week plan, daily pain check-ins, and training logs.
 
 > Not a medical device. Supports self-managed rehab logging; does not replace professional care.
 
@@ -26,10 +26,11 @@ Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
 
 ## Features (v1)
 
-- Daily AM/PM check-in + steps
+- 12-week plan: today's session, doses, rest, and tempo for the current week
+- Daily AM/PM check-in, a weekly single-leg decline squat, and next-morning load rules
 - Training sessions + **24h resolve** (Better/Same/Worse → Stay/Soft cut/Progress/Hard drop)
-- Phase A exit banner, Progress charts (7/28 day)
-- Settings: phase, thresholds, reminders, **JSON export/import**, **clear all logs**
+- Progress charts (7/28 day) and the decline-squat trend
+- Settings: program week, reminders, **JSON export/import**, **clear all logs**
 - Onboarding + local notifications (AM/PM + pending 24h)
 - Deep link / notification open → resolve sheet
 
