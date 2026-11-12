@@ -248,7 +248,9 @@ struct RehabProgressView: View {
             start: programStart,
             checkIns: checkIns.map(\.snapshot),
             asOf: Date(),
-            calendar: calendar
+            calendar: calendar,
+            sessions: sessions.map(\.snapshot),
+            overrides: settings?.planOverrides ?? []
         )
         return VStack(alignment: .leading, spacing: 6) {
             Text("Decline squat")

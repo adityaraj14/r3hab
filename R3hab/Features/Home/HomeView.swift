@@ -35,6 +35,7 @@ struct HomeView: View {
     @State private var locallyResolved: [UUID: Response24h] = [:]
     @State private var afterPainTargetId: UUID?
     @State private var restConfirmId: UUID?
+    @State private var showMissedSession = false
     /// Bumped to the live count only on the save that extends the chain, so the
     /// new bead fills once instead of every time Today appears.
     @State private var popToken = 0
@@ -122,12 +123,27 @@ struct HomeView: View {
         checkIns.map(\.snapshot)
     }
 
+    private var planOverrides: [PlanSessionOverride] {
+        settings?.planOverrides ?? []
+    }
+
+    private var schedule: PlanScheduleSnapshot {
+        PlanSchedule.resolve(
+            start: programStart,
+            on: Date(),
+            sessions: sessionSnaps,
+            overrides: planOverrides,
+            calendar: calendar
+        )
+    }
+
     private var dayPlan: DayPlan {
-        TwelveWeekPlan.dayPlan(
+        PlanSchedule.dayPlan(
             start: programStart,
             on: Date(),
             sessions: sessionSnaps,
             checkIns: checkInSnaps,
+            overrides: planOverrides,
             calendar: calendar
         )
     }
@@ -145,7 +161,8 @@ struct HomeView: View {
             calendar: calendar,
             programStart: programStart,
             checkIns: checkInSnaps,
-            exercise: exercise.id
+            exercise: exercise.id,
+            overrides: planOverrides
         )
     }
 
@@ -335,6 +352,9 @@ struct HomeView: View {
                 Button("Cancel", role: .cancel) { discardDraftId = nil }
             } message: {
                 Text(IncompleteRecords.Copy.discardMessage)
+            }
+            .sheet(isPresented: $showMissedSession) {
+                MissedSessionSheet()
             }
             .confirmationDialog(
                 "Record this session as rest?",
@@ -583,6 +603,11 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                    if showsPatellarLadder {
+                        Button("Log missed session") { showMissedSession = true }
+                            .buttonStyle(.quietCompact)
+                            .accessibilityIdentifier("log-missed-session")
+                    }
                 }
                 .padding(.vertical, 6)
 
@@ -998,12 +1023,7 @@ struct HomeView: View {
     }
 
     private var restDayDetail: String {
-        guard let next = TwelveWeekPlan.nextSessionDay(from: Date(), start: programStart, calendar: calendar) else {
-            return "The seated hold is optional today."
-        }
-        let weekday = calendar.component(.weekday, from: next)
-        let name = calendar.weekdaySymbols[weekday - 1]
-        return "The seated hold is optional today. Next training day is \(name)."
+        schedule.restLine(calendar: calendar)
     }
 
     private var planExercises: [PlanExercise] {
@@ -1048,6 +1068,10 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             declineTest
+            Button("Log missed session") { showMissedSession = true }
+                .font(.caption.weight(.semibold))
+                .buttonStyle(.bordered)
+                .accessibilityIdentifier("log-missed-session-plan")
         }
         .padding(16)
         .posterCard()
@@ -1058,7 +1082,9 @@ struct HomeView: View {
             start: programStart,
             checkIns: checkInSnaps,
             asOf: Date(),
-            calendar: calendar
+            calendar: calendar,
+            sessions: sessionSnaps,
+            overrides: planOverrides
         )
         return VStack(alignment: .leading, spacing: 8) {
             Text("Single-leg decline squat")

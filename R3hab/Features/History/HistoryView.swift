@@ -9,6 +9,7 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
+    @Query private var settingsList: [AppSettings]
 
     @State private var filter: Filter = .all
     @State private var editDailyDate: Date?
@@ -23,8 +24,13 @@ struct HistoryView: View {
     @State private var pendingBackdateDaily: Date?
     @State private var pendingBackdateSession: Date?
     @State private var showMergeDuplicates = false
+    @State private var showMissedSession = false
 
     private var calendar: Calendar { .current }
+    private var settings: AppSettings? { settingsList.first }
+    private var showsPatellarLadder: Bool {
+        (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).usesPatellarLadder
+    }
 
     enum Filter: String, CaseIterable, Identifiable, Hashable {
         case all, sessions
@@ -84,6 +90,9 @@ struct HistoryView: View {
                             backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
                             showBackdate = true
                         }
+                        if showsPatellarLadder {
+                            Button("Log missed session") { showMissedSession = true }
+                        }
                     } label: {
                         Image(systemName: "plus.circle")
                     }
@@ -114,6 +123,9 @@ struct HistoryView: View {
                 }
             }
             .guidedSessionSheet($guidedSession)
+            .sheet(isPresented: $showMissedSession) {
+                MissedSessionSheet()
+            }
             .sheet(isPresented: $showBackdate) {
                 NavigationStack {
                     Form {

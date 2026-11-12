@@ -21,7 +21,8 @@ enum LogStore {
         var incompleteBody: String? = nil
     }
 
-    /// Deletes every daily check-in and training session. Keeps AppSettings.
+    /// Deletes every daily check-in and training session. Keeps the plan week
+    /// and reminders, and clears make-up overrides that pointed at those sessions.
     @MainActor
     static func clearAllLogs(context: ModelContext) throws -> (daily: Int, sessions: Int) {
         let dailies = try context.fetch(FetchDescriptor<DailyCheckIn>())
@@ -29,6 +30,10 @@ enum LogStore {
         let sessionIds = sessions.map(\.id)
         for d in dailies { context.delete(d) }
         for s in sessions { context.delete(s) }
+        let settings = try context.fetch(FetchDescriptor<AppSettings>())
+        for row in settings {
+            row.planOverrides = []
+        }
         try context.save()
         for id in sessionIds {
             NotificationScheduler.cancelSessionNotifications(sessionId: id)

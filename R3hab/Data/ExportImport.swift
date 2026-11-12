@@ -57,6 +57,8 @@ struct SettingsDTO: Codable {
     var primaryLoadID: String?
     /// Absent in backups from before the 12-week plan.
     var programStartDate: Date?
+    /// Planned sessions done on a different day. Absent in older backups.
+    var planOverrides: [PlanSessionOverride]?
 }
 
 struct DailyDTO: Codable {
@@ -274,7 +276,8 @@ enum ExportImportService {
                 protocolRevision: settings.protocolRevision,
                 selectedInjuryID: settings.selectedInjuryID,
                 primaryLoadID: settings.primaryLoadID,
-                programStartDate: settings.programStartDate
+                programStartDate: settings.programStartDate,
+                planOverrides: settings.planOverrides
             ),
             dailyCheckIns: checkIns.map {
                 DailyDTO(
@@ -339,7 +342,7 @@ enum ExportImportService {
         }
 
         let settings = try AppBootstrap.ensureSettings(context: context)
-        applySettings(backup.settings, to: settings)
+        applySettings(backup.settings, to: settings, mode: mode)
 
         switch mode {
         case .replace:
@@ -350,7 +353,7 @@ enum ExportImportService {
         try context.save()
     }
 
-    private static func applySettings(_ dto: SettingsDTO, to settings: AppSettings) {
+    private static func applySettings(_ dto: SettingsDTO, to settings: AppSettings, mode: ImportMode) {
         // Old backups may carry the removed phases D / E; they read as C.
         settings.currentPhaseRaw = RehabPhase.normalizedRawValue(dto.currentPhase)
         settings.phaseChangedAt = dto.phaseChangedAt
@@ -382,6 +385,11 @@ enum ExportImportService {
         // falls back to this injury’s default.
         let loadID = dto.primaryLoadID ?? settings.primaryLoadID
         settings.primaryLoadID = PrimaryLoadCatalog.normalizedID(loadID, injuryID: settings.selectedInjuryID)
+        if let planOverrides = dto.planOverrides {
+            settings.planOverrides = planOverrides
+        } else if mode == .replace {
+            settings.planOverrides = []
+        }
     }
 
     private static func replaceAll(backup: R3habBackupDTO, context: ModelContext) throws {

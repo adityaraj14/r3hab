@@ -103,6 +103,8 @@ struct DayPlan: Equatable, Sendable {
     var summary: String
     /// Set when springiness is repeating a drill instead of adding the next one.
     var plyoNote: String?
+    /// Planned day this calendar day is carrying, when the session was moved.
+    var fulfillsScheduledDate: Date? = nil
 
     var weekLabel: String {
         if programWeek > TwelveWeekPlan.weekCount {
@@ -571,9 +573,17 @@ enum TwelveWeekPlan {
         sessions: [TrainingSessionSnapshot],
         checkIns: [DailyCheckInSnapshot],
         asOf: Date,
-        calendar: Calendar
+        calendar: Calendar,
+        overrides: [PlanSessionOverride] = []
     ) -> LoadAdvice {
-        let week = programWeek(start: programStart, on: asOf, calendar: calendar)
+        let planAsOf = PlanSchedule.prescriptionDate(
+            start: programStart,
+            on: asOf,
+            sessions: sessions,
+            overrides: overrides,
+            calendar: calendar
+        )
+        let week = programWeek(start: programStart, on: planAsOf, calendar: calendar)
         let template = exercise(kind, week: week, isWarmup: false)
         let seeded = prescription(template, loadLbs: nil)
         guard template.logsWeight else {
@@ -675,8 +685,9 @@ enum TwelveWeekPlan {
         }
 
         let painAllowsIncrease = pain != nil && (pain ?? 0) <= PainRule.duringLimit
-        let laterWeek = programWeek(start: programStart, on: asOf, calendar: calendar)
-            > programWeek(start: programStart, on: latest.date, calendar: calendar)
+        let lastPlanDate = PlanSchedule.planDate(for: latest, overrides: overrides, calendar: calendar)
+        let laterWeek = programWeek(start: programStart, on: planAsOf, calendar: calendar)
+            > programWeek(start: programStart, on: lastPlanDate, calendar: calendar)
         if increasesWeightEachWeek(kind, week: week),
            laterWeek,
            painAllowsIncrease,
@@ -761,7 +772,9 @@ enum TwelveWeekPlan {
         start: Date,
         checkIns: [DailyCheckInSnapshot],
         asOf: Date,
-        calendar: Calendar
+        calendar: Calendar,
+        sessions: [TrainingSessionSnapshot] = [],
+        overrides: [PlanSessionOverride] = []
     ) -> DeclineSquatTrend {
         let current = programWeek(start: start, on: asOf, calendar: calendar)
         var latestByWeek: [Int: (date: Date, score: Int)] = [:]
@@ -793,11 +806,24 @@ enum TwelveWeekPlan {
                 headline = "The decline squat pain is unchanged."
             }
         }
+        let due = PlanSchedule.declineDueDate(
+            start: start,
+            asOf: asOf,
+            sessions: sessions,
+            overrides: overrides,
+            calendar: calendar
+        )
+        let dueNow: Bool
+        if let due {
+            dueNow = calendar.startOfDay(for: asOf) >= due
+        } else {
+            dueNow = true
+        }
         return DeclineSquatTrend(
             points: points,
             direction: direction,
             headline: headline,
-            needsTest: latestByWeek[current] == nil
+            needsTest: latestByWeek[current] == nil && dueNow
         )
     }
 

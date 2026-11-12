@@ -27,6 +27,8 @@ final class AppSettings {
     var primaryLoadID: String = "seated-extension"
     /// First day of week 1. Epoch means an older store that still needs a start date.
     var programStartDate: Date = Date(timeIntervalSince1970: 0)
+    /// JSON array of `PlanSessionOverride`. `[]` when every session stays on its planned day.
+    var planOverridesJSON: String = "[]"
 
     var currentPhase: RehabPhase {
         get { RehabPhase.normalized(rawValue: currentPhaseRaw) }
@@ -41,6 +43,11 @@ final class AppSettings {
         set { selectedInjuryID = newValue.id }
     }
 
+    var planOverrides: [PlanSessionOverride] {
+        get { PlanOverrideStore.decode(planOverridesJSON) }
+        set { planOverridesJSON = PlanOverrideStore.encode(newValue) }
+    }
+
     var primaryLoad: PrimaryLoadOption {
         get { PrimaryLoadCatalog.option(for: primaryLoadID, injuryID: selectedInjuryID) }
         set { primaryLoadID = newValue.id }
@@ -50,6 +57,7 @@ final class AppSettings {
         self.currentPhaseRaw = RehabPhase.calmTendon.rawValue
         self.phaseChangedAt = Date()
         self.programStartDate = Date()
+        self.planOverridesJSON = "[]"
         self.phaseAPainThreshold = 2
         self.phaseAStableDaysRequired = 3
         self.stepNearNormalMin = 6000
