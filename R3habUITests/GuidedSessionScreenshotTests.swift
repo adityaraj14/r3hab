@@ -1,6 +1,6 @@
 import XCTest
 
-// Today opens SessionEditor from a "Log …" plan row. The guided recorder is only
+// Today opens Today's session, and that page opens SessionEditor from a plan row. The guided recorder is only
 // for an older guided draft, so the tests that started that recorder from Today
 // are gone. Backup and the morning ruler still run.
 
