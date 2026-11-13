@@ -159,7 +159,8 @@ enum ProgressionEngine {
         calendar: Calendar = .current,
         programStart: Date? = nil,
         checkIns: [DailyCheckInSnapshot] = [],
-        exercise: PlanExerciseKind? = nil
+        exercise: PlanExerciseKind? = nil,
+        overrides: [PlanSessionOverride] = []
     ) -> ProgressionResult {
         let start = programStart ?? calendar.startOfDay(for: asOf)
         let week = TwelveWeekPlan.programWeek(start: start, on: asOf, calendar: calendar)
@@ -182,7 +183,8 @@ enum ProgressionEngine {
             sessions: sessions,
             checkIns: checkIns,
             asOf: asOf,
-            calendar: calendar
+            calendar: calendar,
+            overrides: overrides
         )
         return ProgressionResult(
             target: advice.target,
