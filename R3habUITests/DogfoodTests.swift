@@ -36,10 +36,16 @@ final class DogfoodTests: XCTestCase {
             app.navigationBars.buttons["Save"].tap()
         }
 
-        // A plan row opens the session editor. The label is "Log …".
-        let logSession = app.buttons.matching(
-            NSPredicate(format: "label BEGINSWITH %@", "Log ")
-        ).firstMatch
+        // Exercise rows live on Today's session, not on the home list.
+        let sessionLink = app.descendants(matching: .any)["today-session-link"]
+        XCTAssertTrue(sessionLink.waitForExistence(timeout: 6), app.debugDescription)
+        XCTAssertFalse(
+            app.buttons.matching(identifier: "log-plan-exercise").firstMatch.exists,
+            "Exercise rows stay off Today"
+        )
+        sessionLink.tap()
+        XCTAssertTrue(app.navigationBars["Today's session"].waitForExistence(timeout: 6), app.debugDescription)
+        let logSession = app.buttons.matching(identifier: "log-plan-exercise").firstMatch
         XCTAssertTrue(logSession.waitForExistence(timeout: 6), app.debugDescription)
         logSession.tap()
         XCTAssertTrue(app.navigationBars["Record session"].waitForExistence(timeout: 6), app.debugDescription)
@@ -48,6 +54,10 @@ final class DogfoodTests: XCTestCase {
         pain.tap()
         app.buttons["Save"].tap()
 
+        let backToToday = app.navigationBars["Today's session"].buttons["Today"]
+        if backToToday.waitForExistence(timeout: 4) {
+            backToToday.tap()
+        }
         XCTAssertTrue(poster.waitForExistence(timeout: 8))
         snap(app, "08-today-after-session")
         XCTAssertTrue(poster.label.contains("1 session"), poster.label)

@@ -242,7 +242,8 @@ struct HomeView: View {
                     streakCard
                     header
                     if showsPatellarLadder {
-                        planCard
+                        sessionLinkCard
+                        declineCard
                     }
                     nextUpCard(action)
                     if !earlierIncomplete.isEmpty {
@@ -568,12 +569,6 @@ struct HomeView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         if showsPatellarLadder, !planIsRestDay {
                             stanceLine(todayProgression, onGold: true)
-                        }
-                        if let plyoNote = dayPlan.plyoNote {
-                            Text(plyoNote)
-                                .font(.subheadline.weight(.semibold))
-                                .foregroundStyle(AppTheme.ink)
-                                .fixedSize(horizontal: false, vertical: true)
                         }
                         Label(nextUpSessionTitle, systemImage: activeInjury.systemImage)
                         if !showsPatellarLadder {
@@ -1027,54 +1022,104 @@ struct HomeView: View {
     }
 
     private var planExercises: [PlanExercise] {
-        if dayPlan.exercises.contains(where: { $0.id == .isometricLegExtension }) {
-            return dayPlan.exercises
-        }
-        return [dayPlan.dailyIsometric] + dayPlan.exercises
+        TodaySessionMenu.listedExercises(in: dayPlan)
     }
 
-    private var planCard: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("\(dayPlan.weekLabel) · \(dayPlan.kind.title)")
-                .font(.headline.weight(.semibold))
-            Text(dayPlan.summary)
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            if let plyoNote = dayPlan.plyoNote {
-                Text(plyoNote)
-                    .font(.subheadline.weight(.semibold))
-                    .fixedSize(horizontal: false, vertical: true)
+    private var loggedPlanKinds: Set<PlanExerciseKind> {
+        TodaySessionMenu.loggedKinds(
+            exercises: planExercises,
+            sessions: todaySessions.map(\.snapshot)
+        )
+    }
+
+    private var sessionLink: TodaySessionLink {
+        TodaySessionMenu.link(
+            plan: dayPlan,
+            on: today,
+            calendar: calendar,
+            todaySessions: todaySessions.map(\.snapshot),
+            hasDraft: todayDraftId != nil
+        )
+    }
+
+    /// One row into the day's menu. Rest days keep the missed-session action here
+    /// so it stays on Today when the next action is pain, not rest.
+    private var sessionLinkCard: some View {
+        let link = sessionLink
+        return VStack(alignment: .leading, spacing: 12) {
+            NavigationLink {
+                TodaySessionView(
+                    title: link.title,
+                    plan: dayPlan,
+                    exercises: planExercises,
+                    loggedKinds: loggedPlanKinds,
+                    onLog: { openPlanExercise($0) },
+                    onLogMissed: { showMissedSession = true }
+                )
+            } label: {
+                sessionLinkLabel(link)
             }
-            ForEach(planExercises) { exercise in
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise.name)
-                        .font(.subheadline.weight(.semibold))
-                    Text(exercise.doseLine)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if let note = exercise.note {
-                        Text(note)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Button("Log \(exercise.name)") {
-                        openPlanExercise(exercise)
-                    }
-                    .font(.caption.weight(.semibold))
-                    .buttonStyle(.bordered)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityIdentifier("today-session-link")
+            if planIsRestDay, nextAction != .restDay {
+                Button("Log missed session") { showMissedSession = true }
+                    .buttonStyle(.quietCompact)
+                    .accessibilityIdentifier("log-missed-session")
             }
-            declineTest
-            Button("Log missed session") { showMissedSession = true }
-                .font(.caption.weight(.semibold))
-                .buttonStyle(.bordered)
-                .accessibilityIdentifier("log-missed-session-plan")
         }
         .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .posterCard()
+    }
+
+    private func sessionLinkLabel(_ link: TodaySessionLink) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: link.status == .done ? "checkmark.circle.fill" : "list.bullet")
+                .font(.body)
+                .foregroundStyle(link.status == .done ? Color.green : AppTheme.quiet)
+                .frame(width: 22)
+                .padding(.top, 2)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(link.title)
+                    .font(.headline.weight(.semibold))
+                    .foregroundStyle(.primary)
+                    .multilineTextAlignment(.leading)
+                Text(link.detail)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .multilineTextAlignment(.leading)
+                Text(link.status.label)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(sessionStatusColor(link.status))
+            }
+            Spacer(minLength: 8)
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.tertiary)
+                .padding(.top, 4)
+                .accessibilityHidden(true)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .combine)
+        .accessibilityHint("Opens today's session")
+    }
+
+    private func sessionStatusColor(_ status: TodaySessionMenuStatus) -> Color {
+        switch status {
+        case .done: return .green
+        case .inProgress: return AppTheme.gold
+        case .notDone, .rest: return .secondary
+        }
+    }
+
+    private var declineCard: some View {
+        declineTest
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .posterCard()
     }
 
     private var declineTest: some View {
