@@ -56,7 +56,9 @@ let package = Package(
                 "Domain/WorkoutStreak.swift",
                 "Domain/NotificationRoute.swift",
                 "Domain/SessionUpsert.swift",
-                "Domain/IncompleteRecords.swift"
+                "Domain/IncompleteRecords.swift",
+                "Domain/TrainingLoad.swift",
+                "Domain/RehabGuide.swift"
             ] + persistenceSources
         ),
         .testTarget(
@@ -84,7 +86,8 @@ let package = Package(
                 "TodayEveningPromptTests.swift",
                 "SessionUpsertTests.swift",
                 "IncompleteRecordsTests.swift",
-                "MorningPainTests.swift"
+                "MorningPainTests.swift",
+                "TrainingLoadTests.swift"
             ] + roundTripTests
         )
     ]
