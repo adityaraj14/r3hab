@@ -1,20 +1,16 @@
 # R3hab
 
-Personal offline-first iOS app for **patellar tendinopathy rehab**: a 12-week plan, daily pain check-ins, and training logs.
+Personal offline-first iOS app for **patellar tendinopathy rehab**. Home shows the daily quote and one button to log a session. The log keeps past sessions and their training load. The guide is a short map of the rehab stages.
 
 > Not a medical device. Supports self-managed rehab logging; does not replace professional care.
 
 ## Design
 
-Full requirements and implementation plan:
+[`DESIGN.md`](./DESIGN.md) is the original 12-week diary spec. The app on this branch is the smaller logger: Home, Log, and Guide.
 
-- [`DESIGN.md`](./DESIGN.md) — tagged REQs, data model, domain rules, PR plan
+**Stack:** SwiftUI · **SwiftData** (on-device SQLite) · iOS 17.0+ · local-only
 
-**Stack:** SwiftUI · **SwiftData** (on-device SQLite) · iOS 17.0+ · local-only v1  
-
-No remote backend. Export/import JSON is the backup path (PR-12).
-
-**Notion** remains the protocol brain (phases, soft cut / hard drop copy). **R3hab** is the daily diary.
+No remote backend. No reminders. Existing session rows stay in the on-device store.
 
 ## Open in Xcode
 
@@ -24,37 +20,23 @@ open R3hab.xcodeproj
 
 Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
 
-## Features (v1)
+## Screens
 
-- 12-week plan: today's session, doses, rest, and tempo for the current week
-- Daily AM/PM check-in, a weekly single-leg decline squat, and next-morning load rules
-- Training sessions + **24h resolve** (Better/Same/Worse → Stay/Soft cut/Progress/Hard drop)
-- Progress charts (7/28 day) and the decline-squat trend
-- Settings: program week, reminders, **JSON export/import**, **clear all logs**
-- Onboarding + local notifications (AM/PM + pending 24h)
-- Deep link / notification open → resolve sheet
+- **Home** — the daily quote, and **Log a session**
+- **Guided log** — isometric leg extension holds, leg extension heavy sets, and leg press. Skip any exercise you did not do
+- **Log** — past sessions, volume load, and a short trend
+- **Guide** — isometrics, heavy slow resistance, energy storage, return to sport
 
-## Deep link
-
-```
-r3hab://resolve?sessionId=<UUID>
-```
-
-## Backup
-
-Settings → **Export JSON backup**. Import supports **Replace** or **Merge**.  
-**Clear all log entries** wipes check-ins and sessions but keeps phase/settings.
-
-## Dogfood checklist (14 days)
-
-1. Log morning pain most days  
-2. Log at least a few training sessions and resolve 24h next day  
-3. Export a backup weekly  
-4. Confirm notifications (if enabled) fire after a session  
+Working-set load is reps × weight (lb). Isometric load is holds × seconds × weight (lb·s). Warm-ups are left out. A stored left/right pair with the same weight counts once.
 
 ## Development
 
-Plan: `DESIGN.md` § PR Plan. Stack: SwiftUI + SwiftData, iOS 17+, dark mode only.
+Stack: SwiftUI + SwiftData, iOS 17+, dark mode only. Domain tests:
+
+```bash
+./scripts/test-domain.sh
+swift test
+```
 
 ```bash
 # Install on booted sim without launching

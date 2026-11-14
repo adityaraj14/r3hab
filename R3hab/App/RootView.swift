@@ -2,27 +2,17 @@ import SwiftUI
 import SwiftData
 import UIKit
 
-/// Scene-level shell. Suspension handling lives here: flush SwiftData before
-/// the app is frozen and invalidate in-flight syncs. The tab tree is never
-/// remounted on resume — sheets hold value state and resolve rows by id, so an
-/// editor left open across a background keeps its draft.
+/// Scene shell. Three tabs: Home, Log, Guide. Suspension still flushes SwiftData
+/// before the app is frozen so a session saved at the edge of background survives.
 struct RootView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
 
-    @State private var showOnboarding = false
-    /// Bumped when leaving the foreground so in-flight notification Tasks stop
-    /// touching SwiftData after an `await` (models can be invalid on resume).
-    @State private var syncGeneration = 0
-
     var body: some View {
-        RootTabContent(
-            showOnboarding: $showOnboarding,
-            syncGeneration: syncGeneration
-        )
-        .onChange(of: scenePhase) { _, phase in
-            handleScenePhase(phase)
-        }
+        RootTabs()
+            .onChange(of: scenePhase) { _, phase in
+                handleScenePhase(phase)
+            }
     }
 
     private func handleScenePhase(_ phase: ScenePhase) {
@@ -30,9 +20,6 @@ struct RootView: View {
         case .active:
             modelContext.autosaveEnabled = true
         case .inactive, .background:
-            // Invalidate in-flight syncs *before* they resume across an await
-            // and touch models that SwiftData may have dropped.
-            syncGeneration &+= 1
             modelContext.autosaveEnabled = false
             flushSwiftDataForSuspension()
         @unknown default:
@@ -53,129 +40,42 @@ struct RootView: View {
     }
 }
 
-/// Tab shell + queries.
-private struct RootTabContent: View {
+private struct RootTabs: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(AppRouter.self) private var router
-    @Query private var settingsList: [AppSettings]
-    @Query(sort: \TrainingSession.createdAt, order: .reverse) private var sessions: [TrainingSession]
-    @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
-    /// Same predicate as Today. The badge tracks who is still pending, not the
-    /// full session list, so a resolve drops the count immediately.
-    @Query(
-        filter: #Predicate<TrainingSession> { $0.response24hRaw == "pending" },
-        sort: \TrainingSession.createdAt
-    )
-    private var pendingSessions: [TrainingSession]
-
-    @Binding var showOnboarding: Bool
-    var syncGeneration: Int
-
-    private var settings: AppSettings? { settingsList.first }
-
-    private var overdueBadge: Int {
-        PendingQueue.overdue(sessions: pendingSessions.map(\.snapshot), now: Date()).count
-    }
+    @State private var tab = 0
 
     var body: some View {
-        @Bindable var router = router
-        // Tab bar stays white. Volt tints the selected tab and the controls inside.
-        TabView(selection: $router.selectedTab) {
+        TabView(selection: $tab) {
             HomeView()
-                .tint(AppTheme.gold)
-                .tabItem {
-                    Label("Today", systemImage: "sun.max.fill")
-                }
+                .tabItem { Label("Home", systemImage: "house.fill") }
                 .tag(0)
-                .badge(overdueBadge > 0 ? overdueBadge : 0)
-
-            HistoryView()
-                .tint(AppTheme.gold)
-                .tabItem {
-                    Label("History", systemImage: "clock.arrow.circlepath")
-                }
+            SessionLogView()
+                .tabItem { Label("Log", systemImage: "list.bullet") }
                 .tag(1)
-
-            RehabProgressView()
-                .tint(AppTheme.gold)
-                .tabItem {
-                    Label("Progress", systemImage: "chart.line.uptrend.xyaxis")
-                }
+            GuideView()
+                .tabItem { Label("Guide", systemImage: "book.fill") }
                 .tag(2)
         }
-        .tint(.white)
+        .tint(AppTheme.gold)
         .preferredColorScheme(.dark)
         .task {
-            _ = try? AppBootstrap.ensureSettings(context: modelContext)
-            if let settings, !settings.hasCompletedOnboarding {
-                showOnboarding = true
+            if let settings = try? AppBootstrap.ensureSettings(context: modelContext) {
+                // Onboarding and reminders are gone. Leave the diary rows alone.
+                var changed = false
+                if !settings.hasCompletedOnboarding {
+                    settings.hasCompletedOnboarding = true
+                    changed = true
+                }
+                if settings.notificationsEnabled {
+                    settings.notificationsEnabled = false
+                    changed = true
+                }
+                if changed {
+                    try? modelContext.save()
+                }
             }
-            await syncNotifications(generation: syncGeneration)
+            NotificationScheduler.cancelAll()
         }
-        .onChange(of: settings?.hasCompletedOnboarding ?? true) { _, completed in
-            if !completed {
-                showOnboarding = true
-            }
-        }
-        .onChange(of: router.onboardingReplayToken) { _, _ in
-            showOnboarding = true
-        }
-        .onChange(of: router.notificationSyncToken) { _, _ in
-            let generation = syncGeneration
-            Task { await syncNotifications(generation: generation) }
-        }
-        .onChange(of: sessions.count) { _, _ in
-            let generation = syncGeneration
-            Task { await syncNotifications(generation: generation) }
-        }
-        .onChange(of: scenePhase) { _, phase in
-            // Returning from iOS Settings after granting permission.
-            if phase == .active {
-                let generation = syncGeneration
-                Task { await syncNotifications(generation: generation) }
-            }
-        }
-        .fullScreenCover(isPresented: $showOnboarding) {
-            OnboardingView {
-                showOnboarding = false
-                router.requestNotificationSync()
-            }
-        }
-        // Deep-link sheets take ids only; each sheet resolves (or reports
-        // "Session not found") against the current context itself.
-        .sheet(isPresented: Binding(
-            get: { router.resolveSessionId != nil },
-            set: { if !$0 { router.resolveSessionId = nil } }
-        )) {
-            if let id = router.resolveSessionId {
-                Resolve24hSheet(sessionId: id)
-            }
-        }
-        .sheet(isPresented: Binding(
-            get: { router.afterPainSessionId != nil },
-            set: { if !$0 { router.afterPainSessionId = nil } }
-        )) {
-            if let id = router.afterPainSessionId {
-                AfterPainSheet(sessionId: id)
-            }
-        }
-    }
-
-    @MainActor
-    private func syncNotifications(generation: Int) async {
-        guard generation == syncGeneration else { return }
-        let settings: AppSettings
-        if let existing = settingsList.first {
-            settings = existing
-        } else if let seeded = try? AppBootstrap.ensureSettings(context: modelContext) {
-            settings = seeded
-        } else {
-            return
-        }
-        let snapshot = LogStore.notificationSnapshot(settings: settings, sessions: sessions, checkIns: checkIns)
-        guard generation == syncGeneration else { return }
-        await LogStore.reconcileNotifications(snapshot)
     }
 }
 
@@ -192,7 +92,6 @@ private final class BackgroundTaskBox {
 
 #Preview {
     RootView()
-        .environment(AppRouter())
         .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

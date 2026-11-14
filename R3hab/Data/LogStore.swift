@@ -27,7 +27,6 @@ enum LogStore {
     static func clearAllLogs(context: ModelContext) throws -> (daily: Int, sessions: Int) {
         let dailies = try context.fetch(FetchDescriptor<DailyCheckIn>())
         let sessions = try context.fetch(FetchDescriptor<TrainingSession>())
-        let sessionIds = sessions.map(\.id)
         for d in dailies { context.delete(d) }
         for s in sessions { context.delete(s) }
         let settings = try context.fetch(FetchDescriptor<AppSettings>())
@@ -35,11 +34,7 @@ enum LogStore {
             row.planOverrides = []
         }
         try context.save()
-        for id in sessionIds {
-            NotificationScheduler.cancelSessionNotifications(sessionId: id)
-        }
-        NotificationScheduler.cancelHardOverdue()
-        NotificationScheduler.updateBadge(count: 0)
+        NotificationScheduler.cancelAll()
         return (dailies.count, sessions.count)
     }
 
@@ -106,20 +101,8 @@ enum LogStore {
     }
 
     static func reconcileNotifications(_ snapshot: NotificationSnapshot) async {
-        if snapshot.notificationsEnabled {
-            _ = await NotificationScheduler.ensureAuthorizedIfNeeded()
-        }
-        await NotificationScheduler.reconcile(
-            notificationsEnabled: snapshot.notificationsEnabled,
-            amHour: snapshot.amHour,
-            amMinute: snapshot.amMinute,
-            pmHour: snapshot.pmHour,
-            pmMinute: snapshot.pmMinute,
-            pendingSessions: snapshot.pendingSessions,
-            painAfterSessions: snapshot.painAfterSessions,
-            lastHardDate: snapshot.lastHardDate,
-            incompleteBody: snapshot.incompleteBody
-        )
-        NotificationScheduler.updateBadge(count: snapshot.overdueCount)
+        // Reminders are gone. Ignore the snapshot so a caller cannot schedule one.
+        _ = snapshot.notificationsEnabled
+        NotificationScheduler.cancelAll()
     }
 }

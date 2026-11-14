@@ -1,610 +1,229 @@
-import SwiftUI
 import SwiftData
+import SwiftUI
 
-/// History — chronological daily + session feed with backdate.
-/// Saved workout rows open SessionEditor. Guided drafts open the guided form.
-/// A past session uses SessionEditor. Swipe deletes a check-in or a session.
-/// Exact duplicate sessions on one day can be merged from the Sessions tab.
-struct HistoryView: View {
+/// Past sessions, the load from each exercise, and a short trend.
+struct SessionLogView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \DailyCheckIn.date, order: .reverse) private var checkIns: [DailyCheckIn]
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
-    @Query private var settingsList: [AppSettings]
 
-    @State private var filter: Filter = .all
-    @State private var editDailyDate: Date?
-    @State private var editSessionId: UUID?
-    /// Drafts from the guided form continue there, at the saved step.
-    @State private var guidedSession: GuidedSessionRequest?
-    @State private var showBackdate = false
-    @State private var backdateKind: BackdateKind = .daily
-    @State private var backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-    @State private var deleteDailyKey: String?
-    @State private var deleteSessionId: UUID?
-    @State private var pendingBackdateDaily: Date?
-    @State private var pendingBackdateSession: Date?
-    @State private var showMergeDuplicates = false
-    @State private var showMissedSession = false
+    @State private var pendingDelete: SessionLogEntry?
 
-    private var calendar: Calendar { .current }
-    private var settings: AppSettings? { settingsList.first }
-    private var showsPatellarLadder: Bool {
-        (settings?.primaryLoad ?? PrimaryLoadCatalog.defaultSelectable).usesPatellarLadder
+    private var days: [SessionLogDay] {
+        SessionLogBuilder.days(from: sessions.map(\.snapshot))
     }
 
-    enum Filter: String, CaseIterable, Identifiable, Hashable {
-        case all, sessions
-        var id: String { rawValue }
-        var title: String {
-            switch self {
-            case .all: return "All"
-            case .sessions: return "Sessions"
-            }
-        }
+    private var workingTrend: [LoadTrendPoint] {
+        SessionLogBuilder.workingSetTrend(from: days)
     }
 
-    enum BackdateKind: String, CaseIterable, Identifiable {
-        case daily, session
-        var id: String { rawValue }
-        var title: String {
-            switch self {
-            case .daily: return "Check-in"
-            case .session: return "Session"
-            }
-        }
+    private var holdTrend: [LoadTrendPoint] {
+        SessionLogBuilder.isometricTrend(from: days)
     }
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                Picker("Filter", selection: $filter) {
-                    ForEach(Filter.allCases) { f in
-                        Text(f.title).tag(f)
-                    }
+            Group {
+                if days.isEmpty {
+                    empty
+                } else {
+                    list
                 }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 10)
-                .background(AppTheme.canvas)
-
-                TabView(selection: $filter) {
-                    allList
-                        .tag(Filter.all)
-                    workoutsList
-                        .tag(Filter.sessions)
-                }
-                .tabViewStyle(.page(indexDisplayMode: .never))
             }
             .appCanvas()
-            .navigationTitle("History")
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Button("Add a past check-in") {
-                            backdateKind = .daily
-                            backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                            showBackdate = true
-                        }
-                        Button("Add a past session") {
-                            backdateKind = .session
-                            backdateDate = Calendar.current.date(byAdding: .day, value: -1, to: Date()) ?? Date()
-                            showBackdate = true
-                        }
-                        if showsPatellarLadder {
-                            Button("Log missed session") { showMissedSession = true }
-                        }
-                    } label: {
-                        Image(systemName: "plus.circle")
-                    }
-                    .accessibilityLabel("Add a past day")
-                    .tint(AppTheme.quiet)
-                }
+            .navigationTitle("Log")
+            .accessibilityIdentifier("session-log")
+            .alert(
+                "Delete this entry?",
+                isPresented: Binding(
+                    get: { pendingDelete != nil },
+                    set: { if !$0 { pendingDelete = nil } }
+                ),
+                presenting: pendingDelete
+            ) { entry in
+                Button("Delete", role: .destructive) { delete(entry) }
+                Button("Cancel", role: .cancel) { pendingDelete = nil }
+            } message: { entry in
+                Text("\(entry.title) will be removed from this day.")
             }
-            .sheet(isPresented: Binding(
-                get: { editDailyDate != nil },
-                set: { if !$0 { editDailyDate = nil } }
-            )) {
-                if let date = editDailyDate {
-                    NavigationStack {
-                        DailyCheckInEditor(targetDate: date)
-                    }
-                    .preferredColorScheme(.dark)
-                }
-            }
-            .sheet(isPresented: Binding(
-                get: { editSessionId != nil },
-                set: { if !$0 { editSessionId = nil } }
-            )) {
-                if let id = editSessionId {
-                    NavigationStack {
-                        SessionEditor(existingId: id)
-                    }
-                    .preferredColorScheme(.dark)
-                }
-            }
-            .guidedSessionSheet($guidedSession)
-            .sheet(isPresented: $showMissedSession) {
-                MissedSessionSheet()
-            }
-            .sheet(isPresented: $showBackdate) {
-                NavigationStack {
-                    Form {
-                        Picker("Type", selection: $backdateKind) {
-                            ForEach(BackdateKind.allCases) { k in
-                                Text(k.title).tag(k)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                        DatePicker(
-                            "Date",
-                            selection: $backdateDate,
-                            in: ...Date(),
-                            displayedComponents: .date
+        }
+    }
+
+    private var empty: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Text("No sessions yet")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(AppTheme.ivory)
+            Text("Sessions you save show up here, with their load.")
+                .font(.body)
+                .foregroundStyle(AppTheme.quiet)
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+        .padding(32)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var list: some View {
+        List {
+            if !workingTrend.isEmpty || !holdTrend.isEmpty {
+                Section {
+                    if !workingTrend.isEmpty {
+                        LoadTrendChart(
+                            title: "Working sets",
+                            unit: "lb",
+                            points: workingTrend
                         )
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
                     }
-                    .navigationTitle("Add a past day")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .toolbar {
-                        ToolbarItem(placement: .cancellationAction) {
-                            Button("Cancel") { showBackdate = false }
-                        }
-                        ToolbarItem(placement: .confirmationAction) {
-                            Button("Continue") {
-                                showBackdate = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                                    switch backdateKind {
-                                    case .daily:
-                                        pendingBackdateDaily = calendar.startOfDay(for: backdateDate)
-                                    case .session:
-                                        pendingBackdateSession = calendar.startOfDay(for: backdateDate)
-                                    }
+                    if !holdTrend.isEmpty {
+                        LoadTrendChart(
+                            title: "Isometric holds",
+                            unit: "lb·s",
+                            points: holdTrend
+                        )
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 8, trailing: 20))
+                    }
+                }
+            }
+
+            ForEach(days) { day in
+                Section {
+                    ForEach(day.entries) { entry in
+                        entryRow(entry)
+                            .listRowBackground(AppTheme.canvas)
+                            .swipeActions {
+                                Button("Delete", role: .destructive) {
+                                    pendingDelete = entry
                                 }
                             }
-                            .fontWeight(.semibold)
-                        }
                     }
-                }
-                .preferredColorScheme(.dark)
-            }
-            .sheet(isPresented: Binding(
-                get: { pendingBackdateDaily != nil },
-                set: { if !$0 { pendingBackdateDaily = nil } }
-            )) {
-                if let d = pendingBackdateDaily {
-                    NavigationStack {
-                        DailyCheckInEditor(targetDate: d)
-                    }
-                    .preferredColorScheme(.dark)
+                } header: {
+                    dayHeader(day)
                 }
             }
-            .sheet(isPresented: Binding(
-                get: { pendingBackdateSession != nil },
-                set: { if !$0 { pendingBackdateSession = nil } }
-            )) {
-                if let d = pendingBackdateSession {
-                    NavigationStack {
-                        SessionEditor(
-                            targetDate: d,
-                            focus: .kneeResistance
-                        )
-                    }
-                    .preferredColorScheme(.dark)
-                }
-            }
-            .confirmationDialog(
-                "Delete this check-in?",
-                isPresented: Binding(
-                    get: { deleteDailyKey != nil },
-                    set: { if !$0 { deleteDailyKey = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let key = deleteDailyKey,
-                       let row = checkIns.first(where: { $0.dayKey == key }) {
-                        modelContext.delete(row)
-                        try? modelContext.save()
-                        Haptics.warning()
-                    }
-                    deleteDailyKey = nil
-                }
-                Button("Cancel", role: .cancel) { deleteDailyKey = nil }
-            }
-            .confirmationDialog(
-                "Delete this session?",
-                isPresented: Binding(
-                    get: { deleteSessionId != nil },
-                    set: { if !$0 { deleteSessionId = nil } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Delete", role: .destructive) {
-                    if let id = deleteSessionId,
-                       let row = sessions.first(where: { $0.id == id }) {
-                        NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
-                        modelContext.delete(row)
-                        try? modelContext.save()
-                        Haptics.warning()
-                    }
-                    deleteSessionId = nil
-                }
-                Button("Cancel", role: .cancel) { deleteSessionId = nil }
-            }
-            .confirmationDialog(
-                "Remove exact duplicate sessions?",
-                isPresented: $showMergeDuplicates,
-                titleVisibility: .visible
-            ) {
-                Button("Remove duplicates", role: .destructive) {
-                    mergeExactDuplicates()
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("R3hab removes only sessions that match on the same day: same exercise, same sets, and same pain scores. Distinct sessions stay.")
-            }
-        }
-    }
 
-    private var allList: some View {
-        List {
-            ForEach(dayEntries) { day in
-                Button {
-                    editDailyDate = day.date
-                } label: {
-                    daySummaryRow(day)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    if day.checkIn != nil {
-                        Button(role: .destructive) {
-                            deleteDailyKey = day.dayKey
-                        } label: {
-                            Label("Delete", systemImage: "trash")
-                        }
-                    }
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .overlay {
-            if dayEntries.isEmpty {
-                emptyState(title: "No days yet", description: "Each day shows the morning pain, the evening pain, the steps, and the session. Select + to add a past day.")
-            }
-        }
-    }
-
-    private func open(_ session: TrainingSession) {
-        if session.isDraft,
-           GuidedCheckpointing.resumesInGuidedForm(sessionType: session.sessionType, stepIndex: session.guidedStepIndex) {
-            guidedSession = GuidedSessionRequest(draftId: session.id, targetDate: session.date)
-        } else {
-            editSessionId = session.id
-        }
-    }
-
-    private var duplicatePairs: [SessionDuplicate.Pair] {
-        SessionDuplicate.pairs(in: sessions.map(\.snapshot), calendar: calendar)
-    }
-
-    private func mergeExactDuplicates() {
-        let pairs = duplicatePairs
-        guard !pairs.isEmpty else { return }
-        for pair in pairs {
-            guard let row = sessions.first(where: { $0.id == pair.removeID }) else { continue }
-            NotificationScheduler.cancelSessionNotifications(sessionId: row.id)
-            modelContext.delete(row)
-        }
-        try? modelContext.save()
-        Haptics.warning()
-    }
-
-    private var workoutsList: some View {
-        List {
-            if !duplicatePairs.isEmpty {
-                Section {
-                    Button {
-                        showMergeDuplicates = true
-                    } label: {
-                        Label(
-                            "Remove \(duplicatePairs.count) exact duplicate\(duplicatePairs.count == 1 ? "" : "s")",
-                            systemImage: "doc.on.doc"
-                        )
-                    }
-                    .accessibilityIdentifier("history-merge-duplicates")
-                } footer: {
-                    Text("R3hab found matching sessions on the same day. This keeps one of each pair.")
-                }
-            }
-            ForEach(sessionRows, id: \.id) { session in
-                Button {
-                    open(session)
-                } label: {
-                    sessionRow(session)
-                }
-                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                    Button(role: .destructive) {
-                        deleteSessionId = session.id
-                    } label: {
-                        Label("Delete", systemImage: "trash")
-                    }
-                }
-            }
-        }
-        .listStyle(.insetGrouped)
-        .scrollContentBackground(.hidden)
-        .overlay {
-            if sessions.isEmpty {
-                emptyState(title: "No sessions yet", description: "Recorded sessions show here. Select + to add a past session.")
-            }
-        }
-    }
-
-    private func emptyState(title: String, description: String) -> some View {
-        ContentUnavailableView(
-            title,
-            systemImage: "calendar",
-            description: Text(description)
-        )
-    }
-
-    private struct DayLogEntry: Identifiable {
-        var dayKey: String
-        var date: Date
-        var checkIn: DailyCheckIn?
-        var sessions: [TrainingSession]
-        var id: String { dayKey }
-
-        var hasPendingWorkout: Bool {
-            sessions.contains { $0.isComplete && $0.response24h == .pending }
-        }
-    }
-
-    private var dayEntries: [DayLogEntry] {
-        var checkByKey: [String: DailyCheckIn] = [:]
-        for checkIn in checkIns {
-            checkByKey[checkIn.dayKey] = checkIn
-        }
-        var sessionsByKey: [String: [TrainingSession]] = [:]
-        for session in sessions {
-            let key = DailyCheckIn.dayKey(for: session.date, calendar: calendar)
-            sessionsByKey[key, default: []].append(session)
-        }
-        let keys = Set(checkByKey.keys).union(sessionsByKey.keys)
-        return keys.compactMap { key -> DayLogEntry? in
-            let checkIn = checkByKey[key]
-            let daySessions = (sessionsByKey[key] ?? []).sorted { $0.createdAt < $1.createdAt }
-            let date = checkIn?.date ?? daySessions.first.map { calendar.startOfDay(for: $0.date) }
-            guard let date else { return nil }
-            return DayLogEntry(dayKey: key, date: date, checkIn: checkIn, sessions: daySessions)
-        }
-        .sorted { $0.date > $1.date }
-    }
-
-    private var sessionRows: [TrainingSession] {
-        sessions.sorted { a, b in
-            if a.date != b.date { return a.date > b.date }
-            return a.createdAt > b.createdAt
-        }
-    }
-
-    private func daySummaryRow(_ day: DayLogEntry) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(day.date.formatted(date: .abbreviated, time: .omitted))
-                    .font(.headline)
-                Spacer()
-                if day.hasPendingWorkout {
-                    Text("Response pending")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.orange)
-                }
-            }
-            metricRow("Morning pain", day.checkIn?.restingPainAM.map(String.init) ?? "—")
-            metricRow("Evening pain", day.checkIn?.dailyPainPM.map(String.init) ?? "—")
-            metricRow("Steps", day.checkIn?.steps.map { $0.formatted() } ?? "—")
-            workoutMetric(day.sessions)
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(dayAccessibility(day))
-    }
-
-    private func sessionRow(_ s: TrainingSession) -> some View {
-        let setList = SessionSummary.historyResistanceList(s.resistanceSets())
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Text("Session")
-                    .font(.caption2.weight(.semibold))
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
+            Section {
+                Text(SessionLogBuilder.formulaNote)
+                    .font(.footnote)
                     .foregroundStyle(AppTheme.quiet)
-                    .background(AppTheme.quietFill, in: Capsule())
-                    .accessibilityHidden(true)
-                sessionTypeTag(s.sessionType)
-                if s.isDraft {
-                    Text("In progress")
-                        .font(.caption2.weight(.semibold))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .foregroundStyle(AppTheme.gold)
-                        .background(AppTheme.gold.opacity(0.18), in: Capsule())
-                }
-                Spacer()
-                if !s.isDraft {
-                    Text(s.response24h.title)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(s.response24h == .pending ? .orange : .secondary)
-                }
-            }
-            Text(s.displayTitle)
-                .font(.headline)
-                .lineLimit(1)
-            if let setList {
-                HistoryResistanceListView(list: setList)
-            }
-            metricRow("Date", s.date.formatted(date: .abbreviated, time: .omitted))
-            metricRow("Pain during", PainScore.display(s.painDuring))
-            metricRow("Pain after", s.displayPainAfter)
-        }
-        .padding(.vertical, 4)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(sessionAccessibility(s, setList: setList))
-    }
-
-    private func sessionAccessibility(_ s: TrainingSession, setList: HistoryResistanceList?) -> String {
-        var parts = [
-            "Session, \(s.displayTitle)",
-            s.date.formatted(date: .abbreviated, time: .omitted),
-            "Pain during \(PainScore.display(s.painDuring)), after \(s.displayPainAfter)"
-        ]
-        if s.isDraft {
-            parts.append("In progress")
-        } else {
-            parts.append(s.response24h.title)
-        }
-        if let setList, !setList.spokenSummary.isEmpty {
-            parts.append(setList.spokenSummary)
-        }
-        return parts.joined(separator: ". ") + "."
-    }
-
-    private func workoutMetric(_ daySessions: [TrainingSession]) -> some View {
-        let finalized = daySessions.filter { !$0.isDraft }
-        let drafts = daySessions.filter(\.isDraft)
-        return VStack(alignment: .leading, spacing: 2) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Session")
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text(workoutMetricValue(finalized: finalized, drafts: drafts))
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(finalized.isEmpty ? Color.secondary : Color.primary)
-            }
-            if !daySessions.isEmpty {
-                Text(daySessions.map(\.displayTitle).joined(separator: " · "))
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .listRowBackground(Color.clear)
             }
         }
-        .font(.subheadline)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 
-    private func workoutMetricValue(finalized: [TrainingSession], drafts: [TrainingSession]) -> String {
-        if finalized.isEmpty {
-            return drafts.isEmpty ? "None" : "In progress"
-        }
-        if finalized.count == 1 {
-            return drafts.isEmpty ? "1 session" : "1 session, \(drafts.count) in progress"
-        }
-        return drafts.isEmpty ? "\(finalized.count) sessions" : "\(finalized.count) sessions, \(drafts.count) in progress"
-    }
-
-    private func metricRow(_ title: String, _ value: String) -> some View {
+    private func dayHeader(_ day: SessionLogDay) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(title)
-                .foregroundStyle(.secondary)
+            Text(dayTitle(day.day))
+                .font(.headline)
+                .foregroundStyle(AppTheme.ivory)
             Spacer()
-            Text(value)
-                .font(.subheadline.monospacedDigit().weight(.semibold))
+            if let summary = TrainingLoad.summary(poundReps: day.poundReps, poundSeconds: day.poundSeconds) {
+                Text(summary)
+                    .font(.subheadline.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(AppTheme.gold)
+            }
         }
-        .font(.subheadline)
+        .textCase(nil)
+        .padding(.top, 8)
     }
 
-    private func sessionTypeTag(_ type: SessionType) -> some View {
-        Text(type.shortTag)
-            .font(.caption2.weight(.semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .foregroundStyle(sessionTypeTagForeground(type))
-            .background(sessionTypeTagBackground(type), in: Capsule())
-            .accessibilityLabel("Session type: \(type.title)")
+    private func entryRow(_ entry: SessionLogEntry) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(entry.title)
+                .font(.body.weight(.semibold))
+                .foregroundStyle(AppTheme.ivory)
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                if let dose = entry.dose, !dose.isEmpty {
+                    Text(dose)
+                        .foregroundStyle(AppTheme.quiet)
+                }
+                if !entry.pain.isEmpty {
+                    Text(entry.pain)
+                        .foregroundStyle(AppTheme.quiet)
+                }
+                Spacer(minLength: 0)
+                if let load = TrainingLoad.summary(poundReps: entry.poundReps, poundSeconds: entry.poundSeconds) {
+                    Text(load)
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
+                        .foregroundStyle(AppTheme.ivory)
+                }
+            }
+            .font(.subheadline)
+        }
+        .padding(.vertical, 6)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("session-log-entry")
     }
 
-    private func sessionTypeTagBackground(_ type: SessionType) -> Color {
-        switch type {
-        case .isometrics: return Color.blue.opacity(0.22)
-        case .hsrStrength: return Color.orange.opacity(0.22)
-        case .energyStorage: return Color.purple.opacity(0.22)
-        case .tennisSport: return Color.green.opacity(0.22)
-        case .other: return Color.secondary.opacity(0.18)
-        }
+    private func dayTitle(_ day: Date) -> String {
+        let calendar = Calendar.current
+        if calendar.isDateInToday(day) { return "Today" }
+        if calendar.isDateInYesterday(day) { return "Yesterday" }
+        return day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 
-    private func sessionTypeTagForeground(_ type: SessionType) -> Color {
-        switch type {
-        case .isometrics: return .blue
-        case .hsrStrength: return .orange
-        case .energyStorage: return .purple
-        case .tennisSport: return .green
-        case .other: return .secondary
-        }
-    }
-
-    private func dayAccessibility(_ day: DayLogEntry) -> String {
-        let morning = day.checkIn?.restingPainAM.map(String.init) ?? "not recorded"
-        let evening = day.checkIn?.dailyPainPM.map(String.init) ?? "not recorded"
-        let steps = day.checkIn?.steps.map { $0.formatted() } ?? "not recorded"
-        let workout: String
-        if day.sessions.isEmpty {
-            workout = "no session"
-        } else {
-            workout = "session \(day.sessions.map(\.displayTitle).joined(separator: ", "))"
-        }
-        return "\(day.date.formatted(date: .abbreviated, time: .omitted)). Morning pain \(morning). Evening pain \(evening). Steps \(steps). \(workout)."
+    private func delete(_ entry: SessionLogEntry) {
+        guard let row = sessions.first(where: { $0.id == entry.id }) else { return }
+        modelContext.delete(row)
+        try? modelContext.save()
+        pendingDelete = nil
     }
 }
 
-/// Layout A: numbered work sets under a quiet count header.
-struct HistoryResistanceListView: View {
-    let list: HistoryResistanceList
+/// Vertical bars for the last few days that have a load. Oldest on the left.
+struct LoadTrendChart: View {
+    var title: String
+    var unit: String
+    var points: [LoadTrendPoint]
+
+    private var peak: Double {
+        max(points.map(\.value).max() ?? 1, 1)
+    }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            if let header = list.header {
-                Text(header)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .accessibilityHidden(true)
-            }
-            ForEach(list.rows) { row in
-                if row.isOverflow {
-                    Text("+\(list.hiddenWorkCount) more")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .accessibilityLabel(row.spoken)
-                } else {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(row.kind.label)
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(row.isWarmup ? Color.secondary : Color.primary)
-                            .frame(width: 72, alignment: .leading)
-                        Text(row.dose)
-                            .font(.caption.monospacedDigit())
-                            .frame(minWidth: 44, alignment: .leading)
-                        Text(row.load)
-                            .font(.caption.monospacedDigit())
-                        Spacer(minLength: 6)
-                        if let laterality = row.laterality {
-                            Text(laterality)
-                                .font(.caption.monospacedDigit())
-                                .foregroundStyle(.secondary)
-                        }
+        VStack(alignment: .leading, spacing: 12) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+            HStack(alignment: .bottom, spacing: 8) {
+                ForEach(points) { point in
+                    VStack(spacing: 6) {
+                        Text(TrainingLoad.formatted(point.value))
+                            .font(.caption2.monospacedDigit())
+                            .foregroundStyle(AppTheme.ivory)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.6)
+                        RoundedRectangle(cornerRadius: 4, style: .continuous)
+                            .fill(AppTheme.gold)
+                            .frame(height: max(8, 72 * point.value / peak))
+                        Text(point.day.formatted(.dateTime.month(.abbreviated).day()))
+                            .font(.caption2)
+                            .foregroundStyle(AppTheme.quiet)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                     }
-                    .foregroundStyle(row.isWarmup ? Color.secondary : Color.primary)
+                    .frame(maxWidth: .infinity)
                     .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(row.spoken)
+                    .accessibilityLabel("\(point.day.formatted(date: .abbreviated, time: .omitted)), \(TrainingLoad.formatted(point.value)) \(unit)")
                 }
             }
+            .frame(height: 120, alignment: .bottom)
         }
-        .accessibilityElement(children: .combine)
+        .padding(14)
+        .posterCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier(title == "Working sets" ? "trend-working-sets" : "trend-isometric-holds")
     }
 }
 
 #Preview {
-    HistoryView()
-        .environment(AppRouter())
+    SessionLogView()
         .modelContainer(for: [DailyCheckIn.self, TrainingSession.self, AppSettings.self], inMemory: true)
         .preferredColorScheme(.dark)
 }

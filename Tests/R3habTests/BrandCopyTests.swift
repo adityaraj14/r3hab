@@ -153,8 +153,6 @@ final class BrandCopyTests: XCTestCase {
             BrandCopy.setupPhaseChoices.map(\.phase),
             [.calmTendon, .heavySlow, .heavier, .springiness]
         )
-        XCTAssertEqual(OnboardingCompletion.initialPhase, .calmTendon)
-        XCTAssertEqual(OnboardingCompletion.defaultPhase, .calmTendon)
     }
 
     func testDisclaimerTitleAndNotificationsCopy() {
