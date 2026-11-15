@@ -6,5 +6,7 @@
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
 	<string>R3hab reads today’s step count from Apple Health to show it on the home screen. R3hab does not write health data.</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>R3hab does not write health data to Apple Health. It only reads today’s step count to show on the home screen.</string>
 </dict>
 </plist>
