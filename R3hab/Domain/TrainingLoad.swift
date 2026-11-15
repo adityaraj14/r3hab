@@ -124,6 +124,53 @@ enum TrainingLoad {
         return [pair.leftLoad, pair.rightLoad].compactMap { $0 }
     }
 
+    /// One line per hold or working set, in stored order.
+    ///
+    /// An older isometric row keeps several identical holds on one
+    /// `ResistanceSet`, with `reps` as the hold count. Those expand into one
+    /// line per hold. The stored row is not rewritten. Warm-ups are left out.
+    /// A matched left/right pair is one line. Different loads name both legs.
+    static func lines(for sets: [ResistanceSet]) -> [SetLoadLine] {
+        let pairs = SessionSummary.groupWorkSets(sets.filter { !$0.isWarmup })
+        var lines: [SetLoadLine] = []
+        for pair in pairs {
+            let pairLoads = loads(in: pair).filter { $0 > 0 }
+            guard !pairLoads.isEmpty else { continue }
+            let hold = pair.holdSeconds ?? 0
+            let reps = pair.reps ?? 0
+            if hold > 0 {
+                let count = reps > 0 ? reps : 1
+                let text = doseText(effort: "\(hold)s", loads: pairLoads, pair: pair)
+                let each = pairLoads.reduce(0.0) { $0 + (Double(hold) * $1) }
+                for _ in 0..<count {
+                    lines.append(
+                        SetLoadLine(index: lines.count, text: text, poundReps: 0, poundSeconds: each)
+                    )
+                }
+            } else if reps > 0 {
+                let text = doseText(effort: "\(reps) reps", loads: pairLoads, pair: pair)
+                let total = pairLoads.reduce(0.0) { $0 + (Double(reps) * $1) }
+                lines.append(
+                    SetLoadLine(index: lines.count, text: text, poundReps: total, poundSeconds: 0)
+                )
+            }
+        }
+        return lines
+    }
+
+    private static func doseText(effort: String, loads: [Double], pair: WorkSetPair) -> String {
+        if loads.count >= 2, !pair.loadsMatch {
+            let left = LoadCopy.formatted(loads[0])
+            let right = LoadCopy.formatted(loads[1])
+            return "\(effort) @ \(left) lb left, \(right) lb right"
+        }
+        let weight = LoadCopy.formatted(loads[0])
+        if pair.right == nil, let side = pair.left.side {
+            return "\(effort) @ \(weight) lb \(side.title.lowercased())"
+        }
+        return "\(effort) @ \(weight) lb"
+    }
+
     static func formatted(_ value: Double) -> String {
         let number = NSNumber(value: value)
         let formatter = NumberFormatter()
@@ -150,23 +197,43 @@ enum TrainingLoad {
     }
 }
 
+/// One set on the guided form. Weight is its own. Holds use seconds; working sets use reps.
+struct LoggedSetDraft: Equatable, Sendable, Identifiable {
+    var id: UUID
+    var loadLbs: Double
+    var reps: Int
+    var holdSeconds: Int
+
+    init(id: UUID = UUID(), loadLbs: Double, reps: Int, holdSeconds: Int) {
+        self.id = id
+        self.loadLbs = loadLbs
+        self.reps = reps
+        self.holdSeconds = holdSeconds
+    }
+}
+
+/// One line in the log for a single hold or working set.
+struct SetLoadLine: Equatable, Sendable, Identifiable {
+    var index: Int
+    var text: String
+    var poundReps: Double
+    var poundSeconds: Double
+
+    var id: Int { index }
+}
+
 /// One exercise on the guided form, before it is saved.
 struct ExerciseEntryDraft: Equatable, Sendable, Identifiable {
     var kind: SessionExerciseKind
     var included: Bool
-    var loadLbs: Double
-    var sets: Int
-    var reps: Int
-    var holdSeconds: Int
+    var sets: [LoggedSetDraft]
     var pain: Int?
 
     var id: SessionExerciseKind { kind }
 }
 
 enum ExerciseEntry {
-    static let defaultIsoHolds = 5
     static let defaultHoldSeconds = 45
-    static let defaultSets = 4
     static let defaultReps = 8
     static let loadStep = 5.0
     static let maxLoad = 600.0
@@ -179,49 +246,89 @@ enum ExerciseEntry {
             .filter { $0.isFinalized && TrainingLoad.kind(sessionType: $0.sessionType, whatIDid: $0.whatIDid) == kind }
             .max { $0.date == $1.date ? $0.createdAt < $1.createdAt : $0.date < $1.date }
         let pairs = SessionSummary.groupWorkSets((previous?.resistanceSets ?? []).filter { !$0.isWarmup })
-        let first = pairs.first
-        let load = first?.leftLoad ?? first?.rightLoad ?? 0
-        if kind.usesHold {
-            let holds: Int
-            if pairs.count <= 1, let reps = first?.reps, reps > 0 {
-                holds = reps
-            } else if !pairs.isEmpty {
-                holds = pairs.count
-            } else {
-                holds = defaultIsoHolds
-            }
-            return ExerciseEntryDraft(
-                kind: kind,
-                included: true,
-                loadLbs: max(load, 0),
-                sets: min(max(holds, 1), maxCount),
-                reps: defaultReps,
-                holdSeconds: min(max(first?.holdSeconds ?? defaultHoldSeconds, 1), maxHoldSeconds),
-                pain: nil
-            )
-        }
-        let setCount = pairs.isEmpty ? defaultSets : pairs.count
         return ExerciseEntryDraft(
             kind: kind,
             included: true,
-            loadLbs: max(load, 0),
-            sets: min(max(setCount, 1), maxCount),
-            reps: min(max(first?.reps ?? defaultReps, 1), maxReps),
-            holdSeconds: defaultHoldSeconds,
+            sets: loggedSets(kind: kind, from: pairs),
             pain: nil
         )
+    }
+
+    /// Turns stored work into editable sets.
+    ///
+    /// A single isometric row with `reps` greater than 1 is several identical
+    /// holds (the aggregate logger, including the Nov 12 and 13 rows). Each
+    /// hold becomes its own set. Rows that are already one hold or one working
+    /// set stay one set. Matched left/right pairs stay one set.
+    static func loggedSets(kind: SessionExerciseKind, from pairs: [WorkSetPair]) -> [LoggedSetDraft] {
+        var sets: [LoggedSetDraft] = []
+        for pair in pairs {
+            if sets.count >= maxCount { break }
+            let load = max(pair.leftLoad ?? pair.rightLoad ?? 0, 0)
+            if kind.usesHold {
+                guard let seconds = pair.holdSeconds, seconds > 0 else { continue }
+                let clamped = min(max(seconds, 1), maxHoldSeconds)
+                let count = min(max(pair.reps ?? 1, 1), maxCount - sets.count)
+                for _ in 0..<count {
+                    sets.append(
+                        LoggedSetDraft(loadLbs: load, reps: defaultReps, holdSeconds: clamped)
+                    )
+                }
+            } else {
+                sets.append(
+                    LoggedSetDraft(
+                        loadLbs: load,
+                        reps: min(max(pair.reps ?? defaultReps, 1), maxReps),
+                        holdSeconds: defaultHoldSeconds
+                    )
+                )
+            }
+        }
+        if sets.isEmpty {
+            sets = [blankSet(kind: kind)]
+        }
+        return sets
+    }
+
+    static func blankSet(kind: SessionExerciseKind, weight: Double = 0) -> LoggedSetDraft {
+        LoggedSetDraft(
+            loadLbs: min(max(weight, 0), maxLoad),
+            reps: defaultReps,
+            holdSeconds: defaultHoldSeconds
+        )
+    }
+
+    /// A new set at the last weight, with the usual reps or seconds.
+    static func addSet(to draft: inout ExerciseEntryDraft) {
+        guard draft.sets.count < maxCount else { return }
+        draft.sets.append(blankSet(kind: draft.kind, weight: draft.sets.last?.loadLbs ?? 0))
+    }
+
+    /// Copies the last set so a repeated hold or working set does not need retyping.
+    static func duplicateLastSet(in draft: inout ExerciseEntryDraft) {
+        guard draft.sets.count < maxCount, let last = draft.sets.last else { return }
+        draft.sets.append(
+            LoggedSetDraft(loadLbs: last.loadLbs, reps: last.reps, holdSeconds: last.holdSeconds)
+        )
+    }
+
+    static func removeSet(_ id: UUID, from draft: inout ExerciseEntryDraft) {
+        draft.sets.removeAll { $0.id == id }
     }
 
     /// Nil when this exercise can be saved, or when it was skipped.
     static func issue(for draft: ExerciseEntryDraft) -> String? {
         guard draft.included else { return nil }
-        if draft.loadLbs <= 0 { return "Enter a weight above 0, or skip this exercise." }
+        if draft.sets.isEmpty { return "Add a set, or skip this exercise." }
+        if draft.sets.contains(where: { $0.loadLbs <= 0 }) {
+            return "Enter a weight above 0 on every set, or skip this exercise."
+        }
         if draft.kind.usesHold {
-            if draft.sets <= 0 { return "Enter how many holds you did." }
-            if draft.holdSeconds <= 0 { return "Enter the hold time in seconds." }
-        } else {
-            if draft.sets <= 0 { return "Enter how many sets you did." }
-            if draft.reps <= 0 { return "Enter the reps in each set." }
+            if draft.sets.contains(where: { $0.holdSeconds <= 0 }) {
+                return "Enter the seconds for every hold."
+            }
+        } else if draft.sets.contains(where: { $0.reps <= 0 }) {
+            return "Enter the reps for every set."
         }
         guard let pain = draft.pain, PainScore.isLogged(pain) else {
             return "Record pain during this exercise, from 0 to 10."
@@ -230,23 +337,17 @@ enum ExerciseEntry {
     }
 
     static func resistanceSets(for draft: ExerciseEntryDraft) -> [ResistanceSet] {
-        if draft.kind.usesHold {
-            return [
-                ResistanceSet(
-                    reps: draft.sets,
-                    loadLbs: draft.loadLbs,
-                    holdSeconds: draft.holdSeconds,
+        draft.sets.map { set in
+            if draft.kind.usesHold {
+                return ResistanceSet(
+                    reps: 1,
+                    loadLbs: set.loadLbs,
+                    holdSeconds: set.holdSeconds,
                     isWarmup: false
                 )
-            ]
+            }
+            return ResistanceSet(reps: set.reps, loadLbs: set.loadLbs, holdSeconds: nil, isWarmup: false)
         }
-        return (0..<max(draft.sets, 0)).map { _ in
-            ResistanceSet(reps: draft.reps, loadLbs: draft.loadLbs, holdSeconds: nil, isWarmup: false)
-        }
-    }
-
-    static func doseLine(for draft: ExerciseEntryDraft) -> String? {
-        SessionSummary.compactResistance(resistanceSets(for: draft))
     }
 }
 
@@ -286,6 +387,8 @@ struct SessionLogEntry: Equatable, Identifiable, Sendable {
     var title: String
     var kind: SessionExerciseKind
     var dose: String?
+    /// One line per hold or working set. Empty when the row has no load to split.
+    var setLines: [String] = []
     var pain: String
     var poundReps: Double
     var poundSeconds: Double
@@ -312,7 +415,7 @@ enum SessionLogBuilder {
     static let trendLimit = 8
 
     static let formulaNote = """
-    Working-set load is reps × weight, in lb. Isometric load is holds × seconds × weight, in lb·s. Warm-ups are left out. A left and right row with the same weight counts once.
+    Working-set load adds reps × weight for each set, in lb. Isometric load adds seconds × weight for each hold, in lb·s. An older entry that stored several identical holds still counts each hold. Warm-ups are left out. A left and right row with the same weight counts once.
     """
 
     static func days(
@@ -336,12 +439,14 @@ enum SessionLogBuilder {
     static func entry(from session: TrainingSessionSnapshot) -> SessionLogEntry {
         let kind = TrainingLoad.kind(sessionType: session.sessionType, whatIDid: session.whatIDid)
         let amount = TrainingLoad.amount(for: session.resistanceSets)
+        let lines = TrainingLoad.lines(for: session.resistanceSets)
         return SessionLogEntry(
             id: session.id,
             createdAt: session.createdAt,
             title: TrainingLoad.title(kind: kind, whatIDid: session.whatIDid, sessionType: session.sessionType),
             kind: kind,
-            dose: SessionSummary.compactResistance(session.resistanceSets),
+            dose: lines.isEmpty ? SessionSummary.compactResistance(session.resistanceSets) : nil,
+            setLines: lines.map(\.text),
             pain: PainScore.isLogged(session.painDuring) ? "Pain \(session.painDuring)" : "",
             poundReps: amount.poundReps,
             poundSeconds: amount.poundSeconds

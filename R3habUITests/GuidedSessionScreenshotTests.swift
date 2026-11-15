@@ -18,7 +18,7 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 4), app.debugDescription)
         XCTAssertTrue(title.label.contains("Isometric leg extension"))
 
-        app.buttons["guided-load-plus"].tap()
+        app.buttons["guided-set-0-load-plus"].tap()
         app.buttons["guided-pain-2"].tap()
         app.buttons["guided-next"].tap()
 

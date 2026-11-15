@@ -23,11 +23,11 @@ Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
 ## Screens
 
 - **Home** — the daily quote, and **Log a session**
-- **Guided log** — isometric leg extension holds, leg extension heavy sets, and leg press. Skip any exercise you did not do
-- **Log** — past sessions, volume load, and a short trend
+- **Guided log** — isometric leg extension holds, leg extension heavy sets, and leg press. Each set has its own weight and reps or seconds. Skip any exercise you did not do
+- **Log** — past sessions, each set, the total load, and a short trend
 - **Guide** — isometrics, heavy slow resistance, energy storage, return to sport
 
-Working-set load is reps × weight (lb). Isometric load is holds × seconds × weight (lb·s). Warm-ups are left out. A stored left/right pair with the same weight counts once.
+Working-set load adds reps × weight for each set (lb). Isometric load adds seconds × weight for each hold (lb·s). An older row that stored several identical holds still counts each one. Warm-ups are left out. A stored left/right pair with the same weight counts once.
 
 ## Development
 
