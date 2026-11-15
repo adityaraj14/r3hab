@@ -14,12 +14,30 @@ struct GuidedSessionFlow: View {
     @State private var index = 0
     @State private var issue: String?
     @State private var saveError: String?
+    @State private var sessionDate: Date
+    @State private var saving = false
+    @State private var stepsText: String
+
+    /// Set when he opens a saved row from Log. The form then has one exercise and saves in place.
+    private let editing: TrainingSession?
+    private let editDraft: ExerciseEntryDraft?
+
+    init(editing: TrainingSession? = nil) {
+        self.editing = editing
+        let draft = editing.flatMap { SessionEdit.draft(from: $0.snapshot) }
+        self.editDraft = draft
+        _sessionDate = State(initialValue: editing?.date ?? Date())
+        _stepsText = State(initialValue: editing?.stepCount.map(String.init) ?? "")
+        _edits = State(initialValue: draft.map { [$0] })
+    }
+
+    private var isEditing: Bool { editDraft != nil }
 
     private var exercises: [ExerciseEntryDraft] {
         edits ?? GuidedSessionDraft.exercises(from: sessions.map(\.snapshot))
     }
 
-    private var stepCount: Int { SessionExerciseKind.loggable.count }
+    private var stepCount: Int { isEditing ? 1 : SessionExerciseKind.loggable.count }
     private var onReview: Bool { index >= stepCount }
 
     var body: some View {
@@ -36,7 +54,7 @@ struct GuidedSessionFlow: View {
                 bottomBar
             }
             .appCanvas()
-            .navigationTitle(onReview ? "Review" : "Log a session")
+            .navigationTitle(onReview ? "Review" : (isEditing ? "Edit session" : "Log a session"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
@@ -53,6 +71,9 @@ struct GuidedSessionFlow: View {
                 }
             }
         }
+        .onChange(of: sessionDate) { _, newDate in
+            refreshEditSteps(for: newDate)
+        }
         .accessibilityIdentifier("guided-session-screen")
         .preferredColorScheme(.dark)
     }
@@ -61,17 +82,19 @@ struct GuidedSessionFlow: View {
         let draft = exercises[index]
         return ScrollView {
             VStack(alignment: .leading, spacing: 22) {
-                Text("\(index + 1) of \(stepCount)")
-                    .font(.caption.weight(.bold))
-                    .tracking(1.1)
-                    .foregroundStyle(AppTheme.gold)
+                if !isEditing {
+                    Text("\(index + 1) of \(stepCount)")
+                        .font(.caption.weight(.bold))
+                        .tracking(1.1)
+                        .foregroundStyle(AppTheme.gold)
+                }
                 Text(draft.kind.title)
                     .font(.largeTitle.weight(.bold))
                     .foregroundStyle(AppTheme.ivory)
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("guided-exercise-title")
 
-                if let prior = PriorExerciseLookup.latest(kind: draft.kind, in: sessions.map(\.snapshot)) {
+                if !isEditing, let prior = PriorExerciseLookup.latest(kind: draft.kind, in: sessions.map(\.snapshot)) {
                     lastSession(prior)
                 }
 
@@ -108,7 +131,7 @@ struct GuidedSessionFlow: View {
         let logs = GuidedSessionDraft.logs(from: exercises)
         return ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("Save the exercises you did.")
+                Text(isEditing ? "Save the changes." : "Save the exercises you did.")
                     .font(.title2.weight(.semibold))
                     .foregroundStyle(AppTheme.ivory)
                 if logs.isEmpty {
@@ -116,6 +139,10 @@ struct GuidedSessionFlow: View {
                         .font(.body)
                         .foregroundStyle(AppTheme.quiet)
                 } else {
+                    dateRow
+                    if editing?.stepCount != nil {
+                        stepsRow
+                    }
                     ForEach(logs, id: \.kind) { log in
                         let lines = TrainingLoad.lines(for: log.sets)
                         VStack(alignment: .leading, spacing: 4) {
@@ -157,6 +184,43 @@ struct GuidedSessionFlow: View {
         }
     }
 
+    /// Today by default. Past days only, so he can log a session he missed.
+    private var dateRow: some View {
+        DatePicker(
+            selection: $sessionDate,
+            in: ...Date(),
+            displayedComponents: .date
+        ) {
+            Text("Date")
+                .font(.headline)
+                .foregroundStyle(AppTheme.ivory)
+        }
+        .datePickerStyle(.compact)
+        .tint(AppTheme.gold)
+        .padding(16)
+        .posterCard()
+        .accessibilityIdentifier("guided-date")
+    }
+
+    /// Steps saved with this row. Only shown when the row has steps.
+    private var stepsRow: some View {
+        HStack {
+            Text("Steps")
+                .font(.headline)
+                .foregroundStyle(AppTheme.ivory)
+            Spacer()
+            TextField("0", text: $stepsText)
+                .keyboardType(.numberPad)
+                .multilineTextAlignment(.trailing)
+                .font(.body.monospacedDigit())
+                .foregroundStyle(AppTheme.ivory)
+                .frame(maxWidth: 140)
+                .accessibilityIdentifier("guided-steps")
+        }
+        .padding(16)
+        .posterCard()
+    }
+
     private var bottomBar: some View {
         VStack(alignment: .leading, spacing: 10) {
             if let issue, !onReview {
@@ -168,16 +232,25 @@ struct GuidedSessionFlow: View {
             }
             if onReview {
                 let ready = !GuidedSessionDraft.logs(from: exercises).isEmpty
-                Button(ready ? "Save session" : "Close") {
-                    if ready { save() } else { dismiss() }
+                Button(ready ? (isEditing ? "Save changes" : "Save session") : "Close") {
+                    if !ready {
+                        dismiss()
+                    } else if isEditing {
+                        saveEdit()
+                    } else {
+                        save()
+                    }
                 }
                 .buttonStyle(.primaryAction)
+                .disabled(saving)
                 .accessibilityIdentifier("guided-save")
             } else {
                 HStack(spacing: 12) {
-                    Button("Skip") { skip() }
-                        .buttonStyle(.secondaryAction)
-                        .accessibilityIdentifier("guided-skip")
+                    if !isEditing {
+                        Button("Skip") { skip() }
+                            .buttonStyle(.secondaryAction)
+                            .accessibilityIdentifier("guided-skip")
+                    }
                     Button("Next") { advance() }
                         .buttonStyle(.primaryAction)
                         .accessibilityIdentifier("guided-next")
@@ -432,11 +505,81 @@ struct GuidedSessionFlow: View {
             dismiss()
             return
         }
+        guard !saving else { return }
+        saving = true
+        Task {
+            // Steps for the chosen day. No access, no data, or a slow read saves without steps.
+            let stamp = await GuidedSessionDraft.saveStamp(chosen: sessionDate, now: Date()) { day in
+                try await HealthKitSteps.steps(on: day)
+            }
+            store(logs, stamp: stamp)
+            saving = false
+        }
+    }
+
+    /// On edit, a new date shows that day's Health total in the Steps field, so the
+    /// screen shows what Save will store. No total leaves the field empty.
+    private func refreshEditSteps(for newDate: Date) {
+        guard let editing, editing.stepCount != nil else { return }
+        let day = GuidedSessionDraft.sessionDay(chosen: newDate, now: Date())
+        if Calendar.current.isDate(day, inSameDayAs: editing.date) {
+            stepsText = editing.stepCount.map(String.init) ?? ""
+            return
+        }
+        Task {
+            let total = await SessionSteps.total(on: day) { day in
+                try await HealthKitSteps.steps(on: day)
+            }
+            stepsText = total.map(String.init) ?? ""
+        }
+    }
+
+    /// Writes the change to the same row. A new date moves it to that day.
+    private func saveEdit() {
+        guard let editing, let draft = exercises.first, ExerciseEntry.issue(for: draft) == nil else { return }
+        guard !saving else { return }
+        saving = true
+        let original = editing.snapshot
+        let day = GuidedSessionDraft.sessionDay(chosen: sessionDate, now: Date())
+        let dayChanged = !Calendar.current.isDate(day, inSameDayAs: original.date)
+        let typed = Int(stepsText.filter(\.isNumber))
+        let typedChanged = stepsText != (original.stepCount.map(String.init) ?? "")
+        Task {
+            var fetched: Int?
+            if dayChanged && !typedChanged {
+                fetched = await SessionSteps.total(on: day) { day in
+                    try await HealthKitSteps.steps(on: day)
+                }
+            }
+            let steps = SessionEdit.steps(
+                original: original.stepCount,
+                typed: typed,
+                typedChanged: typedChanged,
+                dayChanged: dayChanged,
+                fetched: fetched
+            )
+            let updated = SessionEdit.applied(original, draft: draft, day: day, steps: steps)
+            editing.date = updated.date
+            editing.setResistanceSets(updated.resistanceSets)
+            editing.painDuring = updated.painDuring
+            editing.stepCount = updated.stepCount
+            editing.updatedAt = Date()
+            do {
+                try modelContext.save()
+                Haptics.success()
+                dismiss()
+            } catch {
+                saveError = "The changes could not be saved. Try again."
+            }
+            saving = false
+        }
+    }
+
+    private func store(_ logs: [NewSessionLog], stamp: SessionSaveStamp) {
         let phase = settingsList.first?.currentPhase ?? .heavySlow
-        let day = Calendar.current.startOfDay(for: Date())
         for log in logs {
             let session = TrainingSession(
-                date: day,
+                date: stamp.day,
                 phase: phase,
                 sessionType: log.sessionType,
                 whatIDid: log.whatIDid,
@@ -446,6 +589,7 @@ struct GuidedSessionFlow: View {
             )
             // A finished log is not a 24-hour task. Leave older rows untouched.
             session.response24h = .notApplicable
+            session.stepCount = stamp.steps
             modelContext.insert(session)
         }
         do {

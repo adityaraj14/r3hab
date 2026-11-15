@@ -393,6 +393,54 @@ enum ExerciseEntry {
     }
 }
 
+/// Opens a saved row on the guided form and writes the changes back to the same row.
+enum SessionEdit {
+    /// Nil for rows that are not one of the three logged exercises.
+    static func draft(from session: TrainingSessionSnapshot) -> ExerciseEntryDraft? {
+        let kind = TrainingLoad.kind(sessionType: session.sessionType, whatIDid: session.whatIDid)
+        guard SessionExerciseKind.loggable.contains(kind) else { return nil }
+        let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
+        return ExerciseEntryDraft(
+            kind: kind,
+            included: true,
+            sets: ExerciseEntry.loggedSets(kind: kind, from: pairs),
+            pain: PainScore.isLogged(session.painDuring) ? session.painDuring : nil
+        )
+    }
+
+    static func isEditable(_ kind: SessionExerciseKind) -> Bool {
+        SessionExerciseKind.loggable.contains(kind)
+    }
+
+    /// Same id and created time. New day, sets, pain, and steps. Old warm-ups stay.
+    static func applied(
+        _ session: TrainingSessionSnapshot,
+        draft: ExerciseEntryDraft,
+        day: Date,
+        steps: Int?
+    ) -> TrainingSessionSnapshot {
+        var updated = session
+        updated.date = day
+        updated.resistanceSets = session.resistanceSets.filter(\.isWarmup) + ExerciseEntry.resistanceSets(for: draft)
+        if let pain = draft.pain { updated.painDuring = pain }
+        updated.stepCount = steps
+        return updated
+    }
+
+    /// Swaps the edited row into the list by id. Never adds a row.
+    static func replacing(_ sessions: [TrainingSessionSnapshot], with updated: TrainingSessionSnapshot) -> [TrainingSessionSnapshot] {
+        sessions.map { $0.id == updated.id ? updated : $0 }
+    }
+
+    /// Typed steps win. A new day takes the Health total for that day (or none).
+    /// Otherwise the stored steps stay.
+    static func steps(original: Int?, typed: Int?, typedChanged: Bool, dayChanged: Bool, fetched: Int?) -> Int? {
+        if typedChanged { return typed.map { max($0, 0) } }
+        if dayChanged { return fetched }
+        return original
+    }
+}
+
 struct NewSessionLog: Equatable, Sendable {
     var kind: SessionExerciseKind
     var sessionType: SessionType
@@ -445,6 +493,8 @@ enum PriorExerciseLookup {
 enum TodayStepsState: Equatable, Sendable {
     case notAsked
     case count(Int)
+    /// Health gave no total. This is also what a denied read looks like.
+    case noData
     case unavailable
 }
 
@@ -455,8 +505,28 @@ enum TodayStepsCopy {
             return "Steps from Apple Health"
         case .count(let steps):
             return "\(formatted(max(steps, 0))) steps today"
+        case .noData:
+            return "No step data today"
         case .unavailable:
             return "Steps unavailable"
+        }
+    }
+
+    static let title = "Steps today"
+
+    /// Large number on Home. A dash when there is no count.
+    static func value(_ state: TodayStepsState) -> String {
+        if case .count(let steps) = state { return formatted(steps) }
+        return "—"
+    }
+
+    /// Small line under the number.
+    static func detail(_ state: TodayStepsState) -> String {
+        switch state {
+        case .notAsked: return "Allow Apple Health to show steps"
+        case .count: return "From Apple Health"
+        case .noData: return "No step data today"
+        case .unavailable: return "Steps unavailable"
         }
     }
 
@@ -469,6 +539,26 @@ enum TodayStepsCopy {
 }
 
 enum GuidedSessionDraft: Equatable, Sendable {
+    /// The day a guided log is saved under. A future pick becomes today.
+    /// Rows keep the start of the day, the same as every other saved session.
+    static func sessionDay(chosen: Date, now: Date, calendar: Calendar = .current) -> Date {
+        calendar.startOfDay(for: min(chosen, now))
+    }
+
+    /// The day and step total a guided save stores. Steps come from the chosen
+    /// day, not today. A failed or slow read gives nil, and the save goes on.
+    static func saveStamp(
+        chosen: Date,
+        now: Date,
+        calendar: Calendar = .current,
+        timeout: TimeInterval = SessionSteps.defaultTimeout,
+        fetch: @escaping @Sendable (Date) async throws -> Int
+    ) async -> SessionSaveStamp {
+        let day = sessionDay(chosen: chosen, now: now, calendar: calendar)
+        let steps = await SessionSteps.total(on: day, timeout: timeout, fetch: fetch)
+        return SessionSaveStamp(day: day, steps: steps)
+    }
+
     static func exercises(from sessions: [TrainingSessionSnapshot]) -> [ExerciseEntryDraft] {
         SessionExerciseKind.loggable.map { ExerciseEntry.make(kind: $0, from: sessions) }
     }
@@ -490,6 +580,53 @@ enum GuidedSessionDraft: Equatable, Sendable {
     }
 }
 
+struct SessionSaveStamp: Equatable, Sendable {
+    var day: Date
+    var steps: Int?
+}
+
+/// Reads the step total for a session day without blocking the save.
+enum SessionSteps {
+    static let defaultTimeout: TimeInterval = 3
+
+    static func total(
+        on day: Date,
+        timeout: TimeInterval = defaultTimeout,
+        fetch: @escaping @Sendable (Date) async throws -> Int
+    ) async -> Int? {
+        let gate = FirstResult()
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Int?, Never>) in
+            Task {
+                let value = try? await fetch(day)
+                if gate.claim() { continuation.resume(returning: value.map { max($0, 0) }) }
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0) * 1_000_000_000))
+                if gate.claim() { continuation.resume(returning: nil) }
+            }
+        }
+    }
+
+    /// Log line for a saved day. Nil when no total was saved.
+    static func label(_ steps: Int?) -> String? {
+        guard let steps else { return nil }
+        return "\(TodayStepsCopy.formatted(steps)) steps"
+    }
+
+    private final class FirstResult: @unchecked Sendable {
+        private let lock = NSLock()
+        private var claimed = false
+
+        func claim() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            if claimed { return false }
+            claimed = true
+            return true
+        }
+    }
+}
+
 struct SessionLogEntry: Equatable, Identifiable, Sendable {
     var id: UUID
     var createdAt: Date
@@ -501,6 +638,8 @@ struct SessionLogEntry: Equatable, Identifiable, Sendable {
     var pain: String
     var poundReps: Double
     var poundSeconds: Double
+    /// Apple Health steps saved with this row for its day.
+    var stepCount: Int? = nil
 }
 
 struct SessionLogDay: Equatable, Identifiable, Sendable {
@@ -511,6 +650,8 @@ struct SessionLogDay: Equatable, Identifiable, Sendable {
 
     var poundReps: Double { entries.reduce(0) { $0 + $1.poundReps } }
     var poundSeconds: Double { entries.reduce(0) { $0 + $1.poundSeconds } }
+    /// The day's steps. Rows saved later in the day hold a higher total, so use the largest.
+    var steps: Int? { entries.compactMap(\.stepCount).max() }
 }
 
 struct LoadTrendPoint: Equatable, Identifiable, Sendable {
@@ -558,7 +699,8 @@ enum SessionLogBuilder {
             setLines: lines.map(\.text),
             pain: PainScore.isLogged(session.painDuring) ? "Pain \(session.painDuring)" : "",
             poundReps: amount.poundReps,
-            poundSeconds: amount.poundSeconds
+            poundSeconds: amount.poundSeconds,
+            stepCount: session.stepCount
         )
     }
 

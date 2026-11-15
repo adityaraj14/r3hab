@@ -104,13 +104,15 @@ struct SessionDTO: Codable {
     var isDraft: Bool
     /// Guided form step of a draft. Absent in older backups.
     var guidedStepIndex: Int?
+    /// Apple Health steps for the session day. Absent in older backups.
+    var stepCount: Int?
 
     enum CodingKeys: String, CodingKey {
         case id, date, phase, type, whatIDid, painDuring, painAfter
         case sets, reps, loadLbs, holdSeconds, loadRegion, track, resistanceSets
         case warmupReps, warmupHoldSeconds, warmupLoadLbs
         case response24h, decision, notes, snoozedUntil, snoozeUsed, resolvedAt, createdAt
-        case isDraft, guidedStepIndex
+        case isDraft, guidedStepIndex, stepCount
         case loadKg // legacy key
     }
 
@@ -140,7 +142,8 @@ struct SessionDTO: Codable {
         resolvedAt: Date?,
         createdAt: Date,
         isDraft: Bool = false,
-        guidedStepIndex: Int? = nil
+        guidedStepIndex: Int? = nil,
+        stepCount: Int? = nil
     ) {
         self.id = id
         self.date = date
@@ -168,6 +171,7 @@ struct SessionDTO: Codable {
         self.createdAt = createdAt
         self.isDraft = isDraft
         self.guidedStepIndex = guidedStepIndex
+        self.stepCount = stepCount
     }
 
     init(from decoder: Decoder) throws {
@@ -199,6 +203,7 @@ struct SessionDTO: Codable {
         createdAt = try c.decode(Date.self, forKey: .createdAt)
         isDraft = try c.decodeIfPresent(Bool.self, forKey: .isDraft) ?? false
         guidedStepIndex = try c.decodeIfPresent(Int.self, forKey: .guidedStepIndex)
+        stepCount = try c.decodeIfPresent(Int.self, forKey: .stepCount)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -229,6 +234,7 @@ struct SessionDTO: Codable {
         try c.encode(createdAt, forKey: .createdAt)
         try c.encode(isDraft, forKey: .isDraft)
         try c.encodeIfPresent(guidedStepIndex, forKey: .guidedStepIndex)
+        try c.encodeIfPresent(stepCount, forKey: .stepCount)
     }
 }
 
@@ -321,7 +327,8 @@ enum ExportImportService {
                     resolvedAt: $0.resolvedAt,
                     createdAt: $0.createdAt,
                     isDraft: $0.isDraft,
-                    guidedStepIndex: $0.guidedStepIndex
+                    guidedStepIndex: $0.guidedStepIndex,
+                    stepCount: $0.stepCount
                 )
             }
         )
@@ -494,6 +501,7 @@ enum ExportImportService {
         s.createdAt = dto.createdAt
         s.isDraft = dto.isDraft
         s.guidedStepIndex = dto.isDraft ? dto.guidedStepIndex : nil
+        s.stepCount = dto.stepCount
         s.updatedAt = Date()
     }
 }

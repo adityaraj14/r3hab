@@ -309,6 +309,160 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertEqual(days[1].entries.map(\.title), ["Calf raise"])
     }
 
+    func testBackdatedSessionLandsOnTheChosenDay() {
+        let now = date(year: 2026, month: 11, day: 15).addingTimeInterval(15 * 3600)
+        let picked = date(year: 2026, month: 11, day: 10).addingTimeInterval(15 * 3600)
+        let day = GuidedSessionDraft.sessionDay(chosen: picked, now: now, calendar: calendar)
+        XCTAssertEqual(day, date(year: 2026, month: 11, day: 10))
+
+        let future = date(year: 2026, month: 11, day: 20)
+        XCTAssertEqual(
+            GuidedSessionDraft.sessionDay(chosen: future, now: now, calendar: calendar),
+            date(year: 2026, month: 11, day: 15)
+        )
+
+        let backdated = TrainingSessionSnapshot(
+            date: day,
+            createdAt: now,
+            sessionType: .hsrStrength,
+            response24h: .notApplicable,
+            decision: nil,
+            resolvedAt: nil,
+            snoozedUntil: nil,
+            phase: .heavySlow,
+            painDuring: 2,
+            isDraft: false,
+            whatIDid: "Leg press",
+            resistanceSets: [ResistanceSet(reps: 10, loadLbs: 200, isWarmup: false)]
+        )
+        let today = session(
+            on: date(year: 2026, month: 11, day: 15),
+            type: .hsrStrength,
+            what: "Leg press",
+            sets: [ResistanceSet(reps: 8, loadLbs: 200, isWarmup: false)]
+        )
+        let days = SessionLogBuilder.days(from: [today, backdated], calendar: calendar)
+        XCTAssertEqual(days.map(\.day), [date(year: 2026, month: 11, day: 15), day])
+        XCTAssertEqual(days[1].entries.map(\.kind), [.legPress])
+        XCTAssertEqual(days[1].poundReps, 10 * 200)
+
+        let trend = SessionLogBuilder.workingSetTrend(from: days)
+        XCTAssertEqual(trend.map(\.day), [day, date(year: 2026, month: 11, day: 15)])
+        XCTAssertEqual(trend.map(\.value), [2000, 1600])
+    }
+
+    func testSaveStampReadsStepsForTheChosenDay() async {
+        let now = date(year: 2026, month: 11, day: 15).addingTimeInterval(15 * 3600)
+        let totals: [Date: Int] = [
+            date(year: 2026, month: 11, day: 15): 4_210,
+            date(year: 2026, month: 11, day: 10): 9_876,
+        ]
+        let fetch: @Sendable (Date) async throws -> Int = { day in
+            guard let total = totals[day] else { throw StepsFailure.missing }
+            return total
+        }
+
+        let today = await GuidedSessionDraft.saveStamp(chosen: now, now: now, calendar: calendar, fetch: fetch)
+        XCTAssertEqual(today, SessionSaveStamp(day: date(year: 2026, month: 11, day: 15), steps: 4_210))
+
+        let picked = date(year: 2026, month: 11, day: 10).addingTimeInterval(9 * 3600)
+        let backdated = await GuidedSessionDraft.saveStamp(chosen: picked, now: now, calendar: calendar, fetch: fetch)
+        XCTAssertEqual(backdated, SessionSaveStamp(day: date(year: 2026, month: 11, day: 10), steps: 9_876))
+    }
+
+    func testMissingStepsDoNotBlockTheSave() async {
+        let now = date(year: 2026, month: 11, day: 15).addingTimeInterval(15 * 3600)
+        let picked = date(year: 2026, month: 11, day: 9)
+
+        let failed = await GuidedSessionDraft.saveStamp(chosen: picked, now: now, calendar: calendar) { _ in
+            throw StepsFailure.missing
+        }
+        XCTAssertEqual(failed, SessionSaveStamp(day: picked, steps: nil))
+
+        let started = Date()
+        let slow = await GuidedSessionDraft.saveStamp(chosen: picked, now: now, calendar: calendar, timeout: 0.1) { _ in
+            try await Task.sleep(nanoseconds: 5_000_000_000)
+            return 1_000
+        }
+        XCTAssertEqual(slow, SessionSaveStamp(day: picked, steps: nil))
+        XCTAssertLessThan(Date().timeIntervalSince(started), 2)
+    }
+
+    func testLogDayShowsTheStepsSavedWithItsSessions() {
+        let nov10 = date(year: 2026, month: 11, day: 10)
+        var press = session(on: nov10, type: .hsrStrength, what: "Leg press",
+                            sets: [ResistanceSet(reps: 10, loadLbs: 200, isWarmup: false)])
+        press.stepCount = 9_876
+        var hold = session(on: nov10, type: .isometrics, what: "Seated leg extension hold",
+                           sets: [ResistanceSet(reps: 1, loadLbs: 30, holdSeconds: 45, isWarmup: false)],
+                           createdAtOffset: -60)
+        hold.stepCount = 6_000
+        let older = session(on: date(year: 2026, month: 11, day: 9), type: .hsrStrength, what: "Leg press",
+                            sets: [ResistanceSet(reps: 8, loadLbs: 200, isWarmup: false)])
+
+        let days = SessionLogBuilder.days(from: [press, hold, older], calendar: calendar)
+        XCTAssertEqual(days[0].steps, 9_876)
+        XCTAssertEqual(days[0].entries.compactMap(\.stepCount).sorted(), [6_000, 9_876])
+        XCTAssertNil(days[1].steps)
+        XCTAssertEqual(SessionSteps.label(days[0].steps), "9,876 steps")
+        XCTAssertNil(SessionSteps.label(days[1].steps))
+    }
+
+    func testEditUpdatesTheSameRowAndMovesItToTheNewDay() {
+        let nov12 = date(year: 2026, month: 11, day: 12)
+        let nov10 = date(year: 2026, month: 11, day: 10)
+        var press = session(on: nov12, type: .hsrStrength, what: "Leg press",
+                            sets: [ResistanceSet(reps: 8, loadLbs: 100, isWarmup: false)])
+        press.stepCount = 5_000
+        let hold = session(on: nov12, type: .isometrics, what: "Seated leg extension hold",
+                           sets: [ResistanceSet(reps: 1, loadLbs: 30, holdSeconds: 45, isWarmup: false)])
+        let all = [press, hold]
+
+        var draft = try! XCTUnwrap(SessionEdit.draft(from: press))
+        XCTAssertEqual(draft.kind, .legPress)
+        XCTAssertEqual(draft.pain, 2)
+        XCTAssertEqual(draft.sets.map(\.loadLbs), [100])
+        draft.sets[0].loadLbs = 120
+        draft.sets[0].reps = 10
+        ExerciseEntry.duplicateLastSet(in: &draft)
+        draft.pain = 3
+
+        let updated = SessionEdit.applied(press, draft: draft, day: nov10, steps: 7_777)
+        XCTAssertEqual(updated.id, press.id)
+        XCTAssertEqual(updated.createdAt, press.createdAt)
+        let edited = SessionEdit.replacing(all, with: updated)
+        XCTAssertEqual(edited.count, all.count)
+
+        let days = SessionLogBuilder.days(from: edited, calendar: calendar)
+        XCTAssertEqual(days.map(\.day), [nov12, nov10])
+        XCTAssertEqual(days[0].entries.map(\.kind), [.isometricLegExtension])
+        XCTAssertEqual(days[1].entries.map(\.id), [press.id])
+        XCTAssertEqual(days[1].poundReps, 2 * 10 * 120)
+        XCTAssertEqual(days[1].entries[0].pain, "Pain 3")
+        XCTAssertEqual(days[1].steps, 7_777)
+    }
+
+    func testEditKeepsWarmupsAndSkipsOtherRows() {
+        let warm = ResistanceSet(reps: 10, loadLbs: 20, isWarmup: true)
+        let press = session(type: .hsrStrength, what: "Leg press",
+                            sets: [warm, ResistanceSet(reps: 8, loadLbs: 100, isWarmup: false)])
+        let draft = try! XCTUnwrap(SessionEdit.draft(from: press))
+        let updated = SessionEdit.applied(press, draft: draft, day: press.date, steps: nil)
+        XCTAssertEqual(updated.resistanceSets.filter(\.isWarmup), [warm])
+        XCTAssertEqual(TrainingLoad.amount(for: updated.resistanceSets).poundReps, 800)
+
+        let calf = session(type: .other, what: "Calf raise", sets: [ResistanceSet(reps: 15, loadLbs: 0, isWarmup: false)])
+        XCTAssertNil(SessionEdit.draft(from: calf))
+    }
+
+    func testEditStepsRule() {
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 6_000, typedChanged: true, dayChanged: true, fetched: 9_000), 6_000)
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: true, fetched: 9_000), 9_000)
+        XCTAssertNil(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: true, fetched: nil))
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: false, fetched: nil), 5_000)
+        XCTAssertNil(SessionEdit.steps(original: 5_000, typed: nil, typedChanged: true, dayChanged: false, fetched: nil))
+    }
+
     func testTrendKeepsTheLatestDaysInOrder() {
         let days = (0..<10).map { offset in
             SessionLogDay(
@@ -440,6 +594,12 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertTrue(count.hasSuffix("steps today"))
         XCTAssertTrue(count.contains("4821") || count.contains("4,821"))
         XCTAssertEqual(TodayStepsCopy.label(.count(0)), "0 steps today")
+        XCTAssertEqual(TodayStepsCopy.label(.noData), "No step data today")
+        XCTAssertEqual(TodayStepsCopy.value(.count(8_412)), TodayStepsCopy.formatted(8_412))
+        XCTAssertEqual(TodayStepsCopy.value(.noData), "—")
+        XCTAssertEqual(TodayStepsCopy.value(.unavailable), "—")
+        XCTAssertEqual(TodayStepsCopy.detail(.noData), "No step data today")
+        XCTAssertEqual(TodayStepsCopy.detail(.count(1)), "From Apple Health")
     }
 
     func testGuideHasTheFourStages() {
@@ -485,4 +645,8 @@ final class TrainingLoadTests: XCTestCase {
             resistanceSets: sets
         )
     }
+}
+
+private enum StepsFailure: Error {
+    case missing
 }

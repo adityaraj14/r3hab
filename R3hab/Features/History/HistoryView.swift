@@ -1,3 +1,4 @@
+import Charts
 import SwiftData
 import SwiftUI
 
@@ -7,6 +8,7 @@ struct SessionLogView: View {
     @Query(sort: \TrainingSession.date, order: .reverse) private var sessions: [TrainingSession]
 
     @State private var pendingDelete: SessionLogEntry?
+    @State private var editing: TrainingSession?
 
     private var days: [SessionLogDay] {
         SessionLogBuilder.days(from: sessions.map(\.snapshot))
@@ -44,6 +46,11 @@ struct SessionLogView: View {
                 Button("Cancel", role: .cancel) { pendingDelete = nil }
             } message: { entry in
                 Text("\(entry.title) will be removed from this day.")
+            }
+            .fullScreenCover(item: $editing) { row in
+                GuidedSessionFlow(editing: row)
+                    .modelContainer(modelContext.container)
+                    .preferredColorScheme(.dark)
             }
         }
     }
@@ -93,6 +100,8 @@ struct SessionLogView: View {
                 Section {
                     ForEach(day.entries) { entry in
                         entryRow(entry)
+                            .contentShape(Rectangle())
+                            .onTapGesture { openEditor(entry) }
                             .listRowBackground(AppTheme.canvas)
                             .swipeActions {
                                 Button("Delete", role: .destructive) {
@@ -119,9 +128,17 @@ struct SessionLogView: View {
 
     private func dayHeader(_ day: SessionLogDay) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(dayTitle(day.day))
-                .font(.headline)
-                .foregroundStyle(AppTheme.ivory)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dayTitle(day.day))
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.ivory)
+                if let steps = SessionSteps.label(day.steps) {
+                    Text(steps)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(AppTheme.quiet)
+                        .accessibilityIdentifier("session-log-day-steps")
+                }
+            }
             Spacer()
             if let summary = TrainingLoad.summary(poundReps: day.poundReps, poundSeconds: day.poundSeconds) {
                 Text(summary)
@@ -165,6 +182,8 @@ struct SessionLogView: View {
         }
         .padding(.vertical, 6)
         .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(SessionEdit.isEditable(entry.kind) ? .isButton : [])
+        .accessibilityHint(SessionEdit.isEditable(entry.kind) ? "Opens the entry to change it" : "")
         .accessibilityIdentifier("session-log-entry")
     }
 
@@ -175,6 +194,12 @@ struct SessionLogView: View {
         return day.formatted(.dateTime.weekday(.abbreviated).month(.abbreviated).day())
     }
 
+    /// Tap a row to change it. Rows that are not one of the three exercises stay read-only.
+    private func openEditor(_ entry: SessionLogEntry) {
+        guard SessionEdit.isEditable(entry.kind) else { return }
+        editing = sessions.first { $0.id == entry.id }
+    }
+
     private func delete(_ entry: SessionLogEntry) {
         guard let row = sessions.first(where: { $0.id == entry.id }) else { return }
         modelContext.delete(row)
@@ -183,14 +208,15 @@ struct SessionLogView: View {
     }
 }
 
-/// Vertical bars for the last few days that have a load. Oldest on the left.
+/// A line through the last few days that have a load, with a point and value
+/// on each day. Oldest on the left. Days are evenly spaced.
 struct LoadTrendChart: View {
     var title: String
     var unit: String
     var points: [LoadTrendPoint]
 
-    private var peak: Double {
-        max(points.map(\.value).max() ?? 1, 1)
+    private func label(_ day: Date) -> String {
+        day.formatted(.dateTime.month(.abbreviated).day())
     }
 
     var body: some View {
@@ -198,29 +224,43 @@ struct LoadTrendChart: View {
             Text(title)
                 .font(.subheadline.weight(.semibold))
                 .foregroundStyle(AppTheme.quiet)
-            HStack(alignment: .bottom, spacing: 8) {
-                ForEach(points) { point in
-                    VStack(spacing: 6) {
-                        Text(TrainingLoad.formatted(point.value))
-                            .font(.caption2.monospacedDigit())
-                            .foregroundStyle(AppTheme.ivory)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.6)
-                        RoundedRectangle(cornerRadius: 4, style: .continuous)
-                            .fill(AppTheme.gold)
-                            .frame(height: max(8, 72 * point.value / peak))
-                        Text(point.day.formatted(.dateTime.month(.abbreviated).day()))
-                            .font(.caption2)
-                            .foregroundStyle(AppTheme.quiet)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.7)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel("\(point.day.formatted(date: .abbreviated, time: .omitted)), \(TrainingLoad.formatted(point.value)) \(unit)")
+            Chart(points) { point in
+                LineMark(
+                    x: .value("Day", label(point.day)),
+                    y: .value(unit, point.value)
+                )
+                .foregroundStyle(AppTheme.gold)
+                .lineStyle(StrokeStyle(lineWidth: 2.5, lineCap: .round, lineJoin: .round))
+                .interpolationMethod(.linear)
+                PointMark(
+                    x: .value("Day", label(point.day)),
+                    y: .value(unit, point.value)
+                )
+                .foregroundStyle(AppTheme.gold)
+                .symbolSize(48)
+                .annotation(position: .top, spacing: 4) {
+                    Text(TrainingLoad.formatted(point.value))
+                        .font(.caption2.monospacedDigit())
+                        .foregroundStyle(AppTheme.ivory)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .accessibilityLabel(point.day.formatted(date: .abbreviated, time: .omitted))
+                .accessibilityValue("\(TrainingLoad.formatted(point.value)) \(unit)")
+            }
+            .chartYAxis(.hidden)
+            .chartYScale(domain: .automatic(includesZero: true))
+            .chartXAxis {
+                AxisMarks { _ in
+                    AxisValueLabel()
+                        .font(.caption2)
+                        .foregroundStyle(AppTheme.quiet)
                 }
             }
-            .frame(height: 120, alignment: .bottom)
+            .chartPlotStyle { plot in
+                plot.padding(.top, 18).padding(.bottom, 10).padding(.horizontal, 8)
+            }
+            .frame(height: 140)
         }
         .padding(14)
         .posterCard()

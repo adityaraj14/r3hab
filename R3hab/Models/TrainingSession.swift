@@ -40,6 +40,9 @@ final class TrainingSession {
     /// Guided form step where the draft stopped. Nil on finalized rows and on
     /// drafts from the older form. Optional, so lightweight migration adds it.
     var guidedStepIndex: Int?
+    /// Apple Health step total for `date`, read when the session was saved.
+    /// Nil when Health had no data or no access. Optional for lightweight migration.
+    var stepCount: Int?
 
     /// Complete only after the final save, with a pain-during score.
     /// Use this, not `!isDraft`, for "trained", streak, and 24h checks.
