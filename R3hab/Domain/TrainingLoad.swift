@@ -469,6 +469,12 @@ enum TodayStepsCopy {
 }
 
 enum GuidedSessionDraft: Equatable, Sendable {
+    /// The day a guided log is saved under. A future pick becomes today.
+    /// Rows keep the start of the day, the same as every other saved session.
+    static func sessionDay(chosen: Date, now: Date, calendar: Calendar = .current) -> Date {
+        calendar.startOfDay(for: min(chosen, now))
+    }
+
     static func exercises(from sessions: [TrainingSessionSnapshot]) -> [ExerciseEntryDraft] {
         SessionExerciseKind.loggable.map { ExerciseEntry.make(kind: $0, from: sessions) }
     }

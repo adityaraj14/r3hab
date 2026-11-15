@@ -309,6 +309,48 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertEqual(days[1].entries.map(\.title), ["Calf raise"])
     }
 
+    func testBackdatedSessionLandsOnTheChosenDay() {
+        let now = date(year: 2026, month: 11, day: 15).addingTimeInterval(15 * 3600)
+        let picked = date(year: 2026, month: 11, day: 10).addingTimeInterval(15 * 3600)
+        let day = GuidedSessionDraft.sessionDay(chosen: picked, now: now, calendar: calendar)
+        XCTAssertEqual(day, date(year: 2026, month: 11, day: 10))
+
+        let future = date(year: 2026, month: 11, day: 20)
+        XCTAssertEqual(
+            GuidedSessionDraft.sessionDay(chosen: future, now: now, calendar: calendar),
+            date(year: 2026, month: 11, day: 15)
+        )
+
+        let backdated = TrainingSessionSnapshot(
+            date: day,
+            createdAt: now,
+            sessionType: .hsrStrength,
+            response24h: .notApplicable,
+            decision: nil,
+            resolvedAt: nil,
+            snoozedUntil: nil,
+            phase: .heavySlow,
+            painDuring: 2,
+            isDraft: false,
+            whatIDid: "Leg press",
+            resistanceSets: [ResistanceSet(reps: 10, loadLbs: 200, isWarmup: false)]
+        )
+        let today = session(
+            on: date(year: 2026, month: 11, day: 15),
+            type: .hsrStrength,
+            what: "Leg press",
+            sets: [ResistanceSet(reps: 8, loadLbs: 200, isWarmup: false)]
+        )
+        let days = SessionLogBuilder.days(from: [today, backdated], calendar: calendar)
+        XCTAssertEqual(days.map(\.day), [date(year: 2026, month: 11, day: 15), day])
+        XCTAssertEqual(days[1].entries.map(\.kind), [.legPress])
+        XCTAssertEqual(days[1].poundReps, 10 * 200)
+
+        let trend = SessionLogBuilder.workingSetTrend(from: days)
+        XCTAssertEqual(trend.map(\.day), [day, date(year: 2026, month: 11, day: 15)])
+        XCTAssertEqual(trend.map(\.value), [2000, 1600])
+    }
+
     func testTrendKeepsTheLatestDaysInOrder() {
         let days = (0..<10).map { offset in
             SessionLogDay(

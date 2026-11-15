@@ -14,6 +14,7 @@ struct GuidedSessionFlow: View {
     @State private var index = 0
     @State private var issue: String?
     @State private var saveError: String?
+    @State private var sessionDate = Date()
 
     private var exercises: [ExerciseEntryDraft] {
         edits ?? GuidedSessionDraft.exercises(from: sessions.map(\.snapshot))
@@ -116,6 +117,7 @@ struct GuidedSessionFlow: View {
                         .font(.body)
                         .foregroundStyle(AppTheme.quiet)
                 } else {
+                    dateRow
                     ForEach(logs, id: \.kind) { log in
                         let lines = TrainingLoad.lines(for: log.sets)
                         VStack(alignment: .leading, spacing: 4) {
@@ -155,6 +157,24 @@ struct GuidedSessionFlow: View {
             .padding(24)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+
+    /// Today by default. Past days only, so he can log a session he missed.
+    private var dateRow: some View {
+        DatePicker(
+            selection: $sessionDate,
+            in: ...Date(),
+            displayedComponents: .date
+        ) {
+            Text("Date")
+                .font(.headline)
+                .foregroundStyle(AppTheme.ivory)
+        }
+        .datePickerStyle(.compact)
+        .tint(AppTheme.gold)
+        .padding(16)
+        .posterCard()
+        .accessibilityIdentifier("guided-date")
     }
 
     private var bottomBar: some View {
@@ -433,7 +453,7 @@ struct GuidedSessionFlow: View {
             return
         }
         let phase = settingsList.first?.currentPhase ?? .heavySlow
-        let day = Calendar.current.startOfDay(for: Date())
+        let day = GuidedSessionDraft.sessionDay(chosen: sessionDate, now: Date())
         for log in logs {
             let session = TrainingSession(
                 date: day,
