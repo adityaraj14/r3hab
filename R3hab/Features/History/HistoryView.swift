@@ -119,9 +119,17 @@ struct SessionLogView: View {
 
     private func dayHeader(_ day: SessionLogDay) -> some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(dayTitle(day.day))
-                .font(.headline)
-                .foregroundStyle(AppTheme.ivory)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(dayTitle(day.day))
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.ivory)
+                if let steps = SessionSteps.label(day.steps) {
+                    Text(steps)
+                        .font(.subheadline.monospacedDigit())
+                        .foregroundStyle(AppTheme.quiet)
+                        .accessibilityIdentifier("session-log-day-steps")
+                }
+            }
             Spacer()
             if let summary = TrainingLoad.summary(poundReps: day.poundReps, poundSeconds: day.poundSeconds) {
                 Text(summary)

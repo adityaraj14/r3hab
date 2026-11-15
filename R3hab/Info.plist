@@ -5,8 +5,8 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSHealthShareUsageDescription</key>
-	<string>R3hab reads today’s step count from Apple Health to show it on the home screen. R3hab does not write health data.</string>
+	<string>R3hab reads your step count from Apple Health. It shows today’s steps on the home screen and saves the steps for the day with each session you log. R3hab does not write health data.</string>
 	<key>NSHealthUpdateUsageDescription</key>
-	<string>R3hab does not write health data to Apple Health. It only reads today’s step count to show on the home screen.</string>
+	<string>R3hab does not write health data to Apple Health. It only reads your step count.</string>
 </dict>
 </plist>

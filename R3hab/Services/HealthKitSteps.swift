@@ -67,7 +67,43 @@ enum HealthKitSteps {
     }
 }
 
-/// Home's step line. `refresh` never shows the system prompt. `allowAndLoad` asks once.
+#if DEBUG
+/// Simulator screenshots only. Not in Release builds, so the shipped app never writes.
+enum HealthKitStepSeed {
+    static let argument = "-seed-health-steps"
+
+    static var isRequested: Bool {
+        ProcessInfo.processInfo.arguments.contains(argument)
+    }
+
+    /// Writes 8,412 steps today and 9,876 steps three days ago, once.
+    static func seedIfRequested() async {
+        guard isRequested, HKHealthStore.isHealthDataAvailable(),
+              let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
+        let store = HKHealthStore()
+        try? await store.requestAuthorization(toShare: [type], read: [type])
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        let plan: [(Int, Int)] = [(0, 8_412), (-3, 9_876)]
+        for (offset, count) in plan {
+            guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
+            if let existing = try? await HealthKitSteps.steps(on: day), existing > 0 { continue }
+            let start = offset == 0 ? min(Date().addingTimeInterval(-3600), day.addingTimeInterval(60)) : day.addingTimeInterval(9 * 3600)
+            let start2 = max(start, day)
+            let sample = HKQuantitySample(
+                type: type,
+                quantity: HKQuantity(unit: .count(), doubleValue: Double(count)),
+                start: start2,
+                end: start2.addingTimeInterval(600)
+            )
+            try? await store.save(sample)
+        }
+    }
+}
+#endif
+
+/// Home's step line. `refresh` never shows the system prompt. `allowAndLoad` asks once,
+/// the first time Home opens.
 @MainActor
 final class TodayStepsReader: ObservableObject {
     @Published private(set) var state: TodayStepsState = .notAsked
@@ -111,7 +147,7 @@ final class TodayStepsReader: ObservableObject {
             let count = try await HealthKitSteps.steps(on: Date())
             state = .count(count)
         } catch HealthKitStepsError.noData {
-            state = .count(0)
+            state = .noData
         } catch {
             state = .unavailable
         }

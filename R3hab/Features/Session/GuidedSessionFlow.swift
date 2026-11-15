@@ -15,6 +15,7 @@ struct GuidedSessionFlow: View {
     @State private var issue: String?
     @State private var saveError: String?
     @State private var sessionDate = Date()
+    @State private var saving = false
 
     private var exercises: [ExerciseEntryDraft] {
         edits ?? GuidedSessionDraft.exercises(from: sessions.map(\.snapshot))
@@ -192,6 +193,7 @@ struct GuidedSessionFlow: View {
                     if ready { save() } else { dismiss() }
                 }
                 .buttonStyle(.primaryAction)
+                .disabled(saving)
                 .accessibilityIdentifier("guided-save")
             } else {
                 HStack(spacing: 12) {
@@ -452,11 +454,23 @@ struct GuidedSessionFlow: View {
             dismiss()
             return
         }
+        guard !saving else { return }
+        saving = true
+        Task {
+            // Steps for the chosen day. No access, no data, or a slow read saves without steps.
+            let stamp = await GuidedSessionDraft.saveStamp(chosen: sessionDate, now: Date()) { day in
+                try await HealthKitSteps.steps(on: day)
+            }
+            store(logs, stamp: stamp)
+            saving = false
+        }
+    }
+
+    private func store(_ logs: [NewSessionLog], stamp: SessionSaveStamp) {
         let phase = settingsList.first?.currentPhase ?? .heavySlow
-        let day = GuidedSessionDraft.sessionDay(chosen: sessionDate, now: Date())
         for log in logs {
             let session = TrainingSession(
-                date: day,
+                date: stamp.day,
                 phase: phase,
                 sessionType: log.sessionType,
                 whatIDid: log.whatIDid,
@@ -466,6 +480,7 @@ struct GuidedSessionFlow: View {
             )
             // A finished log is not a 24-hour task. Leave older rows untouched.
             session.response24h = .notApplicable
+            session.stepCount = stamp.steps
             modelContext.insert(session)
         }
         do {

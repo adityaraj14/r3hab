@@ -445,6 +445,8 @@ enum PriorExerciseLookup {
 enum TodayStepsState: Equatable, Sendable {
     case notAsked
     case count(Int)
+    /// Health gave no total. This is also what a denied read looks like.
+    case noData
     case unavailable
 }
 
@@ -455,8 +457,28 @@ enum TodayStepsCopy {
             return "Steps from Apple Health"
         case .count(let steps):
             return "\(formatted(max(steps, 0))) steps today"
+        case .noData:
+            return "No step data today"
         case .unavailable:
             return "Steps unavailable"
+        }
+    }
+
+    static let title = "Steps today"
+
+    /// Large number on Home. A dash when there is no count.
+    static func value(_ state: TodayStepsState) -> String {
+        if case .count(let steps) = state { return formatted(steps) }
+        return "—"
+    }
+
+    /// Small line under the number.
+    static func detail(_ state: TodayStepsState) -> String {
+        switch state {
+        case .notAsked: return "Allow Apple Health to show steps"
+        case .count: return "From Apple Health"
+        case .noData: return "No step data today"
+        case .unavailable: return "Steps unavailable"
         }
     }
 
@@ -473,6 +495,20 @@ enum GuidedSessionDraft: Equatable, Sendable {
     /// Rows keep the start of the day, the same as every other saved session.
     static func sessionDay(chosen: Date, now: Date, calendar: Calendar = .current) -> Date {
         calendar.startOfDay(for: min(chosen, now))
+    }
+
+    /// The day and step total a guided save stores. Steps come from the chosen
+    /// day, not today. A failed or slow read gives nil, and the save goes on.
+    static func saveStamp(
+        chosen: Date,
+        now: Date,
+        calendar: Calendar = .current,
+        timeout: TimeInterval = SessionSteps.defaultTimeout,
+        fetch: @escaping @Sendable (Date) async throws -> Int
+    ) async -> SessionSaveStamp {
+        let day = sessionDay(chosen: chosen, now: now, calendar: calendar)
+        let steps = await SessionSteps.total(on: day, timeout: timeout, fetch: fetch)
+        return SessionSaveStamp(day: day, steps: steps)
     }
 
     static func exercises(from sessions: [TrainingSessionSnapshot]) -> [ExerciseEntryDraft] {
@@ -496,6 +532,53 @@ enum GuidedSessionDraft: Equatable, Sendable {
     }
 }
 
+struct SessionSaveStamp: Equatable, Sendable {
+    var day: Date
+    var steps: Int?
+}
+
+/// Reads the step total for a session day without blocking the save.
+enum SessionSteps {
+    static let defaultTimeout: TimeInterval = 3
+
+    static func total(
+        on day: Date,
+        timeout: TimeInterval = defaultTimeout,
+        fetch: @escaping @Sendable (Date) async throws -> Int
+    ) async -> Int? {
+        let gate = FirstResult()
+        return await withCheckedContinuation { (continuation: CheckedContinuation<Int?, Never>) in
+            Task {
+                let value = try? await fetch(day)
+                if gate.claim() { continuation.resume(returning: value.map { max($0, 0) }) }
+            }
+            Task {
+                try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0) * 1_000_000_000))
+                if gate.claim() { continuation.resume(returning: nil) }
+            }
+        }
+    }
+
+    /// Log line for a saved day. Nil when no total was saved.
+    static func label(_ steps: Int?) -> String? {
+        guard let steps else { return nil }
+        return "\(TodayStepsCopy.formatted(steps)) steps"
+    }
+
+    private final class FirstResult: @unchecked Sendable {
+        private let lock = NSLock()
+        private var claimed = false
+
+        func claim() -> Bool {
+            lock.lock()
+            defer { lock.unlock() }
+            if claimed { return false }
+            claimed = true
+            return true
+        }
+    }
+}
+
 struct SessionLogEntry: Equatable, Identifiable, Sendable {
     var id: UUID
     var createdAt: Date
@@ -507,6 +590,8 @@ struct SessionLogEntry: Equatable, Identifiable, Sendable {
     var pain: String
     var poundReps: Double
     var poundSeconds: Double
+    /// Apple Health steps saved with this row for its day.
+    var stepCount: Int? = nil
 }
 
 struct SessionLogDay: Equatable, Identifiable, Sendable {
@@ -517,6 +602,8 @@ struct SessionLogDay: Equatable, Identifiable, Sendable {
 
     var poundReps: Double { entries.reduce(0) { $0 + $1.poundReps } }
     var poundSeconds: Double { entries.reduce(0) { $0 + $1.poundSeconds } }
+    /// The day's steps. Rows saved later in the day hold a higher total, so use the largest.
+    var steps: Int? { entries.compactMap(\.stepCount).max() }
 }
 
 struct LoadTrendPoint: Equatable, Identifiable, Sendable {
@@ -564,7 +651,8 @@ enum SessionLogBuilder {
             setLines: lines.map(\.text),
             pain: PainScore.isLogged(session.painDuring) ? "Pain \(session.painDuring)" : "",
             poundReps: amount.poundReps,
-            poundSeconds: amount.poundSeconds
+            poundSeconds: amount.poundSeconds,
+            stepCount: session.stepCount
         )
     }
 

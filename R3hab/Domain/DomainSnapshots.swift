@@ -25,6 +25,7 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
     var isDraft: Bool
     var whatIDid: String
     var resistanceSets: [ResistanceSet]
+    var stepCount: Int?
 
     init(
         id: UUID = UUID(),
@@ -40,8 +41,10 @@ struct TrainingSessionSnapshot: Equatable, Sendable {
         painAfter: Int = PainScore.notLogged,
         isDraft: Bool = false,
         whatIDid: String = "",
-        resistanceSets: [ResistanceSet] = []
+        resistanceSets: [ResistanceSet] = [],
+        stepCount: Int? = nil
     ) {
+        self.stepCount = stepCount
         self.id = id
         self.date = date
         self.createdAt = createdAt

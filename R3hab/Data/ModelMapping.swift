@@ -28,7 +28,8 @@ extension TrainingSession {
             painAfter: painAfter,
             isDraft: isDraft,
             whatIDid: whatIDid,
-            resistanceSets: resistanceSets()
+            resistanceSets: resistanceSets(),
+            stepCount: stepCount
         )
     }
 }
