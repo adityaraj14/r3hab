@@ -1,8 +1,9 @@
 import SwiftData
 import SwiftUI
 
-/// Three exercises, one screen each. Skip any he did not do. Save writes one
-/// stored session per exercise he kept. Nothing here schedules a reminder.
+/// Three exercises, one screen each. Each exercise is a list of sets he can
+/// add, edit, remove, or copy. Skip any he did not do. Save writes one stored
+/// session per exercise he kept. Nothing here schedules a reminder.
 struct GuidedSessionFlow: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -70,38 +71,30 @@ struct GuidedSessionFlow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("guided-exercise-title")
 
-                if draft.kind.usesHold {
-                    quantityRow(
-                        title: "Weight",
-                        value: LoadCopy.labeled(draft.loadLbs),
-                        identifier: "guided-load"
-                    ) { stepLoad($0) }
-                    quantityRow(
-                        title: "Holds",
-                        value: "\(draft.sets)",
-                        identifier: "guided-holds"
-                    ) { stepCount(\.sets, by: $0, ceiling: ExerciseEntry.maxCount) }
-                    quantityRow(
-                        title: "Seconds",
-                        value: "\(draft.holdSeconds)s",
-                        identifier: "guided-seconds"
-                    ) { stepHold($0) }
+                if let prior = PriorExerciseLookup.latest(kind: draft.kind, in: sessions.map(\.snapshot)) {
+                    lastSession(prior)
+                }
+
+                if draft.sets.isEmpty {
+                    Text("No sets yet. Add one, or skip this exercise.")
+                        .font(.body)
+                        .foregroundStyle(AppTheme.quiet)
+                        .fixedSize(horizontal: false, vertical: true)
                 } else {
-                    quantityRow(
-                        title: "Weight",
-                        value: LoadCopy.labeled(draft.loadLbs),
-                        identifier: "guided-load"
-                    ) { stepLoad($0) }
-                    quantityRow(
-                        title: "Sets",
-                        value: "\(draft.sets)",
-                        identifier: "guided-sets"
-                    ) { stepCount(\.sets, by: $0, ceiling: ExerciseEntry.maxCount) }
-                    quantityRow(
-                        title: "Reps",
-                        value: "\(draft.reps)",
-                        identifier: "guided-reps"
-                    ) { stepCount(\.reps, by: $0, ceiling: ExerciseEntry.maxReps) }
+                    ForEach(Array(draft.sets.enumerated()), id: \.element.id) { offset, set in
+                        setCard(set, number: offset + 1, usesHold: draft.kind.usesHold)
+                    }
+                }
+
+                HStack(spacing: 12) {
+                    Button("Add set") { addSet() }
+                        .buttonStyle(.secondaryAction)
+                        .disabled(draft.sets.count >= ExerciseEntry.maxCount)
+                        .accessibilityIdentifier("guided-add-set")
+                    Button("Duplicate last") { duplicateLast() }
+                        .buttonStyle(.secondaryAction)
+                        .disabled(draft.sets.isEmpty || draft.sets.count >= ExerciseEntry.maxCount)
+                        .accessibilityIdentifier("guided-duplicate-set")
                 }
 
                 painRow(selected: draft.pain)
@@ -124,18 +117,29 @@ struct GuidedSessionFlow: View {
                         .foregroundStyle(AppTheme.quiet)
                 } else {
                     ForEach(logs, id: \.kind) { log in
+                        let lines = TrainingLoad.lines(for: log.sets)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(log.kind.title)
                                 .font(.headline)
                                 .foregroundStyle(AppTheme.ivory)
-                            if let dose = SessionSummary.compactResistance(log.sets) {
-                                Text(dose)
+                            ForEach(lines) { line in
+                                Text(line.text)
                                     .font(.subheadline)
                                     .foregroundStyle(AppTheme.quiet)
                             }
-                            Text("Pain \(log.painDuring)")
-                                .font(.subheadline)
-                                .foregroundStyle(AppTheme.gold)
+                            HStack {
+                                Text("Pain \(log.painDuring)")
+                                Spacer()
+                                if let total = TrainingLoad.summary(
+                                    poundReps: lines.reduce(0) { $0 + $1.poundReps },
+                                    poundSeconds: lines.reduce(0) { $0 + $1.poundSeconds }
+                                ) {
+                                    Text(total)
+                                        .monospacedDigit()
+                                }
+                            }
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(AppTheme.gold)
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(16)
@@ -186,6 +190,65 @@ struct GuidedSessionFlow: View {
         .background(AppTheme.canvas.ignoresSafeArea(edges: .bottom))
     }
 
+    private func lastSession(_ prior: PriorExercise) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Last session · \(PriorExerciseLookup.dateLabel(day: prior.day, now: Date()))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+            ForEach(Array(prior.lines.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.quiet)
+            }
+            Button("Copy last session") { copyLastSession(prior) }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.gold)
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+                .accessibilityIdentifier("guided-copy-last")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("guided-last-session")
+    }
+
+    private func setCard(_ set: LoggedSetDraft, number: Int, usesHold: Bool) -> some View {
+        let index = number - 1
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Set \(number)")
+                    .font(.headline)
+                    .foregroundStyle(AppTheme.ivory)
+                Spacer()
+                Button("Remove") { removeSet(set.id) }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(AppTheme.gold)
+                    .accessibilityIdentifier("guided-set-\(index)-remove")
+            }
+            quantityRow(
+                title: "Weight",
+                value: LoadCopy.labeled(set.loadLbs),
+                identifier: "guided-set-\(index)-load"
+            ) { stepLoad(set.id, $0) }
+            if usesHold {
+                quantityRow(
+                    title: "Seconds",
+                    value: "\(set.holdSeconds)s",
+                    identifier: "guided-set-\(index)-seconds"
+                ) { stepHold(set.id, $0) }
+            } else {
+                quantityRow(
+                    title: "Reps",
+                    value: "\(set.reps)",
+                    identifier: "guided-set-\(index)-reps"
+                ) { stepReps(set.id, $0) }
+            }
+        }
+        .padding(14)
+        .posterCard()
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("guided-set-\(index)")
+    }
+
     private func quantityRow(
         title: String,
         value: String,
@@ -207,8 +270,6 @@ struct GuidedSessionFlow: View {
                 stepButton(systemName: "plus", identifier: "\(identifier)-plus") { step(1) }
             }
         }
-        .padding(14)
-        .posterCard()
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier(identifier)
     }
@@ -263,32 +324,73 @@ struct GuidedSessionFlow: View {
         edits = next
     }
 
-    private func stepLoad(_ direction: Int) {
+    private func updateSet(_ id: UUID, _ change: (inout LoggedSetDraft) -> Void) {
         mutate { draft in
-            let next = draft.loadLbs + (Double(direction) * ExerciseEntry.loadStep)
-            draft.loadLbs = min(max(next, 0), ExerciseEntry.maxLoad)
+            guard let index = draft.sets.firstIndex(where: { $0.id == id }) else { return }
+            change(&draft.sets[index])
         }
         issue = nil
         Haptics.tick()
     }
 
-    private func stepCount(
-        _ keyPath: WritableKeyPath<ExerciseEntryDraft, Int>,
-        by direction: Int,
-        ceiling: Int
-    ) {
-        mutate { draft in
-            draft[keyPath: keyPath] = min(max(draft[keyPath: keyPath] + direction, 1), ceiling)
+    private func stepLoad(_ id: UUID, _ direction: Int) {
+        updateSet(id) { set in
+            let next = set.loadLbs + (Double(direction) * ExerciseEntry.loadStep)
+            set.loadLbs = min(max(next, 0), ExerciseEntry.maxLoad)
         }
+    }
+
+    private func stepReps(_ id: UUID, _ direction: Int) {
+        updateSet(id) { set in
+            set.reps = min(max(set.reps + direction, 1), ExerciseEntry.maxReps)
+        }
+    }
+
+    private func stepHold(_ id: UUID, _ direction: Int) {
+        updateSet(id) { set in
+            let next = set.holdSeconds + (direction * 5)
+            set.holdSeconds = min(max(next, 5), ExerciseEntry.maxHoldSeconds)
+        }
+    }
+
+    private func addSet() {
+        var next = exercises
+        guard next.indices.contains(index) else { return }
+        ExerciseEntry.addSet(to: &next[index])
+        next[index].included = true
+        edits = next
         issue = nil
         Haptics.tick()
     }
 
-    private func stepHold(_ direction: Int) {
-        mutate { draft in
-            let next = draft.holdSeconds + (direction * 5)
-            draft.holdSeconds = min(max(next, 5), ExerciseEntry.maxHoldSeconds)
+    private func copyLastSession(_ prior: PriorExercise) {
+        var next = exercises
+        guard next.indices.contains(index) else { return }
+        next[index].sets = prior.sets.map {
+            LoggedSetDraft(loadLbs: $0.loadLbs, reps: $0.reps, holdSeconds: $0.holdSeconds)
         }
+        next[index].included = true
+        edits = next
+        issue = nil
+        Haptics.tick()
+    }
+
+    private func duplicateLast() {
+        var next = exercises
+        guard next.indices.contains(index) else { return }
+        ExerciseEntry.duplicateLastSet(in: &next[index])
+        next[index].included = true
+        edits = next
+        issue = nil
+        Haptics.tick()
+    }
+
+    private func removeSet(_ id: UUID) {
+        var next = exercises
+        guard next.indices.contains(index) else { return }
+        ExerciseEntry.removeSet(id, from: &next[index])
+        next[index].included = true
+        edits = next
         issue = nil
         Haptics.tick()
     }

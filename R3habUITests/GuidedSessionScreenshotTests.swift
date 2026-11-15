@@ -18,7 +18,12 @@ final class GuidedSessionScreenshotTests: XCTestCase {
         XCTAssertTrue(title.waitForExistence(timeout: 4), app.debugDescription)
         XCTAssertTrue(title.label.contains("Isometric leg extension"))
 
-        app.buttons["guided-load-plus"].tap()
+        // Prior history can prefill several sets. Leave one so this test stays stable.
+        while app.buttons["guided-set-1-remove"].exists {
+            app.buttons["guided-set-1-remove"].tap()
+        }
+
+        app.buttons["guided-set-0-load-plus"].tap()
         app.buttons["guided-pain-2"].tap()
         app.buttons["guided-next"].tap()
 

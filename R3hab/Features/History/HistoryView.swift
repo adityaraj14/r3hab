@@ -138,11 +138,18 @@ struct SessionLogView: View {
             Text(entry.title)
                 .font(.body.weight(.semibold))
                 .foregroundStyle(AppTheme.ivory)
-            HStack(alignment: .firstTextBaseline, spacing: 8) {
-                if let dose = entry.dose, !dose.isEmpty {
-                    Text(dose)
+            if entry.setLines.isEmpty, let dose = entry.dose, !dose.isEmpty {
+                Text(dose)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.quiet)
+            } else {
+                ForEach(Array(entry.setLines.enumerated()), id: \.offset) { _, line in
+                    Text(line)
+                        .font(.subheadline)
                         .foregroundStyle(AppTheme.quiet)
                 }
+            }
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 if !entry.pain.isEmpty {
                     Text(entry.pain)
                         .foregroundStyle(AppTheme.quiet)

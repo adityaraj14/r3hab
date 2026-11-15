@@ -4,5 +4,7 @@
 <dict>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
+	<key>NSHealthShareUsageDescription</key>
+	<string>R3hab reads today’s step count from Apple Health to show it on the home screen. R3hab does not write health data.</string>
 </dict>
 </plist>
