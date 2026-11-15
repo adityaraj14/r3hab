@@ -165,17 +165,39 @@ enum TrainingLoad {
         var lines: [String] = []
         for pair in pairs {
             let pairLoads = loads(in: pair).filter { $0 > 0 }
-            guard !pairLoads.isEmpty else { continue }
             let hold = pair.holdSeconds ?? 0
             let reps = pair.reps ?? 0
+            let effort: String
             if hold > 0 {
-                let effort = reps > 1 ? "\(reps) × \(hold)s" : "\(hold)s"
-                lines.append(doseText(effort: effort, loads: pairLoads, pair: pair))
+                effort = reps > 1 ? "\(reps) × \(hold)s" : "\(hold)s"
             } else if reps > 0 {
-                lines.append(doseText(effort: "\(reps) reps", loads: pairLoads, pair: pair))
+                effort = "\(reps) reps"
+            } else {
+                continue
+            }
+            if pairLoads.isEmpty {
+                lines.append(effort)
+            } else {
+                lines.append(doseText(effort: effort, loads: pairLoads, pair: pair))
             }
         }
-        return lines
+        return compactIdentical(lines)
+    }
+
+    /// "45s, 45s, 45s" becomes "3 × 45s" so a last-session card stays short.
+    private static func compactIdentical(_ lines: [String]) -> [String] {
+        var compacted: [String] = []
+        var index = 0
+        while index < lines.count {
+            var end = index + 1
+            while end < lines.count, lines[end] == lines[index] {
+                end += 1
+            }
+            let count = end - index
+            compacted.append(count > 1 ? "\(count) × \(lines[index])" : lines[index])
+            index = end
+        }
+        return compacted
     }
 
     private static func doseText(effort: String, loads: [Double], pair: WorkSetPair) -> String {

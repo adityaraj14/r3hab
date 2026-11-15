@@ -411,6 +411,28 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertEqual(aggregate?.sets.map(\.loadLbs), [50, 50])
     }
 
+    func testComparisonAndPriorLookupKeepZeroLoadHolds() {
+        var sets: [ResistanceSet] = []
+        for _ in 0..<5 {
+            sets.append(ResistanceSet(reps: 1, holdSeconds: 45, isWarmup: false, side: .left, painDuring: 2))
+            sets.append(ResistanceSet(reps: 1, holdSeconds: 45, isWarmup: false, side: .right, painDuring: 2))
+        }
+        XCTAssertEqual(TrainingLoad.comparisonLines(for: sets), ["5 × 45s"])
+        let prior = PriorExerciseLookup.latest(
+            kind: .isometricLegExtension,
+            in: [session(
+                on: date(year: 2026, month: 11, day: 13),
+                type: .isometrics,
+                what: "Seated leg extension hold",
+                sets: sets
+            )],
+            calendar: calendar
+        )
+        XCTAssertEqual(prior?.lines, ["5 × 45s"])
+        XCTAssertEqual(prior?.sets.count, 5)
+        XCTAssertEqual(prior?.sets.map(\.holdSeconds), Array(repeating: 45, count: 5))
+    }
+
     func testStepLineStaysQuietUntilAskedAndWhenUnavailable() {
         XCTAssertEqual(TodayStepsCopy.label(.notAsked), "Steps from Apple Health")
         XCTAssertEqual(TodayStepsCopy.label(.unavailable), "Steps unavailable")
