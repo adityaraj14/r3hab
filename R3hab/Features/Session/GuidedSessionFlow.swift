@@ -71,6 +71,10 @@ struct GuidedSessionFlow: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("guided-exercise-title")
 
+                if let prior = PriorExerciseLookup.latest(kind: draft.kind, in: sessions.map(\.snapshot)) {
+                    lastSession(prior)
+                }
+
                 if draft.sets.isEmpty {
                     Text("No sets yet. Add one, or skip this exercise.")
                         .font(.body)
@@ -184,6 +188,27 @@ struct GuidedSessionFlow: View {
         .padding(.top, 12)
         .padding(.bottom, 10)
         .background(AppTheme.canvas.ignoresSafeArea(edges: .bottom))
+    }
+
+    private func lastSession(_ prior: PriorExercise) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Last session · \(PriorExerciseLookup.dateLabel(day: prior.day, now: Date()))")
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.quiet)
+            ForEach(Array(prior.lines.enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(.subheadline)
+                    .foregroundStyle(AppTheme.quiet)
+            }
+            Button("Copy last session") { copyLastSession(prior) }
+                .font(.subheadline.weight(.semibold))
+                .foregroundStyle(AppTheme.gold)
+                .buttonStyle(.plain)
+                .padding(.top, 4)
+                .accessibilityIdentifier("guided-copy-last")
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("guided-last-session")
     }
 
     private func setCard(_ set: LoggedSetDraft, number: Int, usesHold: Bool) -> some View {
@@ -332,6 +357,18 @@ struct GuidedSessionFlow: View {
         var next = exercises
         guard next.indices.contains(index) else { return }
         ExerciseEntry.addSet(to: &next[index])
+        next[index].included = true
+        edits = next
+        issue = nil
+        Haptics.tick()
+    }
+
+    private func copyLastSession(_ prior: PriorExercise) {
+        var next = exercises
+        guard next.indices.contains(index) else { return }
+        next[index].sets = prior.sets.map {
+            LoggedSetDraft(loadLbs: $0.loadLbs, reps: $0.reps, holdSeconds: $0.holdSeconds)
+        }
         next[index].included = true
         edits = next
         issue = nil

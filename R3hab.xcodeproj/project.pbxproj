@@ -54,6 +54,7 @@
 		0B121FF0B2974BD1A2491DB9 /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		9062AC785E8D4376A9F2A1F7 /* Haptics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Haptics.swift; sourceTree = "<group>"; };
 		9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationScheduler.swift; sourceTree = "<group>"; };
+		C3A91E7B4F2D4A8E9B6C1D04 /* HealthKitSteps.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitSteps.swift; sourceTree = "<group>"; };
 		9B7E832294A34A3A8B15509A /* R3hab.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = R3hab.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A11D0001A2B3C4D5E6F71001 /* DogfoodTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DogfoodTests.swift; sourceTree = "<group>"; };
 		F4A10001A2B3C4D5E6F70010 /* GuidedSessionScreenshotTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GuidedSessionScreenshotTests.swift; sourceTree = "<group>"; };
@@ -113,6 +114,7 @@
 		A11D0001A2B3C4D5E6F71002 /* DogfoodTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11D0001A2B3C4D5E6F71001 /* DogfoodTests.swift */; };
 		F4A10001A2B3C4D5E6F70011 /* GuidedSessionScreenshotTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4A10001A2B3C4D5E6F70010 /* GuidedSessionScreenshotTests.swift */; };
 		DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */; };
+		C3A91E7B4F2D4A8E9B6C1D05 /* HealthKitSteps.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A91E7B4F2D4A8E9B6C1D04 /* HealthKitSteps.swift */; };
 		EB97832E888046FEA263E4EC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2AC4262E9330424E930140D9 /* Assets.xcassets */; };
 		0F3A7EFFE597D9D1A4ACB693 /* History */ = {
 			isa = PBXGroup;
@@ -161,6 +163,7 @@
 			isa = PBXGroup;
 			children = (
 				9FFF03AC22D349CC85AD4F0E /* NotificationScheduler.swift */,
+				C3A91E7B4F2D4A8E9B6C1D04 /* HealthKitSteps.swift */,
 				9062AC785E8D4376A9F2A1F7 /* Haptics.swift */,
 			);
 			path = Services;
@@ -359,6 +362,7 @@
 				D8045F2CA19D4CB3853B940F /* LogStore.swift in Sources */,
 				C5E3FAEB23C2474E87A129DF /* Haptics.swift in Sources */,
 				DDFC919BBA2B4E7EB2774230 /* NotificationScheduler.swift in Sources */,
+				C3A91E7B4F2D4A8E9B6C1D05 /* HealthKitSteps.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

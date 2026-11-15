@@ -22,8 +22,8 @@ Select an iPhone simulator or device (iOS 17+), then Run (⌘R).
 
 ## Screens
 
-- **Home** — the daily quote, and **Log a session**
-- **Guided log** — isometric leg extension holds, leg extension heavy sets, and leg press. Each set has its own weight and reps or seconds. Skip any exercise you did not do
+- **Home** — the daily quote, today’s step count from Apple Health when he allows it, and **Log a session**
+- **Guided log** — isometric leg extension holds, leg extension heavy sets, and leg press. Each set has its own weight and reps or seconds. The last session for that exercise sits beside the form. Skip any exercise you did not do
 - **Log** — past sessions, each set, the total load, and a short trend
 - **Guide** — isometrics, heavy slow resistance, energy storage, return to sport
 

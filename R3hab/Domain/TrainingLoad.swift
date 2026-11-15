@@ -158,6 +158,26 @@ enum TrainingLoad {
         return lines
     }
 
+    /// Reference text for the guided form. One line per stored set. An older
+    /// isometric row with several identical holds stays one aggregate line.
+    static func comparisonLines(for sets: [ResistanceSet]) -> [String] {
+        let pairs = SessionSummary.groupWorkSets(sets.filter { !$0.isWarmup })
+        var lines: [String] = []
+        for pair in pairs {
+            let pairLoads = loads(in: pair).filter { $0 > 0 }
+            guard !pairLoads.isEmpty else { continue }
+            let hold = pair.holdSeconds ?? 0
+            let reps = pair.reps ?? 0
+            if hold > 0 {
+                let effort = reps > 1 ? "\(reps) × \(hold)s" : "\(hold)s"
+                lines.append(doseText(effort: effort, loads: pairLoads, pair: pair))
+            } else if reps > 0 {
+                lines.append(doseText(effort: "\(reps) reps", loads: pairLoads, pair: pair))
+            }
+        }
+        return lines
+    }
+
     private static func doseText(effort: String, loads: [Double], pair: WorkSetPair) -> String {
         if loads.count >= 2, !pair.loadsMatch {
             let left = LoadCopy.formatted(loads[0])
@@ -357,6 +377,73 @@ struct NewSessionLog: Equatable, Sendable {
     var whatIDid: String
     var painDuring: Int
     var sets: [ResistanceSet]
+}
+
+/// The latest saved session for one exercise, shown beside the form.
+struct PriorExercise: Equatable, Sendable {
+    var day: Date
+    var lines: [String]
+    var sets: [LoggedSetDraft]
+}
+
+enum PriorExerciseLookup {
+    static func latest(
+        kind: SessionExerciseKind,
+        in sessions: [TrainingSessionSnapshot],
+        calendar: Calendar = .current
+    ) -> PriorExercise? {
+        let match = sessions
+            .filter { $0.isFinalized && TrainingLoad.kind(sessionType: $0.sessionType, whatIDid: $0.whatIDid) == kind }
+            .max { $0.date == $1.date ? $0.createdAt < $1.createdAt : $0.date < $1.date }
+        guard let match else { return nil }
+        let lines = TrainingLoad.comparisonLines(for: match.resistanceSets)
+        guard !lines.isEmpty else { return nil }
+        let pairs = SessionSummary.groupWorkSets(match.resistanceSets.filter { !$0.isWarmup })
+        return PriorExercise(
+            day: calendar.startOfDay(for: match.date),
+            lines: lines,
+            sets: ExerciseEntry.loggedSets(kind: kind, from: pairs)
+        )
+    }
+
+    static func dateLabel(day: Date, now: Date, calendar: Calendar = .current) -> String {
+        if calendar.isDate(day, inSameDayAs: now) { return "Today" }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: calendar.startOfDay(for: now)),
+           calendar.isDate(day, inSameDayAs: yesterday) {
+            return "Yesterday"
+        }
+        let month = calendar.component(.month, from: day)
+        let dayNumber = calendar.component(.day, from: day)
+        let name = calendar.shortMonthSymbols[month - 1]
+        return "\(name) \(dayNumber)"
+    }
+}
+
+/// What Home shows for today's step count. The HealthKit read lives in the app target.
+enum TodayStepsState: Equatable, Sendable {
+    case notAsked
+    case count(Int)
+    case unavailable
+}
+
+enum TodayStepsCopy {
+    static func label(_ state: TodayStepsState) -> String {
+        switch state {
+        case .notAsked:
+            return "Steps from Apple Health"
+        case .count(let steps):
+            return "\(formatted(max(steps, 0))) steps today"
+        case .unavailable:
+            return "Steps unavailable"
+        }
+    }
+
+    static func formatted(_ steps: Int) -> String {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.maximumFractionDigits = 0
+        return formatter.string(from: NSNumber(value: max(steps, 0))) ?? String(max(steps, 0))
+    }
 }
 
 enum GuidedSessionDraft: Equatable, Sendable {

@@ -333,6 +333,93 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertEqual(trend.map(\.value), (3...10).map { Double($0) * 100 })
     }
 
+    func testComparisonKeepsAnAggregateHoldOnOneLine() {
+        let sets = [
+            ResistanceSet(reps: 2, loadLbs: 50, holdSeconds: 40, isWarmup: false)
+        ]
+        XCTAssertEqual(TrainingLoad.comparisonLines(for: sets), ["2 × 40s @ 50 lb"])
+        let distinct = [
+            ResistanceSet(reps: 1, loadLbs: 40, holdSeconds: 45, isWarmup: false),
+            ResistanceSet(reps: 1, loadLbs: 55, holdSeconds: 30, isWarmup: false)
+        ]
+        XCTAssertEqual(
+            TrainingLoad.comparisonLines(for: distinct),
+            ["45s @ 40 lb", "30s @ 55 lb"]
+        )
+    }
+
+    func testPriorExerciseIsTheLatestSavedSessionForThatExercise() {
+        let older = session(
+            on: date(year: 2026, month: 11, day: 12),
+            type: .isometrics,
+            what: "Seated leg extension hold",
+            sets: [ResistanceSet(reps: 2, loadLbs: 50, holdSeconds: 40, isWarmup: false)]
+        )
+        let newer = session(
+            on: date(year: 2026, month: 11, day: 13),
+            type: .isometrics,
+            what: "Seated leg extension hold",
+            sets: [
+                ResistanceSet(reps: 1, loadLbs: 40, holdSeconds: 45, isWarmup: false),
+                ResistanceSet(reps: 1, loadLbs: 55, holdSeconds: 30, isWarmup: false)
+            ]
+        )
+        let other = session(
+            on: date(year: 2026, month: 11, day: 14),
+            type: .hsrStrength,
+            what: "Leg press",
+            sets: [ResistanceSet(reps: 8, loadLbs: 200, isWarmup: false)]
+        )
+        let draft = session(
+            on: date(year: 2026, month: 11, day: 14),
+            type: .isometrics,
+            what: "Seated leg extension hold",
+            sets: [ResistanceSet(reps: 1, loadLbs: 70, holdSeconds: 20, isWarmup: false)],
+            isDraft: true
+        )
+        let prior = PriorExerciseLookup.latest(
+            kind: .isometricLegExtension,
+            in: [older, other, draft, newer],
+            calendar: calendar
+        )
+        XCTAssertEqual(prior?.lines, ["45s @ 40 lb", "30s @ 55 lb"])
+        XCTAssertEqual(prior?.sets.map(\.loadLbs), [40, 55])
+        XCTAssertEqual(prior?.sets.map(\.holdSeconds), [45, 30])
+        let now = date(year: 2026, month: 11, day: 14)
+        XCTAssertEqual(
+            PriorExerciseLookup.dateLabel(day: prior!.day, now: now, calendar: calendar),
+            "Yesterday"
+        )
+        XCTAssertEqual(
+            PriorExerciseLookup.dateLabel(day: now, now: now, calendar: calendar),
+            "Today"
+        )
+        let november12 = date(year: 2026, month: 11, day: 12)
+        let olderLabel = PriorExerciseLookup.dateLabel(day: november12, now: now, calendar: calendar)
+        XCTAssertFalse(olderLabel == "Today" || olderLabel == "Yesterday")
+        XCTAssertTrue(olderLabel.contains("12"))
+        XCTAssertNil(
+            PriorExerciseLookup.latest(kind: .legExtensionHeavy, in: [older, newer], calendar: calendar)
+        )
+        let aggregate = PriorExerciseLookup.latest(
+            kind: .isometricLegExtension,
+            in: [older],
+            calendar: calendar
+        )
+        XCTAssertEqual(aggregate?.lines, ["2 × 40s @ 50 lb"])
+        XCTAssertEqual(aggregate?.sets.map(\.holdSeconds), [40, 40])
+        XCTAssertEqual(aggregate?.sets.map(\.loadLbs), [50, 50])
+    }
+
+    func testStepLineStaysQuietUntilAskedAndWhenUnavailable() {
+        XCTAssertEqual(TodayStepsCopy.label(.notAsked), "Steps from Apple Health")
+        XCTAssertEqual(TodayStepsCopy.label(.unavailable), "Steps unavailable")
+        let count = TodayStepsCopy.label(.count(4821))
+        XCTAssertTrue(count.hasSuffix("steps today"))
+        XCTAssertTrue(count.contains("4821") || count.contains("4,821"))
+        XCTAssertEqual(TodayStepsCopy.label(.count(0)), "0 steps today")
+    }
+
     func testGuideHasTheFourStages() {
         XCTAssertEqual(
             RehabGuide.stages.map(\.title),
