@@ -76,7 +76,7 @@ enum HealthKitStepSeed {
         ProcessInfo.processInfo.arguments.contains(argument)
     }
 
-    /// Writes 8,412 steps today and 9,876 steps three days ago, once.
+    /// Writes 8,412 steps today, 9,876 three days ago, and 7,250 five days ago, once each.
     static func seedIfRequested() async {
         guard isRequested, HKHealthStore.isHealthDataAvailable(),
               let type = HKQuantityType.quantityType(forIdentifier: .stepCount) else { return }
@@ -84,7 +84,7 @@ enum HealthKitStepSeed {
         try? await store.requestAuthorization(toShare: [type], read: [type])
         let calendar = Calendar.current
         let today = calendar.startOfDay(for: Date())
-        let plan: [(Int, Int)] = [(0, 8_412), (-3, 9_876)]
+        let plan: [(Int, Int)] = [(0, 8_412), (-3, 9_876), (-5, 7_250)]
         for (offset, count) in plan {
             guard let day = calendar.date(byAdding: .day, value: offset, to: today) else { continue }
             if let existing = try? await HealthKitSteps.steps(on: day), existing > 0 { continue }

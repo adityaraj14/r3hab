@@ -393,6 +393,54 @@ enum ExerciseEntry {
     }
 }
 
+/// Opens a saved row on the guided form and writes the changes back to the same row.
+enum SessionEdit {
+    /// Nil for rows that are not one of the three logged exercises.
+    static func draft(from session: TrainingSessionSnapshot) -> ExerciseEntryDraft? {
+        let kind = TrainingLoad.kind(sessionType: session.sessionType, whatIDid: session.whatIDid)
+        guard SessionExerciseKind.loggable.contains(kind) else { return nil }
+        let pairs = SessionSummary.groupWorkSets(session.resistanceSets.filter { !$0.isWarmup })
+        return ExerciseEntryDraft(
+            kind: kind,
+            included: true,
+            sets: ExerciseEntry.loggedSets(kind: kind, from: pairs),
+            pain: PainScore.isLogged(session.painDuring) ? session.painDuring : nil
+        )
+    }
+
+    static func isEditable(_ kind: SessionExerciseKind) -> Bool {
+        SessionExerciseKind.loggable.contains(kind)
+    }
+
+    /// Same id and created time. New day, sets, pain, and steps. Old warm-ups stay.
+    static func applied(
+        _ session: TrainingSessionSnapshot,
+        draft: ExerciseEntryDraft,
+        day: Date,
+        steps: Int?
+    ) -> TrainingSessionSnapshot {
+        var updated = session
+        updated.date = day
+        updated.resistanceSets = session.resistanceSets.filter(\.isWarmup) + ExerciseEntry.resistanceSets(for: draft)
+        if let pain = draft.pain { updated.painDuring = pain }
+        updated.stepCount = steps
+        return updated
+    }
+
+    /// Swaps the edited row into the list by id. Never adds a row.
+    static func replacing(_ sessions: [TrainingSessionSnapshot], with updated: TrainingSessionSnapshot) -> [TrainingSessionSnapshot] {
+        sessions.map { $0.id == updated.id ? updated : $0 }
+    }
+
+    /// Typed steps win. A new day takes the Health total for that day (or none).
+    /// Otherwise the stored steps stay.
+    static func steps(original: Int?, typed: Int?, typedChanged: Bool, dayChanged: Bool, fetched: Int?) -> Int? {
+        if typedChanged { return typed.map { max($0, 0) } }
+        if dayChanged { return fetched }
+        return original
+    }
+}
+
 struct NewSessionLog: Equatable, Sendable {
     var kind: SessionExerciseKind
     var sessionType: SessionType

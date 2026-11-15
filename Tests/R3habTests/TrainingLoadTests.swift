@@ -408,6 +408,61 @@ final class TrainingLoadTests: XCTestCase {
         XCTAssertNil(SessionSteps.label(days[1].steps))
     }
 
+    func testEditUpdatesTheSameRowAndMovesItToTheNewDay() {
+        let nov12 = date(year: 2026, month: 11, day: 12)
+        let nov10 = date(year: 2026, month: 11, day: 10)
+        var press = session(on: nov12, type: .hsrStrength, what: "Leg press",
+                            sets: [ResistanceSet(reps: 8, loadLbs: 100, isWarmup: false)])
+        press.stepCount = 5_000
+        let hold = session(on: nov12, type: .isometrics, what: "Seated leg extension hold",
+                           sets: [ResistanceSet(reps: 1, loadLbs: 30, holdSeconds: 45, isWarmup: false)])
+        let all = [press, hold]
+
+        var draft = try! XCTUnwrap(SessionEdit.draft(from: press))
+        XCTAssertEqual(draft.kind, .legPress)
+        XCTAssertEqual(draft.pain, 2)
+        XCTAssertEqual(draft.sets.map(\.loadLbs), [100])
+        draft.sets[0].loadLbs = 120
+        draft.sets[0].reps = 10
+        ExerciseEntry.duplicateLastSet(in: &draft)
+        draft.pain = 3
+
+        let updated = SessionEdit.applied(press, draft: draft, day: nov10, steps: 7_777)
+        XCTAssertEqual(updated.id, press.id)
+        XCTAssertEqual(updated.createdAt, press.createdAt)
+        let edited = SessionEdit.replacing(all, with: updated)
+        XCTAssertEqual(edited.count, all.count)
+
+        let days = SessionLogBuilder.days(from: edited, calendar: calendar)
+        XCTAssertEqual(days.map(\.day), [nov12, nov10])
+        XCTAssertEqual(days[0].entries.map(\.kind), [.isometricLegExtension])
+        XCTAssertEqual(days[1].entries.map(\.id), [press.id])
+        XCTAssertEqual(days[1].poundReps, 2 * 10 * 120)
+        XCTAssertEqual(days[1].entries[0].pain, "Pain 3")
+        XCTAssertEqual(days[1].steps, 7_777)
+    }
+
+    func testEditKeepsWarmupsAndSkipsOtherRows() {
+        let warm = ResistanceSet(reps: 10, loadLbs: 20, isWarmup: true)
+        let press = session(type: .hsrStrength, what: "Leg press",
+                            sets: [warm, ResistanceSet(reps: 8, loadLbs: 100, isWarmup: false)])
+        let draft = try! XCTUnwrap(SessionEdit.draft(from: press))
+        let updated = SessionEdit.applied(press, draft: draft, day: press.date, steps: nil)
+        XCTAssertEqual(updated.resistanceSets.filter(\.isWarmup), [warm])
+        XCTAssertEqual(TrainingLoad.amount(for: updated.resistanceSets).poundReps, 800)
+
+        let calf = session(type: .other, what: "Calf raise", sets: [ResistanceSet(reps: 15, loadLbs: 0, isWarmup: false)])
+        XCTAssertNil(SessionEdit.draft(from: calf))
+    }
+
+    func testEditStepsRule() {
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 6_000, typedChanged: true, dayChanged: true, fetched: 9_000), 6_000)
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: true, fetched: 9_000), 9_000)
+        XCTAssertNil(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: true, fetched: nil))
+        XCTAssertEqual(SessionEdit.steps(original: 5_000, typed: 5_000, typedChanged: false, dayChanged: false, fetched: nil), 5_000)
+        XCTAssertNil(SessionEdit.steps(original: 5_000, typed: nil, typedChanged: true, dayChanged: false, fetched: nil))
+    }
+
     func testTrendKeepsTheLatestDaysInOrder() {
         let days = (0..<10).map { offset in
             SessionLogDay(

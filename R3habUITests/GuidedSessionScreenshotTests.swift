@@ -218,3 +218,71 @@ enum Shots {
         try? image.pngRepresentation.write(to: URL(fileURLWithPath: "\(path)/\(name).png"))
     }
 }
+
+/// Line charts in Log, then edit a leg press row and move it two days back.
+final class EditAndLineChartShots: XCTestCase {
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+    }
+
+    func testEditMovesTheRowAndChartsAreLines() throws {
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.buttons["log-session-button"].waitForExistence(timeout: 8))
+        app.tabBars.buttons["Log"].tap()
+        let chart = app.descendants(matching: .any)["trend-working-sets"]
+        XCTAssertTrue(chart.waitForExistence(timeout: 6), app.debugDescription)
+        sleep(1)
+        Shots.save(app, "01-log-line-charts", dir: "edit-line", test: self)
+
+        let entries = app.descendants(matching: .any).matching(identifier: "session-log-entry")
+        let press = entries.matching(NSPredicate(format: "label CONTAINS %@", "Leg press working sets")).firstMatch
+        var tries = 0
+        // The floating tab bar covers the bottom rows, so bring the row up first.
+        while !(press.exists && press.isHittable && press.frame.midY < app.frame.height * 0.7) && tries < 6 {
+            app.swipeUp()
+            tries += 1
+        }
+        XCTAssertTrue(press.exists, app.debugDescription)
+        press.tap()
+
+        let title = app.descendants(matching: .any)["guided-exercise-title"]
+        XCTAssertTrue(title.waitForExistence(timeout: 4), app.debugDescription)
+        XCTAssertTrue(title.label.contains("Leg press"))
+        XCTAssertFalse(app.buttons["guided-skip"].exists)
+        app.buttons["guided-set-0-load-plus"].tap()
+        app.buttons["guided-set-0-load-plus"].tap()
+        Shots.save(app, "02-edit-sets", dir: "edit-line", test: self)
+        app.buttons["guided-next"].tap()
+
+        let picker = app.datePickers["guided-date"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 4), app.debugDescription)
+        Shots.save(app, "03-edit-review", dir: "edit-line", test: self)
+
+        let target = Calendar.current.date(byAdding: .day, value: -5, to: Date())!
+        let long = DateFormatter()
+        long.locale = Locale(identifier: "en_US")
+        long.dateFormat = "EEEE, MMMM d"
+        picker.buttons.firstMatch.exists ? picker.buttons.firstMatch.tap() : picker.tap()
+        let dayButton = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", long.string(from: target))).firstMatch
+        XCTAssertTrue(dayButton.waitForExistence(timeout: 4), app.debugDescription)
+        dayButton.tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.08)).tap()
+        sleep(1)
+        Shots.save(app, "04-edit-new-date", dir: "edit-line", test: self)
+        app.buttons["guided-save"].tap()
+
+        let short = DateFormatter()
+        short.locale = Locale(identifier: "en_US")
+        short.dateFormat = "EEE, MMM d"
+        let header = app.staticTexts[short.string(from: target)]
+        XCTAssertTrue(entries.firstMatch.waitForExistence(timeout: 6), app.debugDescription)
+        sleep(1)
+        tries = 0
+        while !header.exists && tries < 6 { app.swipeUp(); tries += 1 }
+        XCTAssertTrue(header.waitForExistence(timeout: 4), app.debugDescription)
+        if header.frame.minY > app.frame.height * 0.5 { app.swipeUp() }
+        sleep(1)
+        Shots.save(app, "05-log-after-edit", dir: "edit-line", test: self)
+    }
+}
